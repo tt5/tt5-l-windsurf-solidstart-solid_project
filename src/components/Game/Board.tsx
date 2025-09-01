@@ -3,7 +3,6 @@ import { query, createAsync, action, useAction } from '@solidjs/router';
 import type { Item, SelectedSquares } from '../../types/board';
 import { fetchItems, saveItems, deleteAllItems } from '../../services/boardService';
 import Square from './Square';
-import OutsideSquare from './OutsideSquare';
 import styles from './Board.module.css';
 
 // Server actions
@@ -123,29 +122,14 @@ const Board: Component = () => {
       </div>
 
       <div class={styles.grid}>
-        {Array(49)
-          .fill(0)
-          .map((_, index) => {
-            const row = Math.floor(index / 7);
-            const col = index % 7;
-            const isBorder = row === 0 || row === 6 || col === 0 || col === 6;
-            
-            return isBorder ? (
-              <div key={index}>
-                <OutsideSquare
-                  isSelected={selectedSquares().includes(index)}
-                  onClick={() => handleSquareClick(index)}
-                />
-              </div>
-            ) : (
-              <div key={index}>
-                <Square
-                  isSelected={selectedSquares().includes(index)}
-                  onClick={() => handleSquareClick(index)}
-                />
-              </div>
-            );
-          })}
+        {Array(49).fill(0).map((_, index) => (
+          <div key={index}>
+            <Square
+              isSelected={selectedSquares().includes(index)}
+              onClick={() => handleSquareClick(index)}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );
