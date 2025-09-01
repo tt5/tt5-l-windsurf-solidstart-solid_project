@@ -60,20 +60,48 @@ const Board: Component = () => {
   // Direction handlers using moveSquares
   const handleGoUp = () => moveSquares(i => i >= 7, i => i - 7);
   const handleGoDown = () => moveSquares(i => i < 42, i => i + 7);
-  const handleGoLeft = () => {
-    const currentSquares = selectedSquares();
-    const rightBorderIndices = [6, 13, 20, 27, 34, 41, 48];
-    
-    // Move existing squares left and filter out any that would move off the grid
-    const movedSquares = currentSquares
-      .filter(i => i % 7 !== 0) // Can't move left if already on left edge
-      .map(i => i - 1);
+  const handleGoLeft = async () => {
+    try {
+      const currentSquares = selectedSquares();
+      const rightBorderIndices = [6, 13, 20, 27, 34, 41, 48];
       
-    // Combine moved squares with right border squares, removing duplicates
-    const newSelection = [...new Set([...movedSquares, ...rightBorderIndices])];
-    
-    // Update all at once
-    updateSquares(newSelection);
+      // Move existing squares left and filter out any that would move off the grid
+      const movedSquares = currentSquares
+        .filter(i => i % 7 !== 0) // Can't move left if already on left edge
+        .map(i => i - 1);
+      
+      // Get 2-4 random squares from the right border
+      let randomCount = 2; // Default value
+      try {
+        const response = await fetch(`/api/random?count=1&max=2`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch random numbers');
+        }
+        const data = await response.json();
+        randomCount = (data.numbers?.[0] ?? 0) + 2; // 2-4 random squares
+      } catch (error) {
+        console.error('Error fetching random numbers, using default count:', error);
+        // Fallback to a random number between 2-4 if API fails
+        randomCount = 2 + Math.floor(Math.random() * 3);
+      }
+      
+      // Get random indices from right border
+      const randomBorderSquares = [];
+      const availableIndices = [...rightBorderIndices];
+      
+      for (let i = 0; i < randomCount && availableIndices.length > 0; i++) {
+        const randomIndex = Math.floor(Math.random() * availableIndices.length);
+        randomBorderSquares.push(availableIndices.splice(randomIndex, 1)[0]);
+      }
+      
+      // Combine moved squares with random border squares, removing duplicates
+      const newSelection = [...new Set([...movedSquares, ...randomBorderSquares])];
+      
+      // Update all at once
+      updateSquares(newSelection);
+    } catch (error) {
+      console.error('Error in handleGoLeft:', error);
+    }
   };
   const handleGoRight = () => moveSquares(i => i % 7 !== 6, i => i + 1);
 

@@ -1,22 +1,22 @@
-import type { APIEvent } from '@solidjs/start/server';
+import { APIEvent } from '@solidjs/start/server';
 
-export async function GET({ params, request }: APIEvent) {
-  const url = new URL(request.url);
+export async function GET(event: APIEvent) {
+  const url = new URL(event.request.url);
   const count = parseInt(url.searchParams.get('count') || '1', 10);
   const max = parseInt(url.searchParams.get('max') || '100', 10);
 
   // Validate inputs
   if (isNaN(count) || count < 1 || count > 1000) {
-    return Response.json(
-      { error: 'Count must be between 1 and 1000' },
-      { status: 400 }
+    return new Response(
+      JSON.stringify({ error: 'Count must be between 1 and 1000' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
 
   if (isNaN(max) || max < 1) {
-    return Response.json(
-      { error: 'Max must be a positive number' },
-      { status: 400 }
+    return new Response(
+      JSON.stringify({ error: 'Max must be a positive number' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
 
@@ -26,9 +26,12 @@ export async function GET({ params, request }: APIEvent) {
     () => Math.floor(Math.random() * (max + 1))
   );
 
-  return json({
-    numbers: randomNumbers,
-    count,
-    max
-  });
+  return new Response(
+    JSON.stringify({
+      numbers: randomNumbers,
+      count,
+      max
+    }),
+    { headers: { 'Content-Type': 'application/json' } }
+  );
 }
