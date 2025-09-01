@@ -60,7 +60,21 @@ const Board: Component = () => {
   // Direction handlers using moveSquares
   const handleGoUp = () => moveSquares(i => i >= 7, i => i - 7);
   const handleGoDown = () => moveSquares(i => i < 42, i => i + 7);
-  const handleGoLeft = () => moveSquares(i => i % 7 !== 0, i => i - 1);
+  const handleGoLeft = () => {
+    const currentSquares = selectedSquares();
+    const rightBorderIndices = [6, 13, 20, 27, 34, 41, 48];
+    
+    // Move existing squares left and filter out any that would move off the grid
+    const movedSquares = currentSquares
+      .filter(i => i % 7 !== 0) // Can't move left if already on left edge
+      .map(i => i - 1);
+      
+    // Combine moved squares with right border squares, removing duplicates
+    const newSelection = [...new Set([...movedSquares, ...rightBorderIndices])];
+    
+    // Update all at once
+    updateSquares(newSelection);
+  };
   const handleGoRight = () => moveSquares(i => i % 7 !== 6, i => i + 1);
 
   return (
