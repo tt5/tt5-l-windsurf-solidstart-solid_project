@@ -1,7 +1,7 @@
 import { Component, createSignal, createEffect, For, Show } from 'solid-js';
 import { query, createAsync, action, useAction } from '@solidjs/router';
 import type { Item, SelectedSquares } from '../../types/board';
-import { fetchItems, saveItems, deleteAllItems } from '../../services/boardService';
+import { fetchUserItems, saveUserItems, clearUserItems } from '../../services/boardService';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
 import Login from '../Auth/Login';
@@ -9,28 +9,53 @@ import styles from './Board.module.css';
 
 type Direction = 'up' | 'down' | 'left' | 'right';
 
-// Server actions
-const getItems = query(async (): Promise<Item[]> => fetchItems(), 'items');
-const refetchItems = action((data: SelectedSquares) => saveItems(JSON.stringify(data)), 'refetchItems');
-const deleteItems = action(deleteAllItems, 'deleteItems');
+// Server actions - updated to use user-specific endpoints
+const getItems = query(async (userId: string) => fetchUserItems(userId), 'userItems');
+const refetchItems = action(({ userId, data }: { userId: string; data: SelectedSquares }) => 
+  saveUserItems(userId, JSON.stringify(data)), 'refetchUserItems');
+const deleteItems = action((userId: string) => clearUserItems(userId), 'deleteUserItems');
 
 const Board: Component = () => {
   const { user, logout } = useAuth();
+  const currentUser = user();
+  
+  // Initialize with empty array if no items exist
+  const [items, setItems] = createSignal<Item[]>([]);
+  
+  // Load items when user changes
+  createEffect(() => {
+    if (!currentUser) {
+      setItems([]);
+      return;
+    }
+    
+    // Use the server action to fetch user items
+    getItems(currentUser)
+      .then(data => setItems(data))
+      .catch(error => console.error('Error loading user items:', error));
+  });
+
   const [selectedSquares, setSelectedSquares] = createSignal<SelectedSquares>([]);
-  const items = createAsync(getItems);
   const saveAction = useAction(refetchItems);
   const deleteAction = useAction(deleteItems);
 
-  // Sync with database
-  createEffect(() => {
-    const data = items();
-    const parsed = data?.[0]?.data ? JSON.parse(data[0].data) : [];
-    if (Array.isArray(parsed)) setSelectedSquares(parsed);
-  });
-
   const updateSquares = (squares: SelectedSquares) => {
+    if (!currentUser) return;
     setSelectedSquares(squares);
-    saveAction(squares).catch(console.error);
+    saveAction({ userId: currentUser, data: squares }).catch(console.error);
+  };
+
+  const handleSave = async () => {
+    if (!currentUser) return;
+    
+    try {
+      // Use the server action to save items
+      const newItem = await saveUserItems(currentUser, JSON.stringify(selectedSquares()));
+      setItems(prev => [newItem, ...prev.slice(0, 9)]); // Keep only last 10 items
+      setSelectedSquares([]);
+    } catch (error) {
+      console.error('Error saving items:', error);
+    }
   };
 
   const toggleSquare = (i: number) => {
@@ -43,16 +68,25 @@ const Board: Component = () => {
   const handleRandomSelection = () => updateSquares(
     Array.from({ length: 4 }, () => Math.floor(Math.random() * 49))
   );
-  const handleDeleteAll = () => deleteAction().then(
-    () => setSelectedSquares([])
-  ).catch(console.error);
+  const handleClear = async () => {
+    if (!currentUser) return;
+    
+    try {
+      // Use the server action to delete all user items
+      await deleteAction(currentUser);
+      setItems([]);
+      setSelectedSquares([]);
+    } catch (error) {
+      console.error('Error clearing items:', error);
+    }
+  };
   const handleDirection = (dir: Direction) => moveSquares(
     selectedSquares(), dir
   ).then(updateSquares).catch(console.error);
     
   const buttons = [
     ['Random', handleRandomSelection, styles.randomButton],
-    ['Clear All', handleDeleteAll, styles.clearButton]
+    ['Clear All', handleClear, styles.clearButton]
   ] as const;
 
   const directions = [
