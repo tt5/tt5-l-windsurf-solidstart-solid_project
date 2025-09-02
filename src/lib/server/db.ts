@@ -1,5 +1,9 @@
 import sqlite3 from 'sqlite3';
-import { open, type Database } from 'sqlite';
+import { open } from 'sqlite';
+import { Database as SQLiteDatabase } from 'sqlite3';
+
+// Use the Database type from sqlite package
+type Database = import('sqlite').Database<sqlite3.Database, sqlite3.Statement>;
 import { promises as fs } from 'fs';
 import { dirname, join } from 'path';
 import { assertServer } from './utils';
@@ -26,9 +30,9 @@ async function getDb() {
         mode: sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE
       });
       
-      // Set pragmas
-      await db.pragma('journal_mode = WAL');
-      await db.pragma('foreign_keys = ON');
+      // Set pragmas with type assertion
+      await (db as any).pragma('journal_mode = WAL');
+      await (db as any).pragma('foreign_keys = ON');
       
       // Create tables with error handling
       try {
@@ -168,9 +172,47 @@ export const deleteUserItem = async (userId: string, itemId: number): Promise<bo
   const result = await db.run(
     `DELETE FROM ${tableName} WHERE id = ?`,
     [itemId]
-  );
+  ) as { changes?: number };
   
-  return result.changes > 0;
+  return (result.changes ?? 0) > 0;
+};
+
+/**
+ * Delete a user and all their data
+ */
+export const deleteUser = async (userId: string): Promise<boolean> => {
+  const db = await getDb();
+  const userTableName = `user_${userId}_items`; // Using the known table name pattern
+  console.log(`[deleteUser] Starting deletion for user: ${userId}`);
+  
+  try {
+    // Start a transaction
+    console.log('[deleteUser] Starting transaction');
+    await db.exec('BEGIN TRANSACTION');
+    
+    try {
+      // Drop the user's items table directly using the known pattern
+      console.log(`[deleteUser] Attempting to drop table: ${userTableName}`);
+      await db.exec(`DROP TABLE IF EXISTS ${userTableName}`);
+      console.log(`[deleteUser] Successfully dropped table: ${userTableName}`);
+      
+      // Commit the transaction since we've successfully dropped the user's table
+      console.log('[deleteUser] Committing transaction');
+      await db.exec('COMMIT');
+      console.log(`[deleteUser] Successfully deleted user data for: ${userId}`);
+      return true;
+      
+    } catch (error) {
+      // Rollback in case of any error
+      await db.exec('ROLLBACK');
+      console.error('Error in user deletion transaction:', error);
+      return false;
+    }
+    
+  } catch (error) {
+    console.error('Error during user deletion:', error);
+    return false;
+  }
 };
 
 export { getDb };

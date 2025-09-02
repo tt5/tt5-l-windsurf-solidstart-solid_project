@@ -1,5 +1,5 @@
 import { Component, createSignal, createEffect, For, Show } from 'solid-js';
-import { query, createAsync, action, useAction } from '@solidjs/router';
+import { query, createAsync, action, useAction, useNavigate } from '@solidjs/router';
 import type { Item, SelectedSquares } from '../../types/board';
 import { fetchUserItems, saveUserItems, clearUserItems } from '../../services/boardService';
 import { moveSquares } from '../../utils/directionUtils';
@@ -28,6 +28,31 @@ const deleteItems = action((userId: string | { id: string }) => {
 
 const Board: Component = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  
+  const handleDeleteAccount = async () => {
+    if (!user()) return;
+    
+    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/auth/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user()!.id })
+      });
+      
+      if (!response.ok) throw new Error('Failed to delete account');
+      
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      alert('Failed to delete account. Please try again.');
+    }
+  };
   const currentUser = user();
   
   // Initialize with empty array if no items exist
@@ -139,9 +164,18 @@ const Board: Component = () => {
     <div class={styles.board}>
       <div class={styles.userBar}>
         <span>Welcome, {user()?.username || 'User'}!</span>
-        <button onClick={logout} class={styles.logoutButton}>
-          Logout
-        </button>
+        <div style={{ 'display': 'flex', 'gap': '1rem', 'margin-top': '1rem' }}>
+          <button onClick={logout} class={styles.button}>
+            Logout
+          </button>
+          <button 
+            onClick={handleDeleteAccount} 
+            class={styles.button}
+            style={{ 'background-color': '#dc3545' }}
+          >
+            Delete Account
+          </button>
+        </div>
       </div>
       <div class={styles.history}>
         <h2>Selected Items History</h2>
