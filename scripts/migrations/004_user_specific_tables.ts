@@ -1,4 +1,4 @@
-import Database, { Database as DatabaseType } from 'better-sqlite3';
+import type { Database as DatabaseType } from 'better-sqlite3';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -9,20 +9,30 @@ const __dirname = dirname(__filename);
 // Migration: 004_user_specific_tables
 // Creates a table for each user and migrates their items
 export async function up(db: DatabaseType) {
-  // 1. Create user_tables to track user-specific tables
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS user_tables (
-      user_id TEXT PRIMARY KEY,
-      table_name TEXT NOT NULL UNIQUE,
-      created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
-    )
-  `);
-
-  // 2. Get all unique user_ids from items
-  const users = db.prepare('SELECT DISTINCT user_id FROM items').all() as { user_id: string }[];
+  // 2. Check if items table exists
+  const itemsTableExists = db.prepare(`
+    SELECT name FROM sqlite_master 
+    WHERE type='table' AND name='items'
+  `).get() as { name: string } | undefined;
   
-  // 3. For each user, create a dedicated table and migrate their items
-  for (const { user_id } of users) {
+  if (!itemsTableExists) {
+    // If no items table, just create the user_tables table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS user_tables (
+        user_id TEXT PRIMARY KEY,
+        table_name TEXT NOT NULL UNIQUE,
+        created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
+      )
+    `);
+    return; // Exit early if no items table exists
+  }
+  
+  // 3. Get all unique user_ids from items
+  const users = db.prepare('SELECT DISTINCT user_id FROM items').all() as Array<{ user_id: string }>;
+  
+  // 4. For each user, create a dedicated table and migrate their items
+  for (const row of users) {
+    const user_id = String(row.user_id);
     // Create a safe table name (replace any non-alphanumeric characters with _)
     const safeUserId = user_id.replace(/[^a-zA-Z0-9_]/g, '_');
     const tableName = `user_${safeUserId}_items`;
@@ -51,20 +61,22 @@ export async function up(db: DatabaseType) {
     `).run(user_id);
   }
   
-  // 4. Create a view for backward compatibility
-  const joinClauses = users.map(({ user_id }) => {
-    const safeUserId = user_id.replace(/[^a-zA-Z0-9_]/g, '_');
-    const tableName = `user_${safeUserId}_items`;
-    return `
-      SELECT id, '${user_id}' as user_id, data, created_at_ms
-      FROM ${tableName}
-    `;
-  }).join(' UNION ALL ');
+  // 5. Create a view for backward compatibility
+  if (users.length > 0) {
+    const viewDefinition = users
+      .map((row) => {
+        const user_id = String(row.user_id);
+        const safeUserId = user_id.replace(/[^a-zA-Z0-9_]/g, '_');
+        const tableName = `user_${safeUserId}_items`;
+        return `SELECT id, '${user_id}' as user_id, data, created_at_ms FROM ${tableName}`;
+      })
+      .join(' UNION ALL ');
   
-  db.exec(`
-    CREATE VIEW IF NOT EXISTS vw_items AS
-    ${joinClauses}
-  `);
+    db.exec(`
+      CREATE VIEW IF NOT EXISTS vw_items AS
+      ${viewDefinition}
+    `);
+  }
 }
 
 // Rollback function - be careful as this is destructive
