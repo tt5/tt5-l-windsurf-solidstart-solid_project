@@ -1,63 +1,192 @@
-title: "SolidStart Application Database"
-description: "Database for the SolidStart application with user items"
-license: "CC0"
-license_url: "https://creativecommons.org/publicdomain/zero/1.0/"
+# Application Database Metadata
+# This file configures the database visualization and documentation for the SolidStart application
 
-# Database configuration
+title: "SolidStart Game Board Database"
+description: >
+  Central database for the SolidStart game board application.
+  Stores user items, game states, and related metadata.
+
+author: "SolidStart Team"
+source: "https://github.com/yourusername/solidstart-gameboard"
+license: "MIT"
+license_url: "https://opensource.org/licenses/MIT"
+
+# Database Configuration
 databases:
   app:
-    # Hide the SQL editor by default for security
-    allow_sql: false
+    # Security settings
+    allow_sql: false  # Disable raw SQL execution in the UI for production
+    allow_download: true
+    default_cache_ttl: 3600  # Cache for 1 hour
     
     # Table configurations
     tables:
       items:
-        # Add a description for the table
-        description: "Stores user items with associated metadata"
+        description: "Stores game board items with associated metadata and user ownership"
+        # Default sort order - using direct SQL syntax
+        sort_desc: created_at_ms
         
-        # Column configurations
+        # Column configurations with types and descriptions
         columns:
-          id: "Primary key, auto-incrementing ID"
-          user_id: "User identifier (UUID or username)"
-          data: "JSON-encoded item data"
-          created_at_ms: "Timestamp in milliseconds when the item was created"
+          id: 
+            description: "Primary key, auto-incrementing ID"
+            type: integer
+            sortable: true
             
-        # Foreign key relationships (if any)
-        # foreign_keys:
-        #   - column: user_id
-        #     reference:
-        #       table: users
-        #       column: id
+          user_id:
+            description: "User identifier (UUID or username) who owns this item"
+            type: text
+            sortable: true
+            
+          data:
+            description: "JSON-encoded item data containing game state and metadata"
+            type: json
+            
+          created_at_ms:
+            description: "Unix timestamp in milliseconds when the item was created"
+            type: integer
+            sortable: true
+            
+          created_at:
+            description: "Generated column showing human-readable timestamp"
+            type: text
+            sortable: true
+            
+        # Foreign key relationships
+        foreign_keys:
+          - column: user_id
+            reference:
+              table: users  # Future table for user management
+              column: id
         
-        # Useful queries
+        # Predefined queries for common operations
         queries:
-          recent: 
-            name: "10 most recent items"
-            sql: "SELECT id, user_id, json_extract(data, '$.title') as title, created_at_ms FROM items ORDER BY created_at_ms DESC LIMIT 10"
+          recent_items: 
+            name: "Recent Items"
+            description: "Get the 10 most recent items across all users"
+            sql: |
+              SELECT 
+                id,
+                user_id,
+                json_extract(data, '$.title') as title,
+                strftime('%Y-%m-%d %H:%M:%f', created_at_ms / 1000, 'unixepoch') as created_at
+              FROM items 
+              ORDER BY created_at_ms DESC 
+              LIMIT 10
           
-          by_user:
-            name: "Items by user"
-            sql: "SELECT id, json_extract(data, '$.title') as title, created_at_ms FROM items WHERE user_id = :user_id ORDER BY created_at_ms DESC"
-            
-        # Default view with sorting
+          user_items:
+            name: "User's Items"
+            description: "Get items for a specific user with pagination"
+            sql: |
+              SELECT 
+                id,
+                json_extract(data, '$.title') as title,
+                strftime('%Y-%m-%d %H:%M:%f', created_at_ms / 1000, 'unixepoch') as created_at
+              FROM items 
+              WHERE user_id = :user_id 
+              ORDER BY created_at_ms DESC
+              LIMIT :limit OFFSET :offset
+              
+          search_items:
+            name: "Search Items"
+            description: "Search items by title or content"
+            sql: |
+              SELECT 
+                id,
+                user_id,
+                json_extract(data, '$.title') as title,
+                snippet(items.data, 1, '**', '**', '...', 20) as snippet,
+                strftime('%Y-%m-%d %H:%M:%f', created_at_ms / 1000, 'unixepoch') as created_at
+              FROM items 
+              WHERE items.data LIKE '%' || :query || '%'
+              ORDER BY created_at_ms DESC
+        
+        # Default view configuration
         default_view: latest_items
         
-        # Define a custom view for latest items
+        # Custom views
         views:
           latest_items:
+            name: "Latest Items"
+            description: "View of the most recently created items"
             sql: >
               SELECT 
                 id,
                 user_id,
-                data,
+                json_extract(data, '$.title') as title,
+                json_extract(data, '$.type') as type,
                 created_at_ms,
                 strftime('%Y-%m-%d %H:%M:%f', created_at_ms / 1000, 'unixepoch') as created_at
               FROM items
               ORDER BY created_at_ms DESC
+              
+          items_by_type:
+            name: "Items by Type"
+            description: "View items grouped by their type"
+            sql: >
+              SELECT 
+                json_extract(data, '$.type') as item_type,
+                COUNT(*) as count,
+                strftime('%Y-%m-%d', MIN(created_at_ms / 1000), 'unixepoch') as first_seen,
+                strftime('%Y-%m-%d', MAX(created_at_ms / 1000), 'unixepoch') as last_seen
+              FROM items
+              GROUP BY item_type
+              ORDER BY count DESC
 
-# Plugin configurations (uncomment and customize as needed)
-# plugins:
-#   datasette-vega:
-#     default_theme: "dark"
-#   datasette-json-html:
-#     columns: ["data"]
+# Plugin configurations
+plugins:
+  # Enable JSON viewer for the data column
+  datasette-json-html:
+    columns: ["data"]
+    
+  # Add search functionality
+  datasette-search-all:
+    search_all: true
+    
+  # Add visualization support
+  datasette-vega:
+    default_theme: "dark"
+    
+  # Add CSV/JSON export
+  datasette-export:
+    formats: ["csv", "json"]
+
+# UI Customization
+settings:
+  default_page_size: 50
+  max_returned_rows: 1000
+  sql_time_limit_ms: 10000
+  default_facet_size: 10
+  facet_time_limit_ms: 2000
+  facet_suggest_time_limit_ms: 1000
+  allow_facet: true
+  suggest_facets: true
+  
+# Metadata for the web interface
+metadata:
+  about: "This database powers the SolidStart Game Board application."
+  about_url: "https://github.com/yourusername/solidstart-gameboard"
+  source: "https://github.com/yourusername/solidstart-gameboard"
+  license: "MIT"
+  license_url: "https://opensource.org/licenses/MIT"
+  
+  # Custom CSS for the Datasette interface
+  extra_css_urls:
+    - "https://cdn.jsdelivr.net/npm/@tailwindcss/typography@latest/dist/typography.min.css"
+    
+  # Custom JavaScript
+  extra_js_urls:
+    - "https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"
+    
+  # Custom footer
+  footer: "SolidStart Game Board - Built with ❤️"
+  
+  # Custom colors
+  primary: "#4f46e5"
+  accent: "#10b981"
+  
+  # Feature flags
+  allow_download: true
+  allow_csv_stream: true
+  allow_facet: true
+  allow_sql: false
