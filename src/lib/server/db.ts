@@ -30,12 +30,13 @@ async function getDb() {
         mode: sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE
       });
       
-      // Set pragmas with type assertion
-      await (db as any).pragma('journal_mode = WAL');
-      await (db as any).pragma('foreign_keys = ON');
+      // Set pragmas using exec
+      await db.exec('PRAGMA journal_mode = WAL;');
+      await db.exec('PRAGMA foreign_keys = ON;');
       
       // Create tables with error handling
       try {
+        // First create user_tables if it doesn't exist
         await db.exec(`
           CREATE TABLE IF NOT EXISTS user_tables (
             user_id TEXT PRIMARY KEY,
@@ -65,27 +66,43 @@ async function ensureUserTable(userId: string): Promise<string> {
   const safeUserId = userId.replace(/[^a-zA-Z0-9_]/g, '_');
   const tableName = `user_${safeUserId}_items`;
   
-  // Check if table exists
-  const tableExists = await db.get(
-    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-    [tableName]
-  );
-  
-  if (!tableExists) {
-    // Create the user's items table
+  try {
+    // First ensure user_tables exists
     await db.exec(`
-      CREATE TABLE IF NOT EXISTS ${tableName} (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        data TEXT NOT NULL,
-        created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
-      )
+      CREATE TABLE IF NOT EXISTS user_tables (
+        user_id TEXT PRIMARY KEY,
+        table_name TEXT NOT NULL UNIQUE,
+        created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+        deleted_at_ms INTEGER
+      );
     `);
     
-    // Register the user table
-    await db.run(
-      'INSERT OR IGNORE INTO user_tables (user_id, table_name) VALUES (?, ?)',
-      [userId, tableName]
+    // Check if table exists
+    const tableExists = await db.get(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+      [tableName]
     );
+    
+    if (!tableExists) {
+      // Create the user's items table
+      await db.exec(`
+        CREATE TABLE ${tableName} (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          data TEXT NOT NULL,
+          created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
+        )
+      `);
+      
+      // Register the user table
+      await db.run(
+        'INSERT OR IGNORE INTO user_tables (user_id, table_name) VALUES (?, ?)',
+        [userId, tableName]
+      );
+    }
+  
+  } catch (error) {
+    console.error('Error in ensureUserTable:', error);
+    throw error;
   }
   
   return tableName;
