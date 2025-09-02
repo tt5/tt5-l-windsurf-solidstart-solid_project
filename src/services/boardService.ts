@@ -73,18 +73,7 @@ export const clearUserItems = async (userId: string): Promise<void> => {
     throw error;
   }
 };
-
-// Keep the old functions for backward compatibility
-export const fetchItems = async (): Promise<Item[]> => {
-  console.warn('fetchItems() is deprecated. Use fetchUserItems(userId) instead.');
-  return [];
-};
-
-export const saveItems = async (data: SelectedSquares | string): Promise<Item> => {
-  console.warn('saveItems() is deprecated. Use saveUserItems(userId, data) instead.');
-  return { id: 0, user_id: '', data: '', created_at: new Date().toISOString() };
-};
-
-export const deleteAllItems = async (): Promise<void> => {
-  console.warn('deleteAllItems() is deprecated. Use clearUserItems(userId) instead.');
-};
+// All legacy functions have been removed. Use the following functions instead:
+// - fetchUserItems(userId) instead of fetchItems()
+// - saveUserItems(userId, data) instead of saveItems(data)
+// - clearUserItems(userId) instead of deleteAllItems()

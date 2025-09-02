@@ -123,27 +123,8 @@ export const deleteUserItem = (userId: string, itemId: number): boolean => {
 // All legacy functions have been removed. Use the following functions instead:
 // - getUserItems(userId) instead of getAllItems()
 // - addUserItem(userId, data) instead of addItem(data)
+// - deleteUserItem(userId, id) instead of deleteItem(id)
 // - deleteAllUserItems(userId) instead of deleteAllItems()
-
-export const deleteItem = (id: number): boolean => {
-  console.warn('deleteItem() is deprecated. Use deleteUserItem(userId, id) instead.');
-  // This is now more complex with user-specific tables
-  // We need to find which user's table contains this ID
-  const userTables = db.prepare('SELECT user_id, table_name FROM user_tables').all() as Array<{user_id: string, table_name: string}>;
-  
-  for (const { user_id, table_name } of userTables) {
-    const result = db.prepare(`
-      DELETE FROM ${table_name} 
-      WHERE id = ?
-    `).run(id);
-    
-    if (result.changes > 0) {
-      return true;
-    }
-  }
-  
-  return false;
-};
 
 // Export the database instance for migrations
 export { db };
