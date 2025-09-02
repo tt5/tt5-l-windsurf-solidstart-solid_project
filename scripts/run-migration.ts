@@ -4,6 +4,9 @@ import Database from 'better-sqlite3';
 import { access, constants } from 'node:fs/promises';
 
 // Define available migrations with their names and SQL
+// Import TypeScript migrations
+import { up as userSpecificTablesUp, down as userSpecificTablesDown } from './migrations/004_user_specific_tables.js';
+
 const MIGRATION_SCRIPTS = [
   {
     name: 'add_user_id_column',
@@ -49,6 +52,13 @@ const MIGRATION_SCRIPTS = [
       WHERE created_at_ms IS NULL AND created_at IS NOT NULL;
     `,
   },
+  {
+    name: 'user_specific_tables',
+    // This is a TypeScript migration
+    isTsMigration: true,
+    up: userSpecificTablesUp,
+    down: userSpecificTablesDown
+  }
 ];
 
 async function runMigrations() {

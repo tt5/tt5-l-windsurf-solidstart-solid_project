@@ -11,64 +11,91 @@ const dbPath = join(process.cwd(), 'data', 'app.db');
 await fs.mkdir(dirname(dbPath), { recursive: true }).catch(() => {});
 const db = new Database(dbPath);
 
+// Enable WAL mode for better concurrency
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+
 // Create database tables if they don't exist
 db.exec(`
-  CREATE TABLE IF NOT EXISTS items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL,
-    data TEXT NOT NULL,
-    created_at TEXT GENERATED ALWAYS AS (datetime(created_at_ms / 1000, 'unixepoch')) VIRTUAL,
-    created_at_ms INTEGER DEFAULT (strftime('%s','now') * 1000 + (strftime('%f','now') - strftime('%S','now') * 1000))
+  CREATE TABLE IF NOT EXISTS user_tables (
+    user_id TEXT PRIMARY KEY,
+    table_name TEXT NOT NULL UNIQUE,
+    created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
   )`);
 
-// Create indexes for better query performance
-db.exec('CREATE INDEX IF NOT EXISTS idx_items_user_id ON items(user_id)');
-db.exec('CREATE INDEX IF NOT EXISTS idx_items_created_ms ON items(created_at_ms)');
+// Create a function to get or create a user's table
+function ensureUserTable(userId: string): string {
+  const safeUserId = userId.replace(/[^a-zA-Z0-9_]/g, '_');
+  const tableName = `user_${safeUserId}_items`;
+  
+  // Check if table exists
+  const tableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
+  ).get(tableName);
+  
+  if (!tableExists) {
+    // Create the user's items table
+    db.exec(`
+      CREATE TABLE ${tableName} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        data TEXT NOT NULL,
+        created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
+      )
+    `);
+    
+    // Register the user table
+    db.prepare(`
+      INSERT OR IGNORE INTO user_tables (user_id, table_name)
+      VALUES (?, ?)
+    `).run(userId, tableName);
+  }
+  
+  return tableName;
+}
 
 export interface Item { 
-  id: number; 
-  user_id: string;
-  data: string; 
-  created_at: string; 
+  id: number;
+  user_id?: string;  // Optional since it's not stored in user tables
+  data: string;
+  created_at_ms?: number;
+  created_at?: string; // Virtual column
 }
 
 /**
  * Get all items for a specific user
  */
 export const getUserItems = (userId: string): Item[] => {
+  const tableName = ensureUserTable(userId);
   return db.prepare(`
-    SELECT id, user_id, data, 
-           datetime(created_at_ms / 1000, 'unixepoch') as created_at 
-    FROM items 
-    WHERE user_id = ? 
+    SELECT id, 
+           data, 
+           created_at_ms,
+           datetime(created_at_ms / 1000, 'unixepoch') as created_at
+    FROM ${tableName}
     ORDER BY created_at_ms DESC
-  `).all(userId) as Item[];
+  `).all().map((item: any) => ({
+    ...item,
+    user_id: userId // Add user_id to maintain backward compatibility
+  })) as Item[];
 };
 
 /**
  * Add a new item for a specific user
  */
 export const addUserItem = (userId: string, data: string): Item => {
+  const tableName = ensureUserTable(userId);
   const now = Date.now();
-  const stmt = db.prepare('INSERT INTO items (user_id, data, created_at_ms) VALUES (?, ?, ?)');
-  const { lastInsertRowid } = stmt.run(userId, data, now);
   
-  // Keep only the last 10 items per user
-  db.prepare(`
-    DELETE FROM items 
-    WHERE user_id = ? AND id NOT IN (
-      SELECT id FROM items 
-      WHERE user_id = ? 
-      ORDER BY created_at_ms DESC 
-      LIMIT 10
-    )
-  `).run(userId, userId);
+  const result = db.prepare(`
+    INSERT INTO ${tableName} (data, created_at_ms)
+    VALUES (?, ?)
+    RETURNING id, data, created_at_ms,
+             datetime(created_at_ms / 1000, 'unixepoch') as created_at
+  `).get(data, now) as any;
   
-  return { 
-    id: Number(lastInsertRowid), 
-    user_id: userId, 
-    data, 
-    created_at: new Date(now).toISOString() 
+  return {
+    ...result,
+    user_id: userId // Add user_id to maintain backward compatibility
   };
 };
 
@@ -76,27 +103,33 @@ export const addUserItem = (userId: string, data: string): Item => {
  * Delete all items for a specific user
  */
 export const deleteAllUserItems = (userId: string): void => {
-  db.prepare('DELETE FROM items WHERE user_id = ?').run(userId);
+  const tableName = ensureUserTable(userId);
+  db.prepare(`DELETE FROM ${tableName}`).run();
 };
 
 /**
  * Delete a specific item if it belongs to the user
  */
 export const deleteUserItem = (userId: string, itemId: number): boolean => {
-  const stmt = db.prepare('DELETE FROM items WHERE id = ? AND user_id = ?');
-  const result = stmt.run(itemId, userId);
+  const tableName = ensureUserTable(userId);
+  const result = db.prepare(`
+    DELETE FROM ${tableName} 
+    WHERE id = ?
+  `).run(itemId);
+  
   return result.changes > 0;
 };
 
 // Keep the old functions for backward compatibility
 export const getAllItems = (): Item[] => {
   console.warn('getAllItems() is deprecated. Use getUserItems(userId) instead.');
+  // This is now more complex with user-specific tables
+  // We'll use the vw_items view that was created during migration
   return db.prepare(`
-    SELECT id, user_id, data, 
+    SELECT id, user_id, data, created_at_ms,
            datetime(created_at_ms / 1000, 'unixepoch') as created_at 
-    FROM items 
-    ORDER BY created_at_ms DESC 
-    LIMIT 10
+    FROM vw_items 
+    ORDER BY created_at_ms DESC
   `).all() as Item[];
 };
 
@@ -107,13 +140,31 @@ export const addItem = (data: string): Item => {
 
 export const deleteAllItems = (): void => {
   console.warn('deleteAllItems() is deprecated. Use deleteAllUserItems(userId) instead.');
-  db.prepare('DELETE FROM items').run();
+  // This will delete from all user tables
+  const userTables = db.prepare('SELECT table_name FROM user_tables').all() as Array<{table_name: string}>;
+  for (const { table_name } of userTables) {
+    db.prepare(`DELETE FROM ${table_name}`).run();
+  }
 };
 
 export const deleteItem = (id: number): boolean => {
-  const stmt = db.prepare('DELETE FROM items WHERE id = ?');
-  const result = stmt.run(id);
-  return result.changes > 0;
+  console.warn('deleteItem() is deprecated. Use deleteUserItem(userId, id) instead.');
+  // This is now more complex with user-specific tables
+  // We need to find which user's table contains this ID
+  const userTables = db.prepare('SELECT user_id, table_name FROM user_tables').all() as Array<{user_id: string, table_name: string}>;
+  
+  for (const { user_id, table_name } of userTables) {
+    const result = db.prepare(`
+      DELETE FROM ${table_name} 
+      WHERE id = ?
+    `).run(id);
+    
+    if (result.changes > 0) {
+      return true;
+    }
+  }
+  
+  return false;
 };
 
 // Export the database instance for migrations
