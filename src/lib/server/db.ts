@@ -1,19 +1,19 @@
 import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
-import { Database as SQLiteDatabase } from 'sqlite3';
-
-// Use the Database type from sqlite package
-type Database = import('sqlite').Database<sqlite3.Database, sqlite3.Statement>;
+import { open, Database } from 'sqlite';
 import { promises as fs } from 'fs';
 import { dirname, join } from 'path';
 import { assertServer } from './utils';
+import { UserItemRepository } from './repositories/user-item.repository';
+
+export type SqliteDatabase = Database<sqlite3.Database, sqlite3.Statement>;
 
 const dbPath = join(process.cwd(), 'data', 'app.db');
 
 // Initialize database
-let db: Database;
+let db: SqliteDatabase;
+let userItemRepo: UserItemRepository | null = null;
 
-async function getDb() {
+async function getDb(): Promise<SqliteDatabase> {
   assertServer();
   
   if (!db) {
@@ -226,4 +226,34 @@ export const deleteUser = async (userId: string): Promise<boolean> => {
   }
 };
 
-export { getDb };
+function getUserItemRepository(): UserItemRepository {
+  if (!userItemRepo) {
+    throw new Error('Database not initialized. Call getDb() first.');
+  }
+  return userItemRepo;
+}
+
+// Initialize repositories when the database is ready
+async function initializeRepositories() {
+  if (!db) await getDb();
+  userItemRepo = new UserItemRepository(db);
+  
+  // Create tables if they don't exist
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS user_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      data TEXT NOT NULL,
+      created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_user_items_user_id ON user_items(user_id);
+  `);
+}
+
+export { 
+  getDb, 
+  getUserItemRepository,
+  initializeRepositories 
+};
