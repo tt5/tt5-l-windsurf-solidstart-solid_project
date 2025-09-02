@@ -1,70 +1,93 @@
-import { createContext, createSignal, useContext, ParentComponent, onMount, Show } from 'solid-js';
+import { createContext, createSignal, useContext, ParentComponent, onMount } from 'solid-js';
 
-type User = {
-  id: string;
-  username: string;
-} | null;
-
-type AuthContextType = {
-  user: () => User;
-  login: (username: string) => { id: string; username: string };
-  logout: () => Promise<void>;
-};
+type User = { id: string; username: string } | null;
+type AuthContextType = ReturnType<typeof createAuthStore>;
 
 const AuthContext = createContext<AuthContextType>();
 
-export const AuthProvider: ParentComponent = (props) => {
+function createAuthStore() {
   const [user, setUser] = createSignal<User>(null);
   
-  // Only run on client-side
-  onMount(() => {
-    if (typeof window !== 'undefined') {
+  const initialize = () => {
+    if (typeof window === 'undefined') return;
+    
+    try {
       const savedUser = localStorage.getItem('user');
-      if (savedUser) {
-        try {
-          const parsed = JSON.parse(savedUser);
-          // Handle both old (string) and new (object) user format
-          if (typeof parsed === 'string') {
-            // Convert old string format to new object format
-            setUser({ id: `user_${Date.now()}`, username: parsed });
-          } else {
-            setUser(parsed);
-          }
-        } catch (e) {
-          console.error('Failed to parse user data', e);
-          localStorage.removeItem('user');
-        }
-      }
+      if (!savedUser) return;
+      
+      const parsed = JSON.parse(savedUser);
+      setUser(typeof parsed === 'string' 
+        ? { id: `user_${Date.now()}`, username: parsed }
+        : parsed
+      );
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+      localStorage.removeItem('user');
     }
-  });
+  };
 
   const login = (username: string) => {
-    // Generate consistent user ID based on username
-    const userId = `user_${username.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-    const userData = { id: userId, username };
+    const userData = { 
+      id: `user_${username.toLowerCase().replace(/[^a-z0-9]/g, '_')}`, 
+      username 
+    };
+    
     setUser(userData);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('user', JSON.stringify(userData));
-    }
+    localStorage.setItem('user', JSON.stringify(userData));
     return userData;
   };
 
   const logout = async () => {
     try {
-      // Call any cleanup on the server if needed
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout' })
+      });
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('Logout error:', error);
     } finally {
       setUser(null);
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('user');
-      }
+      localStorage.removeItem('user');
     }
   };
 
+  const deleteAccount = async () => {
+    try {
+      await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete-account' })
+      });
+      setUser(null);
+      localStorage.removeItem('user');
+      return true;
+    } catch (error) {
+      console.error('Account deletion error:', error);
+      return false;
+    }
+  };
+
+  return { 
+    user, 
+    login, 
+    logout, 
+    deleteAccount,
+    initialize 
+  };
+}
+
+export const AuthProvider: ParentComponent = (props) => {
+  const auth = createAuthStore();
+  
+  onMount(() => {
+    if (typeof window !== 'undefined') {
+      auth.initialize();
+    }
+  });
+
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={auth}>
       {props.children}
     </AuthContext.Provider>
   );
