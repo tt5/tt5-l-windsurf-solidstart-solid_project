@@ -15,9 +15,7 @@ const Login: Component = () => {
     e.preventDefault();
     const usernameValue = username().trim();
     if (usernameValue) {
-      // Generate a consistent user ID based on the username
-      const userId = `user_${usernameValue.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-      login(usernameValue, userId);
+      login(usernameValue);
     }
   };
 

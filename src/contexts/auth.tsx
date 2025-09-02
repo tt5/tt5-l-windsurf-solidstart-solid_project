@@ -7,7 +7,7 @@ type User = {
 
 type AuthContextType = {
   user: () => User;
-  login: (username: string, userId: string) => void;
+  login: (username: string) => { id: string; username: string };
   logout: () => Promise<void>;
 };
 
@@ -38,12 +38,15 @@ export const AuthProvider: ParentComponent = (props) => {
     }
   });
 
-  const login = (username: string, userId: string) => {
+  const login = (username: string) => {
+    // Generate consistent user ID based on username
+    const userId = `user_${username.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
     const userData = { id: userId, username };
     setUser(userData);
     if (typeof window !== 'undefined') {
       localStorage.setItem('user', JSON.stringify(userData));
     }
+    return userData;
   };
 
   const logout = async () => {
