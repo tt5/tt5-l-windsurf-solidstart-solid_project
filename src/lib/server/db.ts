@@ -13,47 +13,45 @@ async function getDb() {
   assertServer();
   
   if (!db) {
+    console.log('Initializing database...');
+    
     try {
-      console.log('Initializing database...');
-      
       // Ensure data directory exists
       await fs.mkdir(dirname(dbPath), { recursive: true });
       
-      // Initialize SQLite database
-      const sqliteDb = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-        if (err) {
-          console.error('Error opening database:', err);
-          throw err;
-        }
-        console.log('Connected to SQLite database');
-      });
-      
-      // Set up database with sqlite wrapper
+      // Initialize SQLite database with better-sqlite3 for better error handling
       db = await open({
         filename: dbPath,
-        driver: sqlite3.Database
+        driver: sqlite3.Database,
+        mode: sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE
       });
       
       // Set pragmas
-      await db.run('PRAGMA journal_mode = WAL');
-      await db.run('PRAGMA foreign_keys = ON');
+      await db.pragma('journal_mode = WAL');
+      await db.pragma('foreign_keys = ON');
       
-      // Create tables
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS user_tables (
-          user_id TEXT PRIMARY KEY,
-          table_name TEXT NOT NULL UNIQUE,
-          created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
-        );
-      `);
-      
-      console.log('Database initialized successfully');
-      
+      // Create tables with error handling
+      try {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS user_tables (
+            user_id TEXT PRIMARY KEY,
+            table_name TEXT NOT NULL UNIQUE,
+            created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+            deleted_at_ms INTEGER
+          );
+        `);
+        
+        console.log('Database tables verified/created');
+      } catch (error) {
+        console.error('Error creating tables:', error);
+        throw error;
+      }
     } catch (error) {
       console.error('Error initializing database:', error);
       throw error;
     }
   }
+  
   return db;
 }
 

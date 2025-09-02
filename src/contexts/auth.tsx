@@ -1,34 +1,62 @@
-import { createContext, createSignal, useContext, ParentComponent, onMount } from 'solid-js';
+import { createContext, createSignal, useContext, ParentComponent, onMount, Show } from 'solid-js';
+
+type User = {
+  id: string;
+  username: string;
+} | null;
 
 type AuthContextType = {
-  user: string | null;
-  login: (username: string) => void;
-  logout: () => void;
+  user: () => User;
+  login: (username: string, userId: string) => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>();
 
 export const AuthProvider: ParentComponent = (props) => {
-  const [user, setUser] = createSignal<string | null>(null);
+  const [user, setUser] = createSignal<User>(null);
   
   // Only run on client-side
   onMount(() => {
     if (typeof window !== 'undefined') {
-      setUser(localStorage.getItem('user') || null);
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          // Handle both old (string) and new (object) user format
+          if (typeof parsed === 'string') {
+            // Convert old string format to new object format
+            setUser({ id: `user_${Date.now()}`, username: parsed });
+          } else {
+            setUser(parsed);
+          }
+        } catch (e) {
+          console.error('Failed to parse user data', e);
+          localStorage.removeItem('user');
+        }
+      }
     }
   });
 
-  const login = (username: string) => {
-    setUser(username);
+  const login = (username: string, userId: string) => {
+    const userData = { id: userId, username };
+    setUser(userData);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('user', username);
+      localStorage.setItem('user', JSON.stringify(userData));
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      // Call any cleanup on the server if needed
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      setUser(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('user');
+      }
     }
   };
 

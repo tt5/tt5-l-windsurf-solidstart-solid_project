@@ -1,4 +1,4 @@
-import type { Database as DatabaseType } from 'better-sqlite3';
+import type { Database } from 'better-sqlite3';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -8,7 +8,7 @@ const __dirname = dirname(__filename);
 
 // Migration: 004_user_specific_tables
 // Creates a table for each user and migrates their items
-export async function up(db: DatabaseType) {
+export function up(db: Database) {
   // Check if items table exists and has data
   const hasItemsTable = db.prepare(
     "SELECT name FROM sqlite_master WHERE type='table' AND name='items'"
@@ -54,21 +54,33 @@ export async function up(db: DatabaseType) {
     `);
     
     // Insert into user_tables
-    db.prepare(`
-      INSERT OR IGNORE INTO user_tables (user_id, table_name)
-      VALUES (?, ?)
-    `).run(user_id, tableName);
+    db.prepare(
+      `INSERT OR IGNORE INTO user_tables (user_id, table_name) VALUES (?, ?)`
+    ).run(user_id, tableName);
     
-    // Migrate user's items to their dedicated table
-    db.prepare(`
-      INSERT INTO ${tableName} (id, data, created_at_ms)
-      SELECT id, data, created_at_ms 
-      FROM items 
-      WHERE user_id = ?
-    `).run(user_id);
+    // Migrate items to the new table
+    db.prepare(
+      `INSERT INTO ${tableName} (id, data, created_at_ms)
+       SELECT id, data, created_at_ms FROM items WHERE user_id = ?`
+    ).run(user_id);
   }
   
-  // 4. Create a view for backward compatibility
+  // 4. Create indexes on the new tables
+  for (const user of users) {
+    const user_id = user.user_id;
+    const safeUserId = user_id.replace(/[^a-zA-Z0-9_]/g, '_');
+    const tableName = `user_${safeUserId}_items`;
+    
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_${safeUserId}_created_ms 
+      ON ${tableName}(created_at_ms)
+    `);
+  }
+  
+  // 5. Drop the old items table (commented out for safety)
+  // db.exec('DROP TABLE IF EXISTS items');
+  
+  // 6. Create a view for backward compatibility
   const joinClauses = users.map((user) => {
     const user_id = user.user_id;
     const safeUserId = user_id.replace(/[^a-zA-Z0-9_]/g, '_');
@@ -79,7 +91,6 @@ export async function up(db: DatabaseType) {
     `;
   }).join(' UNION ALL ');
   
-  // Only create the view if we have users
   if (users.length > 0) {
     db.exec(`
       CREATE VIEW IF NOT EXISTS vw_items AS
@@ -89,18 +100,26 @@ export async function up(db: DatabaseType) {
 }
 
 // Rollback function - be careful as this is destructive
-export async function down(db: DatabaseType) {
+export function down(db: Database) {
   // Get all user tables
-  const userTables = db.prepare('SELECT table_name FROM user_tables').all() as { table_name: string }[];
+  const tables = db.prepare("SELECT table_name FROM user_tables").all() as { table_name: string }[];
   
   // Drop all user tables
-  for (const { table_name } of userTables) {
+  for (const { table_name } of tables) {
     db.exec(`DROP TABLE IF EXISTS ${table_name}`);
   }
   
-  // Drop the user_tables table
-  db.exec('DROP TABLE IF EXISTS user_tables');
+  // Recreate the original items table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      data TEXT NOT NULL,
+      created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
+    )
+  `);
   
-  // Drop the view
+  // Drop the user_tables table and the view
   db.exec('DROP VIEW IF EXISTS vw_items');
+  db.exec('DROP TABLE IF EXISTS user_tables');
 }

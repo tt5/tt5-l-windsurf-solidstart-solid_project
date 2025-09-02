@@ -13,8 +13,11 @@ const Login: Component = () => {
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    if (username().trim()) {
-      login(username().trim());
+    const usernameValue = username().trim();
+    if (usernameValue) {
+      // Generate a simple user ID - in a real app, this would come from your auth system
+      const userId = `user_${Date.now()}`;
+      login(usernameValue, userId);
     }
   };
 

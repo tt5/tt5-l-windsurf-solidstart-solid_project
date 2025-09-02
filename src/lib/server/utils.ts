@@ -9,3 +9,13 @@ export function assertServer(): void {
     throw new Error('This function can only be used on the server');
   }
 }
+
+export function jsonResponse(data: any, status = 200, headers: Record<string, string> = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers
+    }
+  });
+}

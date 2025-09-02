@@ -10,10 +10,21 @@ import styles from './Board.module.css';
 type Direction = 'up' | 'down' | 'left' | 'right';
 
 // Server actions - updated to use user-specific endpoints
-const getItems = query(async (userId: string) => fetchUserItems(userId), 'userItems');
-const refetchItems = action(({ userId, data }: { userId: string; data: SelectedSquares }) => 
-  saveUserItems(userId, JSON.stringify(data)), 'refetchUserItems');
-const deleteItems = action((userId: string) => clearUserItems(userId), 'deleteUserItems');
+const getItems = query(async (user: string | { id: string }) => {
+  const userId = typeof user === 'string' ? user : user.id;
+  console.log('Fetching items for user ID:', userId);
+  return fetchUserItems(userId);
+}, 'userItems');
+
+const refetchItems = action(({ userId, data }: { userId: string | { id: string }; data: SelectedSquares }) => {
+  const id = typeof userId === 'string' ? userId : userId.id;
+  return saveUserItems(id, JSON.stringify(data));
+}, 'refetchUserItems');
+
+const deleteItems = action((userId: string | { id: string }) => {
+  const id = typeof userId === 'string' ? userId : userId.id;
+  return clearUserItems(id);
+}, 'deleteUserItems');
 
 const Board: Component = () => {
   const { user, logout } = useAuth();
@@ -24,14 +35,21 @@ const Board: Component = () => {
   
   // Load items when user changes
   createEffect(() => {
+    console.log('Current user changed:', currentUser);
     if (!currentUser) {
+      console.log('No current user, clearing items');
       setItems([]);
       return;
     }
     
-    // Use the server action to fetch user items
-    getItems(currentUser)
-      .then(data => setItems(data))
+    const userId = typeof currentUser === 'string' ? currentUser : currentUser.id;
+    console.log('Fetching items for user:', userId);
+    
+    getItems(userId)
+      .then(data => {
+        console.log('Fetched items:', data);
+        setItems(data);
+      })
       .catch(error => console.error('Error loading user items:', error));
   });
 
@@ -42,7 +60,8 @@ const Board: Component = () => {
   const updateSquares = (squares: SelectedSquares) => {
     if (!currentUser) return;
     setSelectedSquares(squares);
-    saveAction({ userId: currentUser, data: squares }).catch(console.error);
+    const userId = typeof currentUser === 'string' ? currentUser : currentUser.id;
+    saveAction({ userId, data: squares }).catch(console.error);
   };
 
   const handleSave = async () => {
@@ -50,7 +69,8 @@ const Board: Component = () => {
     
     try {
       // Use the server action to save items
-      const newItem = await saveUserItems(currentUser, JSON.stringify(selectedSquares()));
+      const userId = typeof currentUser === 'string' ? currentUser : currentUser.id;
+      const newItem = await saveUserItems(userId, JSON.stringify(selectedSquares()));
       setItems(prev => [newItem, ...prev.slice(0, 9)]); // Keep only last 10 items
       setSelectedSquares([]);
     } catch (error) {
@@ -103,7 +123,7 @@ const Board: Component = () => {
   return (
     <div class={styles.board}>
       <div class={styles.userBar}>
-        <span>Welcome, {user()}!</span>
+        <span>Welcome, {user()?.username || 'User'}!</span>
         <button onClick={logout} class={styles.logoutButton}>
           Logout
         </button>

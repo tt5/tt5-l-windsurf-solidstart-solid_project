@@ -62,6 +62,8 @@ const MIGRATION_SCRIPTS = [
 ];
 
 async function runMigrations() {
+  // Make Database type available for TypeScript migrations
+  globalThis.Database = Database;
   try {
     // Check if database exists
     try {
@@ -101,7 +103,11 @@ async function runMigrations() {
           
           try {
             // Handle each migration type specifically
-            if (migration.name === 'add_user_id_column') {
+            if (migration.isTsMigration) {
+              // Run TypeScript migration
+              await migration.up(db);
+            }
+            else if (migration.name === 'add_user_id_column') {
               // Check if column exists
               const hasColumn = db.prepare(
                 "SELECT 1 FROM pragma_table_info('items') WHERE name = 'user_id'"
@@ -122,7 +128,7 @@ async function runMigrations() {
               }
             } 
             else {
-              // For other migrations, just run the SQL
+              // For other SQL migrations, just run the SQL
               db.exec(migration.sql);
             }
             

@@ -1,105 +1,26 @@
-# SolidStart Game Board - Database Configuration
-# This file documents the database schema and configuration
-
 title: "SolidStart Game Board"
-description: "Database for the SolidStart game board application with user-specific tables"
+description: "Database configuration for user-specific tables"
 
-# Database Configuration
 databases:
   app:
-    # Security settings
     allow_sql: false
     allow_download: false
     
-    # Table configurations
     tables:
+      # Tracks all user-specific item tables
       user_tables:
-        description: "Tracks user-specific item tables"
+        description: "Tracks user-specific item tables and their metadata"
         columns:
           user_id: "text primary key"
           table_name: "text not null unique"
           created_at_ms: "integer not null default (strftime('%s', 'now') * 1000)"
+          deleted_at_ms: "integer"
       
-      # User-specific tables follow the pattern: user_[user_id]_items
-      # These are created dynamically and have the following structure:
+      # Template for user-specific item tables (created dynamically)
+      # Table names follow pattern: user_[user_id]_items
       user_items_template:
         description: "Template for user-specific item tables"
         columns:
           id: "integer primary key autoincrement"
           data: "text not null"
           created_at_ms: "integer not null default (strftime('%s', 'now') * 1000)"
-            
-        # Default view configuration
-        default_view: latest_items
-        
-        # Custom views
-        views:
-          latest_items:
-            name: "Latest Items"
-            description: "View of the most recently created items"
-            sql: >
-              SELECT 
-                id,
-                data,
-                created_at_ms,
-                strftime('%Y-%m-%d %H:%M:%f', created_at_ms / 1000, 'unixepoch') as created_at
-              FROM :table_name
-              ORDER BY created_at_ms DESC
-
-# Plugin configurations
-plugins:
-  # Enable JSON viewer for the data column
-  datasette-json-html:
-    columns: ["data"]
-    
-  # Add search functionality
-  datasette-search-all:
-    search_all: true
-    
-  # Add visualization support
-  datasette-vega:
-    default_theme: "dark"
-    
-  # Add CSV/JSON export
-  datasette-export:
-    formats: ["csv", "json"]
-
-# UI Customization
-settings:
-  default_page_size: 50
-  max_returned_rows: 1000
-  sql_time_limit_ms: 10000
-  default_facet_size: 10
-  facet_time_limit_ms: 2000
-  facet_suggest_time_limit_ms: 1000
-  allow_facet: true
-  suggest_facets: true
-  
-# Metadata for the web interface
-metadata:
-  about: "This database powers the SolidStart Game Board application."
-  about_url: "https://github.com/yourusername/solidstart-gameboard"
-  source: "https://github.com/yourusername/solidstart-gameboard"
-  license: "MIT"
-  license_url: "https://opensource.org/licenses/MIT"
-  
-  # Custom CSS for the Datasette interface
-  extra_css_urls:
-    - "https://cdn.jsdelivr.net/npm/@tailwindcss/typography@latest/dist/typography.min.css"
-    
-  # Custom JavaScript
-  extra_js_urls:
-    - "https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"
-    
-  # Custom footer
-  footer: "SolidStart Game Board - Built with ❤️"
-  
-  # Custom colors
-  primary: "#4f46e5"
-  accent: "#10b981"
-  
-  # Feature flags
-  allow_download: true
-  allow_csv_stream: true
-  allow_facet: true
-  allow_sql: false

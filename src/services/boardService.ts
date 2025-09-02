@@ -20,7 +20,21 @@ export const fetchUserItems = async (userId: string): Promise<Item[]> => {
 export const saveUserItems = async (userId: string, data: SelectedSquares | string): Promise<Item> => {
   try {
     // Ensure data is a string before saving
-    const dataToSend = typeof data === 'string' ? data : JSON.stringify(data);
+    let dataToSend: string;
+    if (typeof data === 'string') {
+      try {
+        // If it's a string, parse it to ensure it's valid JSON
+        JSON.parse(data);
+        dataToSend = data;
+      } catch {
+        // If not valid JSON, stringify it
+        dataToSend = JSON.stringify(data);
+      }
+    } else {
+      dataToSend = JSON.stringify(data);
+    }
+    
+    console.log('Saving data:', { userId, data: dataToSend });
     const response = await api.addItem(userId, dataToSend);
     return response.item;
   } catch (error) {
