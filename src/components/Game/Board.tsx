@@ -1,8 +1,10 @@
-import { Component, createSignal, createEffect, For } from 'solid-js';
+import { Component, createSignal, createEffect, For, Show } from 'solid-js';
 import { query, createAsync, action, useAction } from '@solidjs/router';
 import type { Item, SelectedSquares } from '../../types/board';
 import { fetchItems, saveItems, deleteAllItems } from '../../services/boardService';
 import { moveSquares } from '../../utils/directionUtils';
+import { useAuth } from '../../contexts/auth';
+import Login from '../Auth/Login';
 import styles from './Board.module.css';
 
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -13,6 +15,7 @@ const refetchItems = action((data: SelectedSquares) => saveItems(JSON.stringify(
 const deleteItems = action(deleteAllItems, 'deleteItems');
 
 const Board: Component = () => {
+  const { user, logout } = useAuth();
   const [selectedSquares, setSelectedSquares] = createSignal<SelectedSquares>([]);
   const items = createAsync(getItems);
   const saveAction = useAction(refetchItems);
@@ -59,8 +62,18 @@ const Board: Component = () => {
     ['down', '↓ Down', styles.directionButton]
   ] as const;
 
+  if (!user()) {
+    return <Login />;
+  }
+
   return (
     <div class={styles.board}>
+      <div class={styles.userBar}>
+        <span>Welcome, {user()}!</span>
+        <button onClick={logout} class={styles.logoutButton}>
+          Logout
+        </button>
+      </div>
       <div class={styles.history}>
         <h2>Selected Items History</h2>
         <ul class={styles.historyList}>
