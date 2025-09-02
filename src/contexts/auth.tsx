@@ -56,6 +56,8 @@ export const AuthProvider: ParentComponent = (props) => {
       setUser(null);
       if (typeof window !== 'undefined') {
         localStorage.removeItem('user');
+        // Redirect to home page after logout
+        window.location.href = '/';
       }
     }
   };

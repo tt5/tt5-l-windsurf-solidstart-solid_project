@@ -135,10 +135,6 @@ const Board: Component = () => {
     ['down', '↓ Down', styles.directionButton]
   ] as const;
 
-  if (!user()) {
-    return <Login />;
-  }
-
   return (
     <div class={styles.board}>
       <div class={styles.userBar}>
