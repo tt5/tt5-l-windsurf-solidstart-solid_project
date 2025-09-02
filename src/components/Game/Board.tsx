@@ -31,11 +31,9 @@ const Board: Component = () => {
     saveAction(newSquares).catch(console.error);
   };
 
-  const handleSquareClick = (index: number) => {
+  const toggleSquare = (i: number) => {
     const squares = selectedSquares();
-    updateSquares(squares.includes(index) 
-      ? squares.filter(i => i !== index) 
-      : [...squares, index]);
+    updateSquares(squares.includes(i) ? squares.filter(j => j !== i) : [...squares, i]);
   };
 
   const handleRandomSelection = () => 
@@ -47,23 +45,11 @@ const Board: Component = () => {
   const handleDirection = (direction: Direction) => 
     moveSquares(selectedSquares(), direction).then(updateSquares).catch(console.error);
     
-  const directionHandlers = {
-    up: () => handleDirection('up'),
-    down: () => handleDirection('down'),
-    left: () => handleDirection('left'),
-    right: () => handleDirection('right')
-  };
-
   const directions = [
-    { id: 'up', label: '↑ Up', dir: 'up' },
-    { 
-      id: 'middle', 
-      buttons: [
-        { id: 'left', label: '← Left', dir: 'left' },
-        { id: 'right', label: 'Right →', dir: 'right' }
-      ]
-    },
-    { id: 'down', label: '↓ Down', dir: 'down' }
+    ['up', '↑ Up'],
+    ['left', '← Left'],
+    ['right', 'Right →'],
+    ['down', '↓ Down']
   ] as const;
 
   return (
@@ -85,25 +71,12 @@ const Board: Component = () => {
           </button>
           <div class={styles.directionGroup}>
             <For each={directions}>
-              {({ id, label, dir, buttons }) => (
-                <Show when={buttons} fallback={
-                  <button class={styles.directionButton} onClick={() => handleDirection(dir as Direction)}>
-                    {label}
-                  </button>
-                }>
-                  <div>
-                    <For each={buttons}>
-                      {({ id, label, dir }) => (
-                        <button 
-                          class={styles.directionButton} 
-                          onClick={() => handleDirection(dir as Direction)}
-                        >
-                          {label}
-                        </button>
-                      )}
-                    </For>
-                  </div>
-                </Show>
+              {([dir, label]) => (
+                <button 
+                  class={styles.directionButton}
+                  onClick={() => handleDirection(dir as Direction)}
+                  children={label}
+                />
               )}
             </For>
           </div>
@@ -111,28 +84,28 @@ const Board: Component = () => {
       </div>
 
       <div class={styles.grid}>
-        <For each={Array(49).fill(0)}>{
-          (_, i) => (
+        {Array.from({ length: 49 }, (_, i) => {
+          const isSelected = selectedSquares().includes(i);
+          return (
             <div 
-              onClick={() => handleSquareClick(i())}
-              class={styles.square}
-              classList={{ [styles.selected]: selectedSquares().includes(i()) }}
+              onClick={() => toggleSquare(i)}
+              class={`${styles.square} ${isSelected ? styles.selected : ''}`}
               role="button"
-              aria-pressed={selectedSquares().includes(i())}
+              aria-pressed={isSelected}
             >
               <svg width="100%" height="100%" viewBox="0 0 100 100" aria-hidden="true">
                 <circle 
                   cx="50" 
                   cy="50" 
                   r="40" 
-                  fill={selectedSquares().includes(i()) ? '#FFD700' : 'transparent'}
+                  fill={isSelected ? '#FFD700' : 'transparent'}
                   stroke="#333"
                   stroke-width="2"
                 />
               </svg>
             </div>
-          )}
-        </For>
+          );
+        })}
       </div>
     </div>
   );
