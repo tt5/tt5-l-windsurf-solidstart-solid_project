@@ -12,10 +12,10 @@ export async function POST({ request }: APIEvent) {
 
     const db = await getDb();
     
-    // Mark user as deleted
+    // Remove user from user_tables
     await db.run(
-      'UPDATE user_tables SET deleted_at_ms = ? WHERE user_id = ?',
-      [Date.now(), userId]
+      'DELETE FROM user_tables WHERE user_id = ?',
+      [userId]
     );
     
     // Delete user's data (optional: you might want to keep it for a while)

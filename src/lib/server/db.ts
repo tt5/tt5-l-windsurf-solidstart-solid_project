@@ -208,6 +208,11 @@ export const deleteUser = async (userId: string): Promise<boolean> => {
     await db.exec('BEGIN TRANSACTION');
     
     try {
+      // Remove user from user_tables
+      console.log(`[deleteUser] Removing user from user_tables: ${userId}`);
+      await db.run('DELETE FROM user_tables WHERE user_id = ?', [userId]);
+      console.log(`[deleteUser] Successfully removed user from user_tables: ${userId}`);
+      
       // Drop the user's items table directly using the known pattern
       console.log(`[deleteUser] Attempting to drop table: ${userTableName}`);
       await db.exec(`DROP TABLE IF EXISTS ${userTableName}`);
