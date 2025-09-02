@@ -6,3 +6,5 @@ podman kube down solid-project.yml
 npx prism mock -d api.yml
 
 node scripts/simple-create-db.js 
+
+uvx datasette serve data/app.db --metadata data/app.yml

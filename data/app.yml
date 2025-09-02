@@ -1,18 +1,63 @@
+title: "SolidStart Application Database"
+description: "Database for the SolidStart application with user items"
+license: "CC0"
+license_url: "https://creativecommons.org/publicdomain/zero/1.0/"
+
+# Database configuration
 databases:
   app:
-    # Hide the SQL editor by default
+    # Hide the SQL editor by default for security
     allow_sql: false
     
     # Table configurations
     tables:
       items:
-        # Hide the table by default
-        hidden: true
         # Add a description for the table
-        description: "Application items"
-        # Configure columns
+        description: "Stores user items with associated metadata"
+        
+        # Column configurations
         columns:
-          id: hidden
-        # Example of a custom query
+          id: "Primary key, auto-incrementing ID"
+          user_id: "User identifier (UUID or username)"
+          data: "JSON-encoded item data"
+          created_at_ms: "Timestamp in milliseconds when the item was created"
+            
+        # Foreign key relationships (if any)
+        # foreign_keys:
+        #   - column: user_id
+        #     reference:
+        #       table: users
+        #       column: id
+        
+        # Useful queries
         queries:
-          recent: "select * from items order by created_at desc limit 10"
+          recent: 
+            name: "10 most recent items"
+            sql: "SELECT id, user_id, json_extract(data, '$.title') as title, created_at_ms FROM items ORDER BY created_at_ms DESC LIMIT 10"
+          
+          by_user:
+            name: "Items by user"
+            sql: "SELECT id, json_extract(data, '$.title') as title, created_at_ms FROM items WHERE user_id = :user_id ORDER BY created_at_ms DESC"
+            
+        # Default view with sorting
+        default_view: latest_items
+        
+        # Define a custom view for latest items
+        views:
+          latest_items:
+            sql: >
+              SELECT 
+                id,
+                user_id,
+                data,
+                created_at_ms,
+                strftime('%Y-%m-%d %H:%M:%f', created_at_ms / 1000, 'unixepoch') as created_at
+              FROM items
+              ORDER BY created_at_ms DESC
+
+# Plugin configurations (uncomment and customize as needed)
+# plugins:
+#   datasette-vega:
+#     default_theme: "dark"
+#   datasette-json-html:
+#     columns: ["data"]
