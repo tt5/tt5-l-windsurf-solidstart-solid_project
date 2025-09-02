@@ -199,27 +199,16 @@ export const deleteUserItem = async (userId: string, itemId: number): Promise<bo
  */
 export const deleteUser = async (userId: string): Promise<boolean> => {
   const db = await getDb();
-  const userTableName = `user_${userId}_items`; // Using the known table name pattern
-  console.log(`[deleteUser] Starting deletion for user: ${userId}`);
+  const userTableName = `user_${userId}_items`;
   
   try {
-    // Start a transaction
-    console.log('[deleteUser] Starting transaction');
     await db.exec('BEGIN TRANSACTION');
     
     try {
-      // Remove user from user_tables
-      console.log(`[deleteUser] Removing user from user_tables: ${userId}`);
+      // Remove user from user_tables and drop their items table
       await db.run('DELETE FROM user_tables WHERE user_id = ?', [userId]);
-      console.log(`[deleteUser] Successfully removed user from user_tables: ${userId}`);
-      
-      // Drop the user's items table directly using the known pattern
-      console.log(`[deleteUser] Attempting to drop table: ${userTableName}`);
       await db.exec(`DROP TABLE IF EXISTS ${userTableName}`);
-      console.log(`[deleteUser] Successfully dropped table: ${userTableName}`);
       
-      // Commit the transaction since we've successfully dropped the user's table
-      console.log('[deleteUser] Committing transaction');
       await db.exec('COMMIT');
       console.log(`[deleteUser] Successfully deleted user data for: ${userId}`);
       return true;
