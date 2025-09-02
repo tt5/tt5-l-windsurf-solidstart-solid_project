@@ -39,6 +39,7 @@ const Board: Component = () => {
     if (!currentUser) {
       console.log('No current user, clearing items');
       setItems([]);
+      setSelectedSquares([]);
       return;
     }
     
@@ -49,8 +50,26 @@ const Board: Component = () => {
       .then(data => {
         console.log('Fetched items:', data);
         setItems(data);
+        
+        // If there are saved items, load the most recent one into selectedSquares
+        if (data.length > 0) {
+          try {
+            const lastItem = data[0]; // Most recent item is first
+            const squares = JSON.parse(lastItem.data);
+            console.log('Setting selected squares from saved data:', squares);
+            setSelectedSquares(Array.isArray(squares) ? squares : []);
+          } catch (error) {
+            console.error('Error parsing saved squares:', error);
+            setSelectedSquares([]);
+          }
+        } else {
+          setSelectedSquares([]);
+        }
       })
-      .catch(error => console.error('Error loading user items:', error));
+      .catch(error => {
+        console.error('Error loading user items:', error);
+        setSelectedSquares([]);
+      });
   });
 
   const [selectedSquares, setSelectedSquares] = createSignal<SelectedSquares>([]);
