@@ -1,4 +1,4 @@
-import { Component, createSignal, createEffect, For, Show } from 'solid-js';
+import { Component, createSignal, createEffect, For } from 'solid-js';
 import { query, createAsync, action, useAction } from '@solidjs/router';
 import type { Item, SelectedSquares } from '../../types/board';
 import { fetchItems, saveItems, deleteAllItems } from '../../services/boardService';
@@ -18,38 +18,45 @@ const Board: Component = () => {
   const saveAction = useAction(refetchItems);
   const deleteAction = useAction(deleteItems);
 
-  // Initialize from database
+  // Sync with database
   createEffect(() => {
     const data = items();
     const parsed = data?.[0]?.data ? JSON.parse(data[0].data) : [];
-    setSelectedSquares(Array.isArray(parsed) ? parsed : []);
+    if (Array.isArray(parsed)) setSelectedSquares(parsed);
   });
 
-  const updateSquares = (newSquares: SelectedSquares) => {
-    if (!Array.isArray(newSquares)) return console.error('Invalid squares data:', newSquares);
-    setSelectedSquares(newSquares);
-    saveAction(newSquares).catch(console.error);
+  const updateSquares = (squares: SelectedSquares) => {
+    setSelectedSquares(squares);
+    saveAction(squares).catch(console.error);
   };
 
   const toggleSquare = (i: number) => {
-    const squares = selectedSquares();
-    updateSquares(squares.includes(i) ? squares.filter(j => j !== i) : [...squares, i]);
+    const update = selectedSquares().includes(i) 
+      ? selectedSquares().filter(j => j !== i)
+      : [...selectedSquares(), i];
+    updateSquares(update);
   };
 
-  const handleRandomSelection = () => 
-    updateSquares(Array.from({ length: 4 }, () => Math.floor(Math.random() * 49)));
-
-  const handleDeleteAll = () => 
-    deleteAction().then(() => setSelectedSquares([])).catch(console.error);
-
-  const handleDirection = (direction: Direction) => 
-    moveSquares(selectedSquares(), direction).then(updateSquares).catch(console.error);
+  const handleRandomSelection = () => updateSquares(
+    Array.from({ length: 4 }, () => Math.floor(Math.random() * 49))
+  );
+  const handleDeleteAll = () => deleteAction().then(
+    () => setSelectedSquares([])
+  ).catch(console.error);
+  const handleDirection = (dir: Direction) => moveSquares(
+    selectedSquares(), dir
+  ).then(updateSquares).catch(console.error);
     
+  const buttons = [
+    ['Random', handleRandomSelection, styles.randomButton],
+    ['Clear All', handleDeleteAll, styles.clearButton]
+  ] as const;
+
   const directions = [
-    ['up', '↑ Up'],
-    ['left', '← Left'],
-    ['right', 'Right →'],
-    ['down', '↓ Down']
+    ['up', '↑ Up', styles.directionButton],
+    ['left', '← Left', styles.directionButton],
+    ['right', 'Right →', styles.directionButton],
+    ['down', '↓ Down', styles.directionButton]
   ] as const;
 
   return (
@@ -63,49 +70,36 @@ const Board: Component = () => {
         </ul>
         
         <div class={styles.controls}>
-          <button class={styles.randomButton} onClick={handleRandomSelection}>
-            Random Selection
-          </button>
-          <button class={styles.clearButton} onClick={handleDeleteAll}>
-            Clear All
-          </button>
+          {buttons.map(([label, onClick, className]) => (
+            <button {...{class: className, onClick, children: label}} />
+          ))}
           <div class={styles.directionGroup}>
-            <For each={directions}>
-              {([dir, label]) => (
-                <button 
-                  class={styles.directionButton}
-                  onClick={() => handleDirection(dir as Direction)}
-                  children={label}
-                />
-              )}
-            </For>
+            {directions.map(([dir, label, className]) => (
+              <button 
+                {...{
+                  class: className,
+                  onClick: () => handleDirection(dir as Direction),
+                  children: label
+                }}
+              />
+            ))}
           </div>
         </div>
       </div>
 
       <div class={styles.grid}>
-        {Array.from({ length: 49 }, (_, i) => {
-          const isSelected = selectedSquares().includes(i);
-          return (
-            <div 
-              onClick={() => toggleSquare(i)}
-              class={`${styles.square} ${isSelected ? styles.selected : ''}`}
-              role="button"
-              aria-pressed={isSelected}
-            >
-              <svg width="100%" height="100%" viewBox="0 0 100 100" aria-hidden="true">
-                <circle 
-                  cx="50" 
-                  cy="50" 
-                  r="40" 
-                  fill={isSelected ? '#FFD700' : 'transparent'}
-                  stroke="#333"
-                  stroke-width="2"
-                />
+        {Array(49).fill(0).map((_, i) => (
+          <button 
+            onClick={() => toggleSquare(i)}
+            class={`${styles.square} ${selectedSquares().includes(i) ? styles.selected : ''}`}
+            aria-pressed={selectedSquares().includes(i)}
+            children={
+              <svg width="100%" height="100%" viewBox="0 0 100 100" aria-hidden>
+                <circle cx="50" cy="50" r="40" fill={selectedSquares().includes(i) ? '#FFD700' : 'transparent'} stroke="#333"/>
               </svg>
-            </div>
-          );
-        })}
+            }
+          />
+        ))}
       </div>
     </div>
   );
