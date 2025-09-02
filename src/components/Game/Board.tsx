@@ -1,7 +1,8 @@
-import { Component, createSignal, createEffect, For, createMemo } from 'solid-js';
+import { Component, createSignal, createEffect, For } from 'solid-js';
 import { query, createAsync, action, useAction } from '@solidjs/router';
 import type { Item, SelectedSquares } from '../../types/board';
 import { fetchItems, saveItems, deleteAllItems } from '../../services/boardService';
+import { moveSquares } from '../../utils/directionUtils';
 import Square from './Square';
 import styles from './Board.module.css';
 
@@ -53,178 +54,16 @@ const Board: Component = () => {
       .catch(err => console.error('Delete failed:', err));
   };
 
-  const moveSquares = (condition: (i: number) => boolean, transform: (i: number) => number) => {
-    updateSquares(selectedSquares().filter(condition).map(transform));
+  // Direction handlers
+  const handleDirection = async (direction: 'up' | 'down' | 'left' | 'right') => {
+    const newSquares = await moveSquares(selectedSquares(), direction);
+    updateSquares(newSquares);
   };
 
-  // Direction handlers with random border selection
-  const handleGoUp = async () => {
-    try {
-      const currentSquares = selectedSquares();
-      const bottomRowIndices = [42, 43, 44, 45, 46, 47, 48];
-      
-      // Move existing squares up and filter out any that would move off the grid
-      const movedSquares = currentSquares
-        .filter(i => i >= 7) // Can't move up if already on top row
-        .map(i => i - 7);
-      
-      // Get 2-4 random squares from the bottom row
-      let randomCount = 2; // Default value
-      try {
-        const response = await fetch(`/api/random?count=1&max=2`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch random numbers');
-        }
-        const data = await response.json();
-        randomCount = (data.numbers?.[0] ?? 0) + 2; // 2-4 random squares
-      } catch (error) {
-        console.error('Error fetching random numbers, using default count:', error);
-        // Fallback to a random number between 2-4 if API fails
-        randomCount = 2 + Math.floor(Math.random() * 3);
-      }
-      
-      // Get random indices from bottom row
-      const randomBorderSquares = [];
-      const availableIndices = [...bottomRowIndices];
-      
-      for (let i = 0; i < randomCount && availableIndices.length > 0; i++) {
-        const randomIndex = Math.floor(Math.random() * availableIndices.length);
-        randomBorderSquares.push(availableIndices.splice(randomIndex, 1)[0]);
-      }
-      
-      // Combine moved squares with random border squares, removing duplicates
-      const newSelection = [...new Set([...movedSquares, ...randomBorderSquares])];
-      updateSquares(newSelection);
-    } catch (error) {
-      console.error('Error in handleGoUp:', error);
-    }
-  };
-
-  const handleGoDown = async () => {
-    try {
-      const currentSquares = selectedSquares();
-      const topRowIndices = [0, 1, 2, 3, 4, 5, 6];
-      
-      // Move existing squares down and filter out any that would move off the grid
-      const movedSquares = currentSquares
-        .filter(i => i < 42) // Can't move down if already on bottom row
-        .map(i => i + 7);
-      
-      // Get 2-4 random squares from the top row
-      let randomCount = 2; // Default value
-      try {
-        const response = await fetch(`/api/random?count=1&max=2`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch random numbers');
-        }
-        const data = await response.json();
-        randomCount = (data.numbers?.[0] ?? 0) + 2; // 2-4 random squares
-      } catch (error) {
-        console.error('Error fetching random numbers, using default count:', error);
-        // Fallback to a random number between 2-4 if API fails
-        randomCount = 2 + Math.floor(Math.random() * 3);
-      }
-      
-      // Get random indices from top row
-      const randomBorderSquares = [];
-      const availableIndices = [...topRowIndices];
-      
-      for (let i = 0; i < randomCount && availableIndices.length > 0; i++) {
-        const randomIndex = Math.floor(Math.random() * availableIndices.length);
-        randomBorderSquares.push(availableIndices.splice(randomIndex, 1)[0]);
-      }
-      
-      // Combine moved squares with random border squares, removing duplicates
-      const newSelection = [...new Set([...movedSquares, ...randomBorderSquares])];
-      updateSquares(newSelection);
-    } catch (error) {
-      console.error('Error in handleGoDown:', error);
-    }
-  };
-  const handleGoLeft = async () => {
-    try {
-      const currentSquares = selectedSquares();
-      const rightBorderIndices = [6, 13, 20, 27, 34, 41, 48];
-      
-      // Move existing squares left and filter out any that would move off the grid
-      const movedSquares = currentSquares
-        .filter(i => i % 7 !== 0) // Can't move left if already on left edge
-        .map(i => i - 1);
-      
-      // Get 2-4 random squares from the right border
-      let randomCount = 2; // Default value
-      try {
-        const response = await fetch(`/api/random?count=1&max=2`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch random numbers');
-        }
-        const data = await response.json();
-        randomCount = (data.numbers?.[0] ?? 0) + 2; // 2-4 random squares
-      } catch (error) {
-        console.error('Error fetching random numbers, using default count:', error);
-        // Fallback to a random number between 2-4 if API fails
-        randomCount = 2 + Math.floor(Math.random() * 3);
-      }
-      
-      // Get random indices from right border
-      const randomBorderSquares = [];
-      const availableIndices = [...rightBorderIndices];
-      
-      for (let i = 0; i < randomCount && availableIndices.length > 0; i++) {
-        const randomIndex = Math.floor(Math.random() * availableIndices.length);
-        randomBorderSquares.push(availableIndices.splice(randomIndex, 1)[0]);
-      }
-      
-      // Combine moved squares with random border squares, removing duplicates
-      const newSelection = [...new Set([...movedSquares, ...randomBorderSquares])];
-      
-      // Update all at once
-      updateSquares(newSelection);
-    } catch (error) {
-      console.error('Error in handleGoLeft:', error);
-    }
-  };
-  const handleGoRight = async () => {
-    try {
-      const currentSquares = selectedSquares();
-      const leftBorderIndices = [0, 7, 14, 21, 28, 35, 42];
-      
-      // Move existing squares right and filter out any that would move off the grid
-      const movedSquares = currentSquares
-        .filter(i => i % 7 !== 6) // Can't move right if already on right edge
-        .map(i => i + 1);
-      
-      // Get 2-4 random squares from the left border
-      let randomCount = 2; // Default value
-      try {
-        const response = await fetch(`/api/random?count=1&max=2`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch random numbers');
-        }
-        const data = await response.json();
-        randomCount = (data.numbers?.[0] ?? 0) + 2; // 2-4 random squares
-      } catch (error) {
-        console.error('Error fetching random numbers, using default count:', error);
-        // Fallback to a random number between 2-4 if API fails
-        randomCount = 2 + Math.floor(Math.random() * 3);
-      }
-      
-      // Get random indices from left border
-      const randomBorderSquares = [];
-      const availableIndices = [...leftBorderIndices];
-      
-      for (let i = 0; i < randomCount && availableIndices.length > 0; i++) {
-        const randomIndex = Math.floor(Math.random() * availableIndices.length);
-        randomBorderSquares.push(availableIndices.splice(randomIndex, 1)[0]);
-      }
-      
-      // Combine moved squares with random border squares, removing duplicates
-      const newSelection = [...new Set([...movedSquares, ...randomBorderSquares])];
-      updateSquares(newSelection);
-    } catch (error) {
-      console.error('Error in handleGoRight:', error);
-    }
-  };
+  const handleGoUp = () => handleDirection('up');
+  const handleGoDown = () => handleDirection('down');
+  const handleGoLeft = () => handleDirection('left');
+  const handleGoRight = () => handleDirection('right');
 
   return (
     <div class={styles.board}>
