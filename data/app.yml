@@ -1,106 +1,34 @@
-# Application Database Metadata
-# This file configures the database visualization and documentation for the SolidStart application
+# SolidStart Game Board - Database Configuration
+# This file documents the database schema and configuration
 
-title: "SolidStart Game Board Database"
-description: >
-  Central database for the SolidStart game board application.
-  Stores user items, game states, and related metadata.
-
-author: "SolidStart Team"
-source: "https://github.com/yourusername/solidstart-gameboard"
-license: "MIT"
-license_url: "https://opensource.org/licenses/MIT"
+title: "SolidStart Game Board"
+description: "Database for the SolidStart game board application with user-specific tables"
 
 # Database Configuration
 databases:
   app:
     # Security settings
-    allow_sql: false  # Disable raw SQL execution in the UI for production
-    allow_download: true
-    default_cache_ttl: 3600  # Cache for 1 hour
+    allow_sql: false
+    allow_download: false
     
     # Table configurations
     tables:
-      items:
-        description: "Stores game board items with associated metadata and user ownership"
-        # Default sort order - using direct SQL syntax
-        sort_desc: created_at_ms
-        
-        # Column configurations with types and descriptions
+      user_tables:
+        description: "Tracks user-specific item tables"
         columns:
-          id: 
-            description: "Primary key, auto-incrementing ID"
-            type: integer
-            sortable: true
+          user_id: "text primary key"
+          table_name: "text not null unique"
+          created_at_ms: "integer not null default (strftime('%s', 'now') * 1000)"
+      
+      # User-specific tables follow the pattern: user_[user_id]_items
+      # These are created dynamically and have the following structure:
+      user_items_template:
+        description: "Template for user-specific item tables"
+        columns:
+          id: "integer primary key autoincrement"
+          data: "text not null"
+          created_at_ms: "integer not null default (strftime('%s', 'now') * 1000)"
             
-          user_id:
-            description: "User identifier (UUID or username) who owns this item"
-            type: text
-            sortable: true
-            
-          data:
-            description: "JSON-encoded item data containing game state and metadata"
-            type: json
-            
-          created_at_ms:
-            description: "Unix timestamp in milliseconds when the item was created"
-            type: integer
-            sortable: true
-            
-          created_at:
-            description: "Generated column showing human-readable timestamp"
-            type: text
-            sortable: true
-            
-        # Foreign key relationships
-        foreign_keys:
-          - column: user_id
-            reference:
-              table: users  # Future table for user management
-              column: id
-        
-        # Predefined queries for common operations
-        queries:
-          recent_items: 
-            name: "Recent Items"
-            description: "Get the 10 most recent items across all users"
-            sql: |
-              SELECT 
-                id,
-                user_id,
-                json_extract(data, '$.title') as title,
-                strftime('%Y-%m-%d %H:%M:%f', created_at_ms / 1000, 'unixepoch') as created_at
-              FROM items 
-              ORDER BY created_at_ms DESC 
-              LIMIT 10
-          
-          user_items:
-            name: "User's Items"
-            description: "Get items for a specific user with pagination"
-            sql: |
-              SELECT 
-                id,
-                json_extract(data, '$.title') as title,
-                strftime('%Y-%m-%d %H:%M:%f', created_at_ms / 1000, 'unixepoch') as created_at
-              FROM items 
-              WHERE user_id = :user_id 
-              ORDER BY created_at_ms DESC
-              LIMIT :limit OFFSET :offset
-              
-          search_items:
-            name: "Search Items"
-            description: "Search items by title or content"
-            sql: |
-              SELECT 
-                id,
-                user_id,
-                json_extract(data, '$.title') as title,
-                snippet(items.data, 1, '**', '**', '...', 20) as snippet,
-                strftime('%Y-%m-%d %H:%M:%f', created_at_ms / 1000, 'unixepoch') as created_at
-              FROM items 
-              WHERE items.data LIKE '%' || :query || '%'
-              ORDER BY created_at_ms DESC
-        
         # Default view configuration
         default_view: latest_items
         
@@ -112,26 +40,11 @@ databases:
             sql: >
               SELECT 
                 id,
-                user_id,
-                json_extract(data, '$.title') as title,
-                json_extract(data, '$.type') as type,
+                data,
                 created_at_ms,
                 strftime('%Y-%m-%d %H:%M:%f', created_at_ms / 1000, 'unixepoch') as created_at
-              FROM items
+              FROM :table_name
               ORDER BY created_at_ms DESC
-              
-          items_by_type:
-            name: "Items by Type"
-            description: "View items grouped by their type"
-            sql: >
-              SELECT 
-                json_extract(data, '$.type') as item_type,
-                COUNT(*) as count,
-                strftime('%Y-%m-%d', MIN(created_at_ms / 1000), 'unixepoch') as first_seen,
-                strftime('%Y-%m-%d', MAX(created_at_ms / 1000), 'unixepoch') as last_seen
-              FROM items
-              GROUP BY item_type
-              ORDER BY count DESC
 
 # Plugin configurations
 plugins:
