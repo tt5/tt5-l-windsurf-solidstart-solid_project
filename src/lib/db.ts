@@ -120,32 +120,10 @@ export const deleteUserItem = (userId: string, itemId: number): boolean => {
   return result.changes > 0;
 };
 
-// Keep the old functions for backward compatibility
-export const getAllItems = (): Item[] => {
-  console.warn('getAllItems() is deprecated. Use getUserItems(userId) instead.');
-  // This is now more complex with user-specific tables
-  // We'll use the vw_items view that was created during migration
-  return db.prepare(`
-    SELECT id, user_id, data, created_at_ms,
-           datetime(created_at_ms / 1000, 'unixepoch') as created_at 
-    FROM vw_items 
-    ORDER BY created_at_ms DESC
-  `).all() as Item[];
-};
-
-export const addItem = (data: string): Item => {
-  console.warn('addItem() is deprecated. Use addUserItem(userId, data) instead.');
-  return addUserItem('default', data);
-};
-
-export const deleteAllItems = (): void => {
-  console.warn('deleteAllItems() is deprecated. Use deleteAllUserItems(userId) instead.');
-  // This will delete from all user tables
-  const userTables = db.prepare('SELECT table_name FROM user_tables').all() as Array<{table_name: string}>;
-  for (const { table_name } of userTables) {
-    db.prepare(`DELETE FROM ${table_name}`).run();
-  }
-};
+// All legacy functions have been removed. Use the following functions instead:
+// - getUserItems(userId) instead of getAllItems()
+// - addUserItem(userId, data) instead of addItem(data)
+// - deleteAllUserItems(userId) instead of deleteAllItems()
 
 export const deleteItem = (id: number): boolean => {
   console.warn('deleteItem() is deprecated. Use deleteUserItem(userId, id) instead.');
