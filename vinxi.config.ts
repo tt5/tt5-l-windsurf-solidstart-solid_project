@@ -14,6 +14,8 @@ export default defineConfig({
   // Configure how modules are resolved
   resolve: {
     alias: {
+      // Map the ~ alias to the src directory
+      '~': '/src',
       // Ensure all database-related code is treated as external in the browser
       './db': './src/lib/server/db',
       'sqlite3': 'unenv/runtime/node/empty',

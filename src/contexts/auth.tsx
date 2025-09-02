@@ -39,14 +39,26 @@ function createAuthStore() {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth', { 
+      const response = await fetch('/api/auth/logout', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'logout' })
+        credentials: 'include' // Important for cookies to be sent
       });
+      
+      if (!response.ok) {
+        throw new Error('Logout failed');
+      }
+      
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Logout failed');
+      }
+      
+      setUser(null);
+      localStorage.removeItem('user');
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
+      // Even if there's an error, we should still clear the local state
       setUser(null);
       localStorage.removeItem('user');
     }
