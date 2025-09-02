@@ -1,0 +1,18 @@
+databases:
+  app:
+    # Hide the SQL editor by default
+    allow_sql: false
+    
+    # Table configurations
+    tables:
+      items:
+        # Hide the table by default
+        hidden: true
+        # Add a description for the table
+        description: "Application items"
+        # Configure columns
+        columns:
+          id: hidden
+        # Example of a custom query
+        queries:
+          recent: "select * from items order by created_at desc limit 10"
