@@ -1,124 +1,103 @@
 import { APIEvent } from "@solidjs/start/server";
-import { getUserItems, addUserItem, deleteAllUserItems, type Item } from '~/lib/db';
+import { 
+  getUserItems, 
+  addUserItem, 
+  deleteAllUserItems, 
+  deleteUserItem, 
+  type Item 
+} from '~/lib/server/db';
 
-// Type definition for creating new items
 type NewItem = {
   userId: string;
   data: string;
 };
 
+type ErrorResponse = {
+  error: string;
+  details?: any;
+};
+
 // GET /api/items
-export async function GET({ params, request }: APIEvent) {
+export async function GET({ request }: APIEvent) {
   try {
     const url = new URL(request.url);
     const userId = url.searchParams.get('userId');
     
     if (!userId) {
-      return new Response(
-        JSON.stringify({ error: 'User ID is required' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'User ID is required' }, 400);
     }
-    
-    const items = getUserItems(userId);
-    return {
-      items,
-    };
+
+    const items = await getUserItems(userId);
+    return jsonResponse({ items });
   } catch (error) {
-    console.error("Error fetching items:", error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return new Response(
-      JSON.stringify({ 
-        error: "Failed to fetch items",
-        details: errorMessage
-      }), 
-      { 
-        status: 500,
-        headers: { "Content-Type": "application/json" }
-      }
-    );
+    console.error('Error fetching items:', error);
+    return jsonResponse({ error: 'Failed to fetch items' }, 500);
   }
 }
 
 // POST /api/items
-export async function POST({ request, params }: APIEvent) {
+export async function POST({ request }: APIEvent) {
   try {
-    const { userId, data } = await request.json();
+    const { userId, data } = await request.json() as NewItem;
     
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: 'User ID is required' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+    if (!userId || !data) {
+      return jsonResponse({ error: 'User ID and data are required' }, 400);
     }
-    
-    if (!data) {
-      return new Response(
-        JSON.stringify({ error: 'Data is required' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    // Save the new item for the user
-    const newItem = addUserItem(userId, data);
-    
-    return new Response(
-      JSON.stringify({
-        id: newItem.id,
-        user_id: userId,
-        data,
-        created_at: newItem.created_at
-      }),
-      { 
-        status: 201,
-        headers: { "Content-Type": "application/json" }
-      }
-    );
+
+    const item = await addUserItem(userId, data);
+    return jsonResponse({ item }, 201);
   } catch (error) {
-    console.error("Error creating item:", error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return new Response(
-      JSON.stringify({ 
-        error: "Failed to create item",
-        details: errorMessage 
-      }), 
-      { 
-        status: 500,
-        headers: { "Content-Type": "application/json" }
-      }
-    );
+    console.error('Error adding item:', error);
+    return jsonResponse({ error: 'Failed to add item' }, 500);
   }
 }
 
 // DELETE /api/items
-export async function DELETE({ request, params }: APIEvent) {
+export async function DELETE({ request }: APIEvent) {
   try {
-    const { userId } = await request.json();
+    const { userId } = await request.json() as { userId: string };
     
     if (!userId) {
-      return new Response(
-        JSON.stringify({ error: 'User ID is required' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'User ID is required' }, 400);
+    }
+
+    await deleteAllUserItems(userId);
+    return new Response(null, { status: 204 });
+  } catch (error) {
+    console.error('Error clearing items:', error);
+    return jsonResponse({ error: 'Failed to clear items' }, 500);
+  }
+}
+
+// DELETE /api/items/[id]
+export async function DELETE_ITEM({ params, request }: APIEvent) {
+  try {
+    const itemId = params?.id;
+    const url = new URL(request.url);
+    const userId = url.searchParams.get('userId');
+    
+    if (!userId || !itemId) {
+      return jsonResponse({ 
+        error: 'User ID and Item ID are required' 
+      }, 400);
+    }
+
+    const success = await deleteUserItem(userId, parseInt(itemId, 10));
+    if (!success) {
+      return jsonResponse({ error: 'Item not found' }, 404);
     }
     
-    deleteAllUserItems(userId);
-    return new Response(null, { 
-      status: 204,
-      headers: { "Content-Type": "application/json" }
-    });
+    return new Response(null, { status: 204 });
   } catch (error) {
-    console.error("Error deleting items:", error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return new Response(
-      JSON.stringify({ 
-        error: "Failed to delete items",
-        details: errorMessage 
-      }), 
-      { 
-        status: 500,
-        headers: { "Content-Type": "application/json" }
-      }
-    );
+    console.error('Error deleting item:', error);
+    return jsonResponse({ error: 'Failed to delete item' }, 500);
   }
+}
+
+// Helper function for JSON responses
+function jsonResponse(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }

@@ -1,19 +1,13 @@
-import type { Item, ApiResponse, SelectedSquares } from '../types/board';
-import { getUserItems, addUserItem, deleteAllUserItems } from '~/lib/db';
-
-const API_BASE_URL = '/api/items';
+import type { Item, SelectedSquares } from '../types/board';
+import { api } from '~/lib/api-client';
 
 /**
  * Fetch items for the current user
  */
 export const fetchUserItems = async (userId: string): Promise<Item[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}?userId=${encodeURIComponent(userId)}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch items');
-    }
-    const { items } = (await response.json()) as ApiResponse;
-    return items;
+    const response = await api.getItems(userId);
+    return response.items || [];
   } catch (error) {
     console.error('Error fetching user items:', error);
     throw error;
@@ -25,26 +19,10 @@ export const fetchUserItems = async (userId: string): Promise<Item[]> => {
  */
 export const saveUserItems = async (userId: string, data: SelectedSquares | string): Promise<Item> => {
   try {
-    // Ensure data is a string before sending
+    // Ensure data is a string before saving
     const dataToSend = typeof data === 'string' ? data : JSON.stringify(data);
-    
-    const response = await fetch(API_BASE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        userId,
-        data: dataToSend 
-      }),
-    });
-    
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'Failed to save items');
-    }
-    
-    return response.json();
+    const response = await api.addItem(userId, dataToSend);
+    return response.item;
   } catch (error) {
     console.error('Error saving user items:', error);
     throw error;
@@ -56,20 +34,22 @@ export const saveUserItems = async (userId: string, data: SelectedSquares | stri
  */
 export const clearUserItems = async (userId: string): Promise<void> => {
   try {
-    const response = await fetch(API_BASE_URL, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ userId }),
-    });
-    
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'Failed to clear items');
-    }
+    await api.clearItems(userId);
   } catch (error) {
     console.error('Error clearing user items:', error);
+    throw error;
+  }
+};
+
+/**
+ * Save an item for the current user
+ */
+export const saveUserItem = async (userId: string, data: string): Promise<Item> => {
+  try {
+    const response = await api.addItem(userId, data);
+    return response.item;
+  } catch (error) {
+    console.error('Error saving user item:', error);
     throw error;
   }
 };
