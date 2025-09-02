@@ -15,8 +15,8 @@ const Login: Component = () => {
     e.preventDefault();
     const usernameValue = username().trim();
     if (usernameValue) {
-      // Generate a simple user ID - in a real app, this would come from your auth system
-      const userId = `user_${Date.now()}`;
+      // Generate a consistent user ID based on the username
+      const userId = `user_${usernameValue.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
       login(usernameValue, userId);
     }
   };
