@@ -79,20 +79,20 @@ export const moveSquares = async (
         let xdiff = Math.abs(x - i);
         let ydiff = Math.abs(y - j);
         if (xdiff >= ydiff) {
-          console.log("x greater")
           const temp = xdiff;
           xdiff = ydiff;
           ydiff = temp;
         }
         if (ydiff === 0) {
-          console.log("y zero")
           return result(x,y)
         }
         if (xdiff === ydiff) {
-          console.log("equal")
           return result(x,y)
         }
-        const isit = xdiff % ydiff;
+        if (xdiff === 0) {
+          return result(x,y)
+        }
+        const isit = ydiff % xdiff;
         if (isit === 0) {
           return result(x,y);
         }
