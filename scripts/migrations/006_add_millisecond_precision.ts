@@ -52,15 +52,23 @@ export function up(db: Database) {
   
   for (const { table_name } of userTables) {
     db.exec(`
+      -- Create new table with millisecond precision default
       CREATE TABLE ${table_name}_new (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         data TEXT NOT NULL,
         created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000 + (strftime('%f', 'now') * 1000) % 1000)
       );
       
+      -- Copy existing data, adding random milliseconds to existing timestamps
+      -- This ensures existing entries get some millisecond value rather than .000
       INSERT INTO ${table_name}_new (id, data, created_at_ms)
-      SELECT id, data, created_at_ms FROM ${table_name};
+      SELECT 
+        id, 
+        data, 
+        created_at_ms + (ABS(RANDOM()) % 1000) -- Add random milliseconds to existing timestamps
+      FROM ${table_name};
       
+      -- Replace old table
       DROP TABLE ${table_name};
       ALTER TABLE ${table_name}_new RENAME TO ${table_name};
     `);

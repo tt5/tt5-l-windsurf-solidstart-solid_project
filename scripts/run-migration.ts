@@ -62,85 +62,59 @@ const MIGRATION_SCRIPTS = [
       CREATE TABLE items_new (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL,
-        data TEXT NOT NULL,
-        created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000 + (strftime('%f', 'now') * 1000) % 1000)
-      );
-      
-      -- Copy existing data
-      INSERT INTO items_new (id, user_id, data, created_at_ms)
-      SELECT id, user_id, data, created_at_ms FROM items;
-      
-      -- Replace old table
-      DROP TABLE items;
-      ALTER TABLE items_new RENAME TO items;
-      
-      -- Recreate indexes
-      CREATE INDEX IF NOT EXISTS idx_items_user_id ON items(user_id);
-      CREATE INDEX IF NOT EXISTS idx_items_created_ms ON items(created_at_ms);
-    `
   }
-];
+
+  return migrations;
+}
 
 async function runMigrations() {
-  // Make Database type available for TypeScript migrations
-  globalThis.Database = Database;
   try {
-    // Check if database exists
-    try {
-      await access(PATHS.DB, constants.R_OK | constants.W_OK);
-    } catch (error) {
-      console.error(`❌ Database not found at ${PATHS.DB}`);
+    console.log('🔍 Checking for pending migrations...');
+    
+    if (!await databaseExists()) {
+      console.error('❌ Database not found. Please initialize the database first.');
       return false;
     }
 
-    const db = new Database(PATHS.DB);
+    const db = createDatabaseConnection();
     
     try {
-      // Enable foreign keys and WAL mode
+      // Configure database
       db.pragma('journal_mode = WAL');
       db.pragma('foreign_keys = ON');
-      
+      db.pragma('synchronous = NORMAL');
+
       // Create migrations table if it doesn't exist
       db.exec(`
-        CREATE TABLE IF NOT EXISTS _migrations (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL UNIQUE,
-          executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        CREATE TABLE IF NOT EXISTS migrations (
+          id TEXT PRIMARY KEY,
+          description TEXT NOT NULL,
+          applied_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000 + (strftime('%f', 'now') * 1000) % 1000)
         )
       `);
 
-      // Get applied migrations
+      // Load all migrations
+      const migrations = await loadMigrations();
       const appliedMigrations = new Set(
-        db.prepare('SELECT name FROM _migrations').all().map((m: any) => m.name)
+        db.prepare('SELECT id FROM migrations').all().map((m: any) => m.id)
       );
 
-      let success = true;
-      
       // Run pending migrations
-      for (const migration of MIGRATION_SCRIPTS) {
-        if (!appliedMigrations.has(migration.name)) {
-          console.log(`🔄 Running migration: ${migration.name}`);
+      let applied = 0;
+      for (const migration of migrations) {
+        if (!appliedMigrations.has(migration.id)) {
+          console.log(`🚀 Applying migration: ${migration.description} (${migration.id})`);
           
-          try {
-            // Handle each migration type specifically
-            if (migration.isTsMigration) {
-              // Run TypeScript migration
-              await migration.up(db);
-            }
-            else if (migration.name === 'add_user_id_column') {
-              // Check if column exists
-              const hasColumn = db.prepare(
-                "SELECT 1 FROM pragma_table_info('items') WHERE name = 'user_id'"
-              ).get();
-              
-              if (!hasColumn) {
-                db.exec(`ALTER TABLE items ADD COLUMN user_id TEXT NOT NULL DEFAULT 'default'`);
-              }
-            } 
-            else if (migration.name === 'add_created_at_ms_column') {
-              // Check if column exists
-              const hasColumn = db.prepare(
-                "SELECT 1 FROM pragma_table_info('items') WHERE name = 'created_at_ms'"
+          // Run the migration in a transaction
+          db.transaction(() => {
+            migration.up(db);
+            db.prepare(
+              'INSERT INTO migrations (id, description) VALUES (?, ?)'
+            ).run(migration.id, migration.description);
+          })();
+          
+          applied++;
+          console.log(`✅ Applied migration: ${migration.id}`);
               ).get();
               
               if (!hasColumn) {

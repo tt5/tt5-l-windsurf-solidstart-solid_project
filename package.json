@@ -4,7 +4,13 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start"
+    "start": "vinxi start",
+    "db:init": "tsx scripts/init-db.ts",
+    "db:reset": "tsx scripts/reset-db.ts",
+    "db:migrate": "tsx scripts/run-migration.ts",
+    "db:check": "tsx scripts/check-db.ts",
+    "db:backup": "tsx scripts/backup-db.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "@solidjs/meta": "^0.29.4",

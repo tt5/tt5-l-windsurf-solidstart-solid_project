@@ -84,12 +84,12 @@ async function ensureUserTable(userId: string): Promise<string> {
     );
     
     if (!tableExists) {
-      // Create the user's items table
+      // Create the user's items table with millisecond precision
       await db.exec(`
         CREATE TABLE ${tableName} (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           data TEXT NOT NULL,
-          created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
+          created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000 + (strftime('%f', 'now') * 1000) % 1000)
         )
       `);
       
