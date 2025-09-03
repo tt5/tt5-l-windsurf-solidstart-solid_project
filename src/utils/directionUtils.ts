@@ -41,65 +41,43 @@ export const moveSquares = async (
   currentPosition: [number, number]
 ): Promise<number[]> => {
   try {
-    const borderIndices = getBorderIndices(direction);
+    // Get border indices (indices on the edge of the 7x7 grid)
+    const borderIndices = [];
+    for (let i = 0; i < 7; i++) {
+      // Top and bottom rows
+      borderIndices.push(i);
+      borderIndices.push(42 + i);
+    }
+    for (let i = 1; i < 6; i++) {
+      // Left and right columns (excluding corners already added)
+      borderIndices.push(i * 7);
+      borderIndices.push(i * 7 + 6);
+    }
 
-    const borderCoordinates = borderIndices.map(i => 
-      [(i % 7) - currentPosition[0], Math.floor(i / 7) - currentPosition[1]]
-    );
+    // Call the server to calculate new squares
+    const response = await fetch('/api/calculate-squares', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        borderIndices,
+        currentPosition,
+        direction
+      })
+    });
 
-    console.log("pos: ", currentPosition, "direction: ", direction)
+    if (!response.ok) {
+      throw new Error('Failed to calculate new squares');
+    }
 
-    const directionMap: Record<Direction, [number, number]> = {
-      'up': [0, -1],
-      'down': [0, 1],
-      'right': [1, 0],
-      'left': [-1, 0]
-    };
+    const { squares: newSquares } = await response.json();
 
-    const [x, y] = directionMap[direction];
-
-    
     // Move existing squares
     const movedSquares = currentSquares
       .filter(i => canMove(i, direction))
       .map(i => moveIndex(i, direction));
     
-    // Get base points for each border index
-    const basePoints = await getBasePoints(borderIndices.length);
-
-    const result = (x: number, y: number) => {
-
-          return ((x + currentPosition[0] + directionMap[direction][0])
-          + (y + currentPosition[1] + directionMap[direction][1]) * 7)
-      
-    }
-    
-    const newSquares = borderCoordinates.flatMap(
-      ([x,y]) => basePoints.map(([i,j]) => {
-        let xdiff = Math.abs(x - i);
-        let ydiff = Math.abs(y - j);
-        if (xdiff >= ydiff) {
-          const temp = xdiff;
-          xdiff = ydiff;
-          ydiff = temp;
-        }
-        if (ydiff === 0) {
-          return result(x,y)
-        }
-        if (xdiff === ydiff) {
-          return result(x,y)
-        }
-        if (xdiff === 0) {
-          return result(x,y)
-        }
-        const isit = ydiff % xdiff;
-        if (isit === 0) {
-          return result(x,y);
-        }
-        return -1;
-      }).filter((n): n is number => n !== -1)
-    );
-
     // Combine and remove duplicates
     return [...new Set([...movedSquares, ...newSquares])];
   } catch (error) {
