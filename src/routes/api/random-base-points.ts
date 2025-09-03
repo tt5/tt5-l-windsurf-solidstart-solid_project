@@ -3,7 +3,7 @@ import { APIEvent } from '@solidjs/start/server';
 type BasePoint = [number, number];
 
 let basePoints = [
-  [1,1],
+  [0,0],
 ]
 
 export async function GET({ request }: APIEvent) {

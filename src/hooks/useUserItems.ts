@@ -6,7 +6,11 @@ import { getUserId } from '../utils/userUtils';
 
 const DEFAULT_SELECTION = [24]; // Center of 7x7 grid
 
-export const useUserItems = (currentUser: any) => {
+interface UseUserItemsOptions {
+  onClear?: () => void;
+}
+
+export const useUserItems = (currentUser: any, options: UseUserItemsOptions = {}) => {
   const [items, setItems] = createSignal<Item[]>([]);
   const [selectedSquares, setSelectedSquares] = createSignal<SelectedSquares>([]);
   
@@ -82,6 +86,7 @@ export const useUserItems = (currentUser: any) => {
       await deleteAction(currentUser);
       setItems([]);
       setSelectedSquares([]);
+      options.onClear?.();
     } catch (error) {
       console.error('Error clearing items:', error);
     }

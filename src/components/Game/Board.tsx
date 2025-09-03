@@ -17,13 +17,15 @@ const Board: Component = () => {
   const currentUser = user();
   const [currentPosition, setCurrentPosition] = createSignal<Point>([0, 0]);
   
+  const resetPosition = () => setCurrentPosition([0, 0]);
+
   const {
     items,
     selectedSquares,
     updateSquares,
     handleSave,
     handleClear,
-  } = useUserItems(currentUser);
+  } = useUserItems(currentUser, { onClear: resetPosition });
   
   const handleDeleteAccount = async () => {
     const userId = currentUser && 'id' in currentUser ? currentUser.id : currentUser;
