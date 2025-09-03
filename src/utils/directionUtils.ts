@@ -46,6 +46,18 @@ export const moveSquares = async (
     const borderCoordinates = borderIndices.map(i => 
       [(i % 7) - currentPosition[0], Math.floor(i / 7) - currentPosition[1]]
     );
+
+    console.log("pos: ", currentPosition, "direction: ", direction)
+
+    const directionMap: Record<Direction, [number, number]> = {
+      'up': [0, -1],
+      'down': [0, 1],
+      'right': [1, 0],
+      'left': [-1, 0]
+    };
+
+    const [x, y] = directionMap[direction];
+
     
     // Move existing squares
     const movedSquares = currentSquares
@@ -54,25 +66,35 @@ export const moveSquares = async (
     
     // Get base points for each border index
     const basePoints = await getBasePoints(borderIndices.length);
+
+    const result = (x: number, y: number) => {
+
+          return ((x + currentPosition[0] + directionMap[direction][0])
+          + (y + currentPosition[1] + directionMap[direction][1]) * 7)
+      
+    }
     
     const newSquares = borderCoordinates.flatMap(
       ([x,y]) => basePoints.map(([i,j]) => {
         let xdiff = Math.abs(x - i);
         let ydiff = Math.abs(y - j);
-        if (xdiff === ydiff) {
-          return ((x + currentPosition[0]) + (y + currentPosition[1]) * 7)
-        }
         if (xdiff >= ydiff) {
+          console.log("x greater")
           const temp = xdiff;
           xdiff = ydiff;
           ydiff = temp;
         }
         if (ydiff === 0) {
-          return ((x + currentPosition[0]) + (y + currentPosition[1]) * 7)
+          console.log("y zero")
+          return result(x,y)
+        }
+        if (xdiff === ydiff) {
+          console.log("equal")
+          return result(x,y)
         }
         const isit = xdiff % ydiff;
         if (isit === 0) {
-          return ((x + currentPosition[0]) + (y + currentPosition[1]) * 7);
+          return result(x,y);
         }
         return -1;
       }).filter((n): n is number => n !== -1)
