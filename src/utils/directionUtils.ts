@@ -47,38 +47,29 @@ export const moveSquares = async (
       .filter(i => canMove(i, direction))
       .map(i => moveIndex(i, direction));
     
-    // Get 2-4 random border squares
-    const randomCount = await getRandomCount(2, 4);
-    const randomBorderSquares = getRandomIndices(borderIndices, randomCount);
+    // Get random numbers for each border index
+    const randomNumbers = await getRandomNumbers(borderIndices.length, 1, 10);
     
+    // Use all border indices with their corresponding random numbers
+    const newSquares = borderIndices
+      .map((index, i) => randomNumbers[i]);
+
     // Combine and remove duplicates
-    return [...new Set([...movedSquares, ...randomBorderSquares])];
+    return [...new Set([...movedSquares, ...newSquares])];
   } catch (error) {
     console.error(`Error in moveSquares (${direction}):`, error);
     return currentSquares;
   }
 };
 
-const getRandomCount = async (min: number, max: number): Promise<number> => {
-  try {
-    const response = await fetch(`/api/random?count=1&max=${max - min}`);
-    if (!response.ok) throw new Error('Failed to fetch random numbers');
-    const data = await response.json();
-    return (data.numbers?.[0] ?? 0) + min;
-  } catch (error) {
-    console.error('Using fallback random count');
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+const getRandomNumbers = async (count: number, min: number, max: number): Promise<number[]> => {
+  const response = await fetch(`/api/random?count=${count}&min=${min}&max=${max}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch random numbers: ${response.statusText}`);
   }
-};
-
-const getRandomIndices = (indices: number[], count: number): number[] => {
-  const available = [...indices];
-  const result: number[] = [];
-  
-  for (let i = 0; i < count && available.length > 0; i++) {
-    const randomIndex = Math.floor(Math.random() * available.length);
-    result.push(available.splice(randomIndex, 1)[0]);
+  const data = await response.json();
+  if (!data.numbers || !Array.isArray(data.numbers)) {
+    throw new Error('Invalid response format from random number service');
   }
-  
-  return result;
+  return data.numbers;
 };

@@ -52,23 +52,23 @@ const Board: Component = () => {
     updateSquares(update);
   };
 
+  const basePoints = [[0,0], [2,3]]
+
+  const generateSelection = (x: number, y: number) => {
+    const borderIndices = [[0,0],[0,1],[0,2],[0,3],[0,4],[0,5],[0,6]]
+    return borderIndices.map(([i,j]) => i + j + x + y)
+  };
+
   // Predefined sets of square selections
-  const predefinedSelections = [
-    [0, 1, 2, 3],
-    [5, 6, 7, 8],
-    [10, 11, 12, 13],
-    [15, 16, 17, 18],
-    [20, 21, 22, 23],
-    [25, 26, 27, 28],
-    [30, 31, 32, 33],
-    [35, 36, 37, 38],
-    [40, 41, 42, 43],
-    [45, 46, 47, 48]
-  ];
+  const predefinedSelections = () => {
+    const selection = basePoints.map(([x,y]) => generateSelection(x, y));
+    return selection;
+  }
 
   const handleRandomSelection = () => {
-    const randomIndex = Math.floor(Math.random() * predefinedSelections.length);
-    updateSquares([...predefinedSelections[randomIndex]]);
+    const selections = predefinedSelections();
+    const randomIndex = Math.floor(Math.random() * selections.length);
+    updateSquares([...selections[randomIndex]]);
   };
 
   const handleDirection = (dir: Direction) => moveSquares(
