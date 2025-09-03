@@ -18,46 +18,66 @@ const MIGRATION_SCRIPTS = [
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       
-      -- Only add user_id if it doesn't exist
+      -- Check if column exists before adding it
       SELECT CASE 
-        WHEN NOT EXISTS (SELECT * FROM pragma_table_info('items') WHERE name = 'user_id')
-        THEN 1
-        ELSE 0
-      END as should_add_column;
-      
-      -- This will only execute if the column doesn't exist
-      ALTER TABLE items ADD COLUMN user_id TEXT NOT NULL DEFAULT 'default';
+        WHEN NOT EXISTS (SELECT * FROM pragma_table_info('items') WHERE name = 'user_id') 
+        THEN 'ALTER TABLE items ADD COLUMN user_id TEXT NOT NULL DEFAULT ''default'''
+        ELSE 'SELECT ''Column user_id already exists'''
+      END;
     `,
   },
   {
     name: 'add_created_at_ms_column',
-    // Check if column exists before adding it
+    // Add created_at_ms column if it doesn't exist
     sql: `
+      -- Add created_at_ms column if it doesn't exist
       SELECT CASE 
-        WHEN NOT EXISTS (SELECT * FROM pragma_table_info('items') WHERE name = 'created_at_ms')
-        THEN 1
-        ELSE 0
-      END as should_add_column;
-      
-      -- This will only execute if the column doesn't exist
-      ALTER TABLE items ADD COLUMN created_at_ms INTEGER;
-    `,
+        WHEN NOT EXISTS (SELECT * FROM pragma_table_info('items') WHERE name = 'created_at_ms') 
+        THEN 'ALTER TABLE items ADD COLUMN created_at_ms INTEGER'
+        ELSE 'SELECT ''Column created_at_ms already exists'''
+      END;
+    `
   },
   {
     name: 'update_timestamps',
-    // Only update timestamps for rows where created_at_ms is NULL
+    // Update existing timestamps to use milliseconds
     sql: `
+      -- Update existing timestamps to use milliseconds
       UPDATE items 
-      SET created_at_ms = (julianday(created_at) * 86400000)
-      WHERE created_at_ms IS NULL AND created_at IS NOT NULL;
-    `,
+      SET created_at_ms = strftime('%s', created_at) * 1000 
+      WHERE created_at_ms IS NULL;
+    `
   },
   {
     name: 'user_specific_tables',
-    // This is a TypeScript migration
     isTsMigration: true,
     up: userSpecificTablesUp,
     down: userSpecificTablesDown
+  },
+  {
+    name: 'millisecond_precision',
+    // Update all tables to use millisecond precision
+    sql: `
+      -- Update items table
+      CREATE TABLE items_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        data TEXT NOT NULL,
+        created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000 + (strftime('%f', 'now') * 1000) % 1000)
+      );
+      
+      -- Copy existing data
+      INSERT INTO items_new (id, user_id, data, created_at_ms)
+      SELECT id, user_id, data, created_at_ms FROM items;
+      
+      -- Replace old table
+      DROP TABLE items;
+      ALTER TABLE items_new RENAME TO items;
+      
+      -- Recreate indexes
+      CREATE INDEX IF NOT EXISTS idx_items_user_id ON items(user_id);
+      CREATE INDEX IF NOT EXISTS idx_items_created_ms ON items(created_at_ms);
+    `
   }
 ];
 
