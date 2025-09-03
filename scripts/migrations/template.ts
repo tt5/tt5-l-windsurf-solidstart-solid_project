@@ -1,29 +1,62 @@
 import { Database } from 'better-sqlite3';
 
-// This is a template for new migrations
-// Rename this file to follow the pattern: 00X_short_description.ts
-// where X is the next sequential number
+/**
+ * Brief description of what this migration does
+ * 
+ * Detailed explanation of the changes and why they're needed.
+ * Include any important notes or considerations for future reference.
+ * 
+ * Migration files should be named with the pattern: 00X_descriptive_name.ts
+ * where X is the next sequential number
+ */
+export const description = 'Detailed description of the migration';
 
-export const description = 'Short description of what this migration does';
-
+/**
+ * Applies the migration
+ * @param db Database instance
+ */
 export function up(db: Database) {
-  // Add your migration logic here
-  // Example:
-  // db.exec(`
-  //   CREATE TABLE IF NOT EXISTS new_table (
-  //     id INTEGER PRIMARY KEY AUTOINCREMENT,
-  //     name TEXT NOT NULL,
-  //     created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000 + (strftime('%f', 'now') * 1000) % 1000)
-  //   );
-  // `);
+  // Always wrap in a transaction for safety
+  const transaction = db.transaction(() => {
+    // Your migration code here
+    // Example:
+    // db.exec(`
+    //   CREATE TABLE example (
+    //     id TEXT PRIMARY KEY,
+    //     name TEXT NOT NULL,
+    //     created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000 + (strftime('%f', 'now') * 1000) % 1000),
+    //     updated_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000 + (strftime('%f', 'now') * 1000) % 1000),
+    //     deleted_at_ms INTEGER
+    //   );
+    // `);
+  });
+  
+  transaction();
 }
 
+/**
+ * Reverts the migration
+ * @param db Database instance
+ */
 export function down(db: Database) {
-  // Add rollback logic here
-  // This is optional but recommended
+  // Implement rollback logic here
+  // This is optional but recommended for development
   // Example:
-  // db.exec('DROP TABLE IF EXISTS new_table;');
+  // db.exec('DROP TABLE IF EXISTS example;');
+}
+
+/**
+ * Validates that the migration was applied correctly
+ * @param db Database instance
+ */
+export function validate(db: Database) {
+  // Optional: Add validation logic to verify the migration was successful
+  // Example:
+  // const result = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='example'").get();
+  // if (!result) {
+  //   throw new Error('Migration failed: table not created');
+  // }
 }
 
 // For TypeScript module system
-export default { description, up, down };
+export default { description, up, down, validate };
