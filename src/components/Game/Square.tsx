@@ -1,4 +1,5 @@
 import { Component } from 'solid-js';
+import styles from './Square.module.css';
 
 interface SquareProps {
   isSelected: boolean;
@@ -6,32 +7,10 @@ interface SquareProps {
 }
 
 const Square: Component<SquareProps> = (props) => {
-  const squareStyle = {
-    aspectRatio: '1',
-    backgroundColor: 'white',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    borderRadius: '4px',
-    transition: 'all 0.2s ease',
-    border: '1px solid #e0e0e0',
-    '&:hover': {
-      backgroundColor: '#f5f5f5',
-    },
-    '&:active': {
-      transform: 'scale(0.98)',
-    },
-  } as const;
-
-  const circleStyle = {
-    transition: 'all 0.2s ease',
-  } as const;
-
   return (
     <div 
       onClick={props.onClick}
-      style={squareStyle}
+      class={styles.square}
       role="button"
       aria-pressed={props.isSelected}
       aria-label={props.isSelected ? 'Selected square' : 'Unselected square'}

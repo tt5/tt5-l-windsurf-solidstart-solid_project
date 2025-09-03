@@ -3,26 +3,29 @@ import { query, createAsync, action, useAction, useNavigate } from '@solidjs/rou
 import type { Item, SelectedSquares } from '../../types/board';
 import { fetchUserItems, saveUserItems, clearUserItems } from '../../services/boardService';
 import { moveSquares } from '../../utils/directionUtils';
+import { getUserId } from '../../utils/userUtils';
 import { useAuth } from '../../contexts/auth';
 import Login from '../Auth/Login';
 import styles from './Board.module.css';
 
 type Direction = 'up' | 'down' | 'left' | 'right';
 
-// Server actions - updated to use user-specific endpoints
-const getItems = query(async (user: string | { id: string }) => {
-  const userId = typeof user === 'string' ? user : user.id;
-  console.log('Fetching items for user ID:', userId);
+// Server actions
+const getItems = query(async (user) => {
+  const userId = getUserId(user);
+  if (!userId) throw new Error('User not authenticated');
   return fetchUserItems(userId);
 }, 'userItems');
 
-const refetchItems = action(({ userId, data }: { userId: string | { id: string }; data: SelectedSquares }) => {
-  const id = typeof userId === 'string' ? userId : userId.id;
+const refetchItems = action(async ({ userId, data }) => {
+  const id = getUserId(userId);
+  if (!id) throw new Error('User not authenticated');
   return saveUserItems(id, JSON.stringify(data));
 }, 'refetchUserItems');
 
-const deleteItems = action((userId: string | { id: string }) => {
-  const id = typeof userId === 'string' ? userId : userId.id;
+const deleteItems = action(async (userId) => {
+  const id = getUserId(userId);
+  if (!id) throw new Error('User not authenticated');
   return clearUserItems(id);
 }, 'deleteUserItems');
 
@@ -31,7 +34,8 @@ const Board: Component = () => {
   const navigate = useNavigate();
   
   const handleDeleteAccount = async () => {
-    if (!user()) return;
+    const userId = getUserId(user());
+    if (!userId) return;
     
     if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
       return;
@@ -41,7 +45,7 @@ const Board: Component = () => {
       const response = await fetch('/api/auth/delete-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user()!.id })
+        body: JSON.stringify({ userId })
       });
       
       if (!response.ok) throw new Error('Failed to delete account');
