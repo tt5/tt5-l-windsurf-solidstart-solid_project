@@ -1,14 +1,33 @@
-import { createContext, createSignal, useContext, ParentComponent, onMount } from 'solid-js';
+import { createContext, createSignal, useContext, type ParentComponent, onMount } from 'solid-js';
 
 type User = { id: string; username: string } | null;
-type AuthContextType = ReturnType<typeof createAuthStore>;
+interface AuthStore {
+  user: () => User;
+  login: (username: string) => { id: string; username: string };
+  logout: () => Promise<void>;
+  deleteAccount: () => Promise<boolean>;
+}
 
-const AuthContext = createContext<AuthContextType>();
+const AuthContext = createContext<AuthStore>();
 
-function createAuthStore() {
+const createUserData = (username: string) => ({
+  id: `user_${username.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+  username
+});
+
+const createAuthStore = (): AuthStore => {
   const [user, setUser] = createSignal<User>(null);
   
-  const initialize = () => {
+  const updateUser = (userData: User) => {
+    setUser(userData);
+    if (userData) {
+      localStorage.setItem('user', JSON.stringify(userData));
+    } else {
+      localStorage.removeItem('user');
+    }
+  };
+
+  onMount(() => {
     if (typeof window === 'undefined') return;
     
     try {
@@ -16,24 +35,19 @@ function createAuthStore() {
       if (!savedUser) return;
       
       const parsed = JSON.parse(savedUser);
-      setUser(typeof parsed === 'string' 
+      updateUser(typeof parsed === 'string' 
         ? { id: `user_${Date.now()}`, username: parsed }
         : parsed
       );
     } catch (error) {
       console.error('Auth initialization error:', error);
-      localStorage.removeItem('user');
+      updateUser(null);
     }
-  };
+  });
 
   const login = (username: string) => {
-    const userData = { 
-      id: `user_${username.toLowerCase().replace(/[^a-z0-9]/g, '_')}`, 
-      username 
-    };
-    
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+    const userData = createUserData(username);
+    updateUser(userData);
     return userData;
   };
 
@@ -42,25 +56,16 @@ function createAuthStore() {
       const response = await fetch('/api/auth/logout', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include' // Important for cookies to be sent
+        credentials: 'include'
       });
       
-      if (!response.ok) {
+      if (!response.ok || !(await response.json()).success) {
         throw new Error('Logout failed');
       }
-      
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.message || 'Logout failed');
-      }
-      
-      setUser(null);
-      localStorage.removeItem('user');
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if there's an error, we should still clear the local state
-      setUser(null);
-      localStorage.removeItem('user');
+    } finally {
+      updateUser(null);
     }
   };
 
@@ -71,8 +76,7 @@ function createAuthStore() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'delete-account' })
       });
-      setUser(null);
-      localStorage.removeItem('user');
+      updateUser(null);
       return true;
     } catch (error) {
       console.error('Account deletion error:', error);
@@ -80,35 +84,17 @@ function createAuthStore() {
     }
   };
 
-  return { 
-    user, 
-    login, 
-    logout, 
-    deleteAccount,
-    initialize 
-  };
-}
-
-export const AuthProvider: ParentComponent = (props) => {
-  const auth = createAuthStore();
-  
-  onMount(() => {
-    if (typeof window !== 'undefined') {
-      auth.initialize();
-    }
-  });
-
-  return (
-    <AuthContext.Provider value={auth}>
-      {props.children}
-    </AuthContext.Provider>
-  );
+  return { user, login, logout, deleteAccount };
 };
 
-export const useAuth = () => {
+export const AuthProvider: ParentComponent = (props) => (
+  <AuthContext.Provider value={createAuthStore()}>
+    {props.children}
+  </AuthContext.Provider>
+);
+
+export const useAuth = (): AuthStore => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
