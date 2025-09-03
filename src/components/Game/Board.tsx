@@ -1,4 +1,4 @@
-import { Component, For, Show } from 'solid-js';
+import { Component, For, Show, createSignal } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
@@ -9,10 +9,13 @@ import styles from './Board.module.css';
 
 type Direction = 'up' | 'down' | 'left' | 'right';
 
+type Point = [number, number];
+
 const Board: Component = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const currentUser = user();
+  const [currentPosition, setCurrentPosition] = createSignal<Point>([0, 0]);
   
   const {
     items,
@@ -72,9 +75,20 @@ const Board: Component = () => {
     updateSquares([...selections[randomIndex]]);
   };
 
-  const handleDirection = (dir: Direction) => moveSquares(
-    selectedSquares(), dir
-  ).then(updateSquares).catch(console.error);
+  const handleDirection = (dir: Direction) => {
+    const [x, y] = currentPosition();
+    const newPosition: Point = [
+      dir === 'left' ? x - 1 : dir === 'right' ? x + 1 : x,
+      dir === 'up' ? y - 1 : dir === 'down' ? y + 1 : y
+    ];
+    
+    return moveSquares(selectedSquares(), dir)
+      .then((squares) => {
+        updateSquares(squares);
+        setCurrentPosition(newPosition);
+      })
+      .catch(console.error);
+  };
     
   const buttons = [
     ['Random', handleRandomSelection, styles.randomButton],
@@ -106,6 +120,7 @@ const Board: Component = () => {
         </div>
       </div>
       <div class={styles.history}>
+        <h2>Current Position: x: {currentPosition()[0]} y: {currentPosition()[1]}</h2>
         <h2>Selected Items History</h2>
         <ul class={styles.historyList}>
           <For each={items()}>{

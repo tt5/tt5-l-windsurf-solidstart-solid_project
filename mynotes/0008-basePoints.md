@@ -1,2 +1,6 @@
 
 @directionUtils.ts#L38-63 @mcp:sequential-thinking: Instead of fetching an array of random number fetch an array of 'basePoints'. A basePoint is pair of two numbers. Then on the client map the basePoints to numbers and use them instead of the randomNumbers.
+
+# currentPosition
+
+@mcp:sequential-thinking: Add a currentPosition of type Point to the board component. Initialize it with a starting value of [0,0]. Now everytime when the user moves update currentPosition.
