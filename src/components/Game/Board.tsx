@@ -1,8 +1,9 @@
-import { Component, Show } from 'solid-js';
+import { Component, For, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
 import { useUserItems } from '../../hooks/useUserItems';
+import type { Item } from '../../types/board';
 import Login from '../Auth/Login';
 import styles from './Board.module.css';
 
