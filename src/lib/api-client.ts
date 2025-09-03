@@ -41,9 +41,21 @@ export const api = {
   },
   
   async clearItems(userId: string) {
-    return apiRequest('items', {
+    const response = await fetch('/api/items', {
       method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ userId }),
     });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to clear items');
+    }
+
+    // If the response has content, parse it as JSON, otherwise return empty object
+    const text = await response.text();
+    return text ? JSON.parse(text) : {};
   }
 };

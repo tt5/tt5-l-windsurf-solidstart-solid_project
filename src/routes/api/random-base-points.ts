@@ -4,7 +4,6 @@ type BasePoint = [number, number];
 
 let basePoints = [
   [1,1],
-  [2,2]
 ]
 
 export async function GET({ request }: APIEvent) {

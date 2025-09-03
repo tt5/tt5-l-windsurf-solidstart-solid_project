@@ -63,18 +63,19 @@ export const moveSquares = async (
           return ((x + currentPosition[0]) + (y + currentPosition[1]) * 7)
         }
         if (xdiff >= ydiff) {
-          const temp = xdiff
-          xdiff = ydiff
-          ydiff = temp
+          const temp = xdiff;
+          xdiff = ydiff;
+          ydiff = temp;
         }
         if (ydiff === 0) {
-          return x + y * 7
+          return ((x + currentPosition[0]) + (y + currentPosition[1]) * 7)
         }
         const isit = xdiff % ydiff;
         if (isit === 0) {
-          return x + y * 7;
+          return ((x + currentPosition[0]) + (y + currentPosition[1]) * 7);
         }
-      })
+        return -1;
+      }).filter((n): n is number => n !== -1)
     );
 
     // Combine and remove duplicates
