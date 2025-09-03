@@ -1,9 +1,9 @@
-import { Component, For, Show, createSignal } from 'solid-js';
+import { Component, createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
 import { useUserItems } from '../../hooks/useUserItems';
-import type { Item } from '../../types/board';
+import type { Direction, Item, Point } from '../../types/board';
 import Login from '../Auth/Login';
 import styles from './Board.module.css';
 
@@ -16,8 +16,47 @@ const Board: Component = () => {
   const navigate = useNavigate();
   const currentUser = user();
   const [currentPosition, setCurrentPosition] = createSignal<Point>([0, 0]);
+  const [activeDirection, setActiveDirection] = createSignal<Direction | null>(null);
   
   const resetPosition = () => setCurrentPosition([0, 0]);
+  
+  // Handle keyboard events
+  const handleKeyDown = (e: KeyboardEvent) => {
+    // Only process arrow keys
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    
+    e.preventDefault();
+    
+    const directionMap: Record<string, Direction> = {
+      'ArrowUp': 'up',
+      'ArrowDown': 'down',
+      'ArrowLeft': 'left',
+      'ArrowRight': 'right'
+    };
+    
+    const direction = directionMap[e.key];
+    if (direction) {
+      setActiveDirection(direction);
+      handleDirection(direction);
+    }
+  };
+  
+  const handleKeyUp = (e: KeyboardEvent) => {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      setActiveDirection(null);
+    }
+  };
+  
+  // Add and remove event listeners
+  onMount(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+  });
+  
+  onCleanup(() => {
+    window.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('keyup', handleKeyUp);
+  });
 
   const {
     items,
@@ -138,9 +177,11 @@ const Board: Component = () => {
             {directions.map(([dir, label, className]) => (
               <button 
                 {...{
-                  class: className,
+                  class: `${className} ${activeDirection() === dir ? styles.active : ''}`,
                   onClick: () => handleDirection(dir as Direction),
-                  children: label
+                  children: label,
+                  'aria-label': `Move ${dir}`,
+                  'data-direction': dir
                 }}
               />
             ))}

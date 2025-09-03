@@ -78,6 +78,19 @@
   background-color: #1976D2;
 }
 
+.directionButton:active,
+.directionButton.active {
+  background-color: #0D47A1;
+  transform: scale(0.95);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3) inset;
+}
+
+/* Add focus styles for better accessibility */
+.directionButton:focus-visible {
+  outline: 3px solid #64B5F6;
+  outline-offset: 2px;
+}
+
 .directionGroup {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
