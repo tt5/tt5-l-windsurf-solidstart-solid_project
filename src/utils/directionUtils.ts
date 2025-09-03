@@ -47,12 +47,12 @@ export const moveSquares = async (
       .filter(i => canMove(i, direction))
       .map(i => moveIndex(i, direction));
     
-    // Get random numbers for each border index
-    const randomNumbers = await getRandomNumbers(borderIndices.length, 1, 10);
+    // Get base points for each border index
+    const basePoints = await getBasePoints(borderIndices.length);
     
-    // Use all border indices with their corresponding random numbers
-    const newSquares = borderIndices
-      .map((index, i) => randomNumbers[i]);
+    // Convert base points to numbers by adding x and y
+    const newSquares = basePoints
+      .map(([x, y]) => x + y);
 
     // Combine and remove duplicates
     return [...new Set([...movedSquares, ...newSquares])];
@@ -62,14 +62,16 @@ export const moveSquares = async (
   }
 };
 
-const getRandomNumbers = async (count: number, min: number, max: number): Promise<number[]> => {
-  const response = await fetch(`/api/random?count=${count}&min=${min}&max=${max}`);
+type BasePoint = [number, number]; // [x, y] coordinates
+
+const getBasePoints = async (count: number): Promise<BasePoint[]> => {
+  const response = await fetch(`/api/random-base-points?count=${count}`);
   if (!response.ok) {
-    throw new Error(`Failed to fetch random numbers: ${response.statusText}`);
+    throw new Error(`Failed to fetch base points: ${response.statusText}`);
   }
   const data = await response.json();
-  if (!data.numbers || !Array.isArray(data.numbers)) {
-    throw new Error('Invalid response format from random number service');
+  if (!Array.isArray(data.basePoints)) {
+    throw new Error('Invalid response format from base points service');
   }
-  return data.numbers;
+  return data.basePoints;
 };
