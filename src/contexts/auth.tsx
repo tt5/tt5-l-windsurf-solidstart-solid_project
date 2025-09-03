@@ -3,67 +3,51 @@ import { createContext, createSignal, useContext, type ParentComponent, onMount 
 type User = { id: string; username: string } | null;
 interface AuthStore {
   user: () => User;
-  login: (username: string) => { id: string; username: string };
+  login: (username: string) => User;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthStore>();
-
-const createUserData = (username: string) => ({
-  id: `user_${username.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
-  username
-});
+const createUserId = (username: string) => `user_${username.toLowerCase().replace(/[^\w]/g, '_')}`;
 
 const createAuthStore = (): AuthStore => {
   const [user, setUser] = createSignal<User>(null);
   
   const updateUser = (userData: User) => {
     setUser(userData);
-    if (userData) {
-      localStorage.setItem('user', JSON.stringify(userData));
-    } else {
-      localStorage.removeItem('user');
-    }
+    userData ? localStorage.setItem('user', JSON.stringify(userData)) : localStorage.removeItem('user');
   };
 
   onMount(() => {
     if (typeof window === 'undefined') return;
-    
-    try {
-      const savedUser = localStorage.getItem('user');
-      if (!savedUser) return;
-      
-      const parsed = JSON.parse(savedUser);
-      updateUser(typeof parsed === 'string' 
-        ? { id: `user_${Date.now()}`, username: parsed }
-        : parsed
-      );
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-      updateUser(null);
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        updateUser(typeof parsed === 'string' 
+          ? { id: `user_${Date.now()}`, username: parsed }
+          : parsed
+        );
+      } catch {
+        updateUser(null);
+      }
     }
   });
 
   const login = (username: string) => {
-    const userData = createUserData(username);
+    const userData = { id: createUserId(username), username };
     updateUser(userData);
     return userData;
   };
 
   const logout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', { 
+      await fetch('/api/auth/logout', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
       });
-      
-      if (!response.ok || !(await response.json()).success) {
-        throw new Error('Logout failed');
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
     } finally {
       updateUser(null);
     }
@@ -73,14 +57,13 @@ const createAuthStore = (): AuthStore => {
     try {
       await fetch('/api/auth', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'delete-account' })
       });
-      updateUser(null);
       return true;
-    } catch (error) {
-      console.error('Account deletion error:', error);
+    } catch {
       return false;
+    } finally {
+      updateUser(null);
     }
   };
 

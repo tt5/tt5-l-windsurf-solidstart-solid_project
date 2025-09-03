@@ -1,40 +1,28 @@
-import { Component, createSignal, createEffect, For, Show } from 'solid-js';
-import { query, createAsync, action, useAction, useNavigate } from '@solidjs/router';
-import type { Item, SelectedSquares } from '../../types/board';
-import { fetchUserItems, saveUserItems, clearUserItems } from '../../services/boardService';
+import { Component, Show } from 'solid-js';
+import { useNavigate } from '@solidjs/router';
 import { moveSquares } from '../../utils/directionUtils';
-import { getUserId } from '../../utils/userUtils';
 import { useAuth } from '../../contexts/auth';
+import { useUserItems } from '../../hooks/useUserItems';
 import Login from '../Auth/Login';
 import styles from './Board.module.css';
 
 type Direction = 'up' | 'down' | 'left' | 'right';
 
-// Server actions
-const getItems = query(async (user) => {
-  const userId = getUserId(user);
-  if (!userId) throw new Error('User not authenticated');
-  return fetchUserItems(userId);
-}, 'userItems');
-
-const refetchItems = action(async ({ userId, data }) => {
-  const id = getUserId(userId);
-  if (!id) throw new Error('User not authenticated');
-  return saveUserItems(id, JSON.stringify(data));
-}, 'refetchUserItems');
-
-const deleteItems = action(async (userId) => {
-  const id = getUserId(userId);
-  if (!id) throw new Error('User not authenticated');
-  return clearUserItems(id);
-}, 'deleteUserItems');
-
 const Board: Component = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const currentUser = user();
+  
+  const {
+    items,
+    selectedSquares,
+    updateSquares,
+    handleSave,
+    handleClear,
+  } = useUserItems(currentUser);
   
   const handleDeleteAccount = async () => {
-    const userId = getUserId(user());
+    const userId = currentUser && 'id' in currentUser ? currentUser.id : currentUser;
     if (!userId) return;
     
     if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
@@ -49,80 +37,11 @@ const Board: Component = () => {
       });
       
       if (!response.ok) throw new Error('Failed to delete account');
-      
       await logout();
       navigate('/');
     } catch (error) {
       console.error('Error deleting account:', error);
       alert('Failed to delete account. Please try again.');
-    }
-  };
-  const currentUser = user();
-  
-  // Initialize with empty array if no items exist
-  const [items, setItems] = createSignal<Item[]>([]);
-  
-  // Load items when user changes
-  createEffect(() => {
-    console.log('Current user changed:', currentUser);
-    if (!currentUser) {
-      console.log('No current user, clearing items');
-      setItems([]);
-      setSelectedSquares([]);
-      return;
-    }
-    
-    const userId = typeof currentUser === 'string' ? currentUser : currentUser.id;
-    console.log('Fetching items for user:', userId);
-    
-    getItems(userId)
-      .then(data => {
-        console.log('Fetched items:', data);
-        setItems(data);
-        
-        // If there are saved items, load the most recent one into selectedSquares
-        if (data.length > 0) {
-          try {
-            const lastItem = data[0]; // Most recent item is first
-            const squares = JSON.parse(lastItem.data);
-            console.log('Setting selected squares from saved data:', squares);
-            setSelectedSquares(Array.isArray(squares) ? squares : []);
-          } catch (error) {
-            console.error('Error parsing saved squares:', error);
-            setSelectedSquares([]);
-          }
-        } else {
-          setSelectedSquares([]);
-        }
-      })
-      .catch(error => {
-        console.error('Error loading user items:', error);
-        setSelectedSquares([]);
-      });
-  });
-
-  const [selectedSquares, setSelectedSquares] = createSignal<SelectedSquares>([]);
-  const saveAction = useAction(refetchItems);
-  const deleteAction = useAction(deleteItems);
-
-  const updateSquares = (squares: SelectedSquares) => {
-    if (!currentUser) return;
-    setSelectedSquares(squares);
-    const userId = typeof currentUser === 'string' ? currentUser : currentUser.id;
-    saveAction({ userId, data: squares }).catch(console.error);
-  };
-
-  const handleSave = async () => {
-    if (!currentUser) return;
-    
-    try {
-      // Use the server action to save items
-      const userId = typeof currentUser === 'string' ? currentUser : currentUser.id;
-      const newItem = await saveUserItems(userId, JSON.stringify(selectedSquares()));
-      setItems(prev => [newItem, ...prev.slice(0, 9)]); // Keep only last 10 items
-      setSelectedSquares([]);
-    } catch (error) {
-      console.error('Error saving items:', error);
     }
   };
 
@@ -136,18 +55,6 @@ const Board: Component = () => {
   const handleRandomSelection = () => updateSquares(
     Array.from({ length: 4 }, () => Math.floor(Math.random() * 49))
   );
-  const handleClear = async () => {
-    if (!currentUser) return;
-    
-    try {
-      // Use the server action to delete all user items
-      await deleteAction(currentUser);
-      setItems([]);
-      setSelectedSquares([]);
-    } catch (error) {
-      console.error('Error clearing items:', error);
-    }
-  };
   const handleDirection = (dir: Direction) => moveSquares(
     selectedSquares(), dir
   ).then(updateSquares).catch(console.error);
