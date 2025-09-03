@@ -52,9 +52,25 @@ const Board: Component = () => {
     updateSquares(update);
   };
 
-  const handleRandomSelection = () => updateSquares(
-    Array.from({ length: 4 }, () => Math.floor(Math.random() * 49))
-  );
+  // Predefined sets of square selections
+  const predefinedSelections = [
+    [0, 1, 2, 3],
+    [5, 6, 7, 8],
+    [10, 11, 12, 13],
+    [15, 16, 17, 18],
+    [20, 21, 22, 23],
+    [25, 26, 27, 28],
+    [30, 31, 32, 33],
+    [35, 36, 37, 38],
+    [40, 41, 42, 43],
+    [45, 46, 47, 48]
+  ];
+
+  const handleRandomSelection = () => {
+    const randomIndex = Math.floor(Math.random() * predefinedSelections.length);
+    updateSquares([...predefinedSelections[randomIndex]]);
+  };
+
   const handleDirection = (dir: Direction) => moveSquares(
     selectedSquares(), dir
   ).then(updateSquares).catch(console.error);
