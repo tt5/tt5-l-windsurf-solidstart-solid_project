@@ -1,8 +1,10 @@
-import { createSignal, createEffect } from 'solid-js';
+import { createSignal, createEffect, createMemo } from 'solid-js';
 import { query, action, useAction } from '@solidjs/router';
 import type { Item, SelectedSquares } from '../types/board';
 import { fetchUserItems, saveUserItems, clearUserItems } from '../services/boardService';
 import { getUserId } from '../utils/userUtils';
+
+const DEFAULT_SELECTION = [24]; // Center of 7x7 grid
 
 export const useUserItems = (currentUser: any) => {
   const [items, setItems] = createSignal<Item[]>([]);
@@ -46,7 +48,7 @@ export const useUserItems = (currentUser: any) => {
           try {
             const lastItem = data[0];
             const squares = JSON.parse(lastItem.data);
-            setSelectedSquares(Array.isArray(squares) ? squares : []);
+            setSelectedSquares(Array.isArray(squares) && squares.length > 0 ? squares : [...DEFAULT_SELECTION]);
           } catch {
             setSelectedSquares([]);
           }

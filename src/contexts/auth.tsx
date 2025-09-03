@@ -1,4 +1,4 @@
-import { createContext, createSignal, useContext, type ParentComponent, onMount } from 'solid-js';
+import { createContext, createEffect, createSignal, useContext, type ParentComponent } from 'solid-js';
 
 type User = { id: string; username: string } | null;
 interface AuthStore {
@@ -19,16 +19,15 @@ const createAuthStore = (): AuthStore => {
     userData ? localStorage.setItem('user', JSON.stringify(userData)) : localStorage.removeItem('user');
   };
 
-  onMount(() => {
+  createEffect(() => {
     if (typeof window === 'undefined') return;
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
-        updateUser(typeof parsed === 'string' 
-          ? { id: `user_${Date.now()}`, username: parsed }
-          : parsed
-        );
+        if (parsed && typeof parsed === 'object') {
+          updateUser(parsed);
+        }
       } catch {
         updateUser(null);
       }
@@ -36,7 +35,8 @@ const createAuthStore = (): AuthStore => {
   });
 
   const login = (username: string) => {
-    const userData = { id: createUserId(username), username };
+    const userId = createUserId(username);
+    const userData = { id: userId, username };
     updateUser(userData);
     return userData;
   };

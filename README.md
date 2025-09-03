@@ -1,53 +1,77 @@
-# Interactive Grid Game
+# SolidStart Application
 
-An interactive grid-based game built with SolidJS and SolidStart, featuring a persistent game state stored in SQLite.
+A modern web application built with SolidJS and SolidStart, featuring user authentication and interactive components.
 
-## Features
+## ✨ Features
 
-- Interactive 7x7 grid with selectable squares
-- Persistent game state using SQLite
-- Real-time updates with SolidJS reactivity
-- Responsive design that works on desktop and mobile
-- Directional controls for moving selections
-- Random selection and clear all functionality
+- 🔐 User authentication (login/logout/delete account)
+- 🎮 Interactive game components
+- 📱 Responsive design with mobile support
+- 🗃️ SQLite database for data persistence
+- ⚡ Real-time reactivity with SolidJS
+- 🎨 Modular CSS with CSS Modules
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-- [SolidJS](https://www.solidjs.com/) - Reactive JavaScript library
-- [SolidStart](https://start.solidjs.com/) - Full-stack framework
-- [SQLite](https://www.sqlite.org/) - Embedded database
-- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) - SQLite3 Node.js addon
-- [Vite](https://vitejs.dev/) - Build tool and dev server
+- **Frontend**:
+  - [SolidJS](https://www.solidjs.com/) - Reactive JavaScript library
+  - [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
+  - [SolidStart](https://start.solidjs.com/) - Full-stack framework
+  - [Vite](https://vitejs.dev/) - Build tool and dev server
 
-## Prerequisites
+- **Backend**:
+  - [SQLite](https://www.sqlite.org/) - Embedded database
+  - [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) - High-performance SQLite3
+
+## 🚀 Getting Started
+
+### Prerequisites
 
 - Node.js 22 or higher
 - npm or pnpm
-- SQLite3 (for development database)
 
-## Getting Started
+### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/solid-project.git
-   cd solid-project
+   git clone https://github.com/tt5/tt5-l-windsurf-solidstart-solid_project.git
+   cd tt5-l-windsurf-solidstart-solid_project
    ```
 
 2. Install dependencies:
    ```bash
-   npm install
-   # or
    pnpm install
    ```
 
 3. Start the development server:
    ```bash
-   npm run dev
-   # or
    pnpm dev
    ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 📂 Project Structure
+
+```
+src/
+├── components/    # Reusable UI components
+├── contexts/     # Application state management
+├── routes/       # Page components
+├── lib/          # Server-side code and utilities
+└── hooks/        # Custom React hooks
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Database Setup
 
