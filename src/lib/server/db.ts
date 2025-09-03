@@ -147,28 +147,58 @@ export const getUserItems = async (userId: string): Promise<Item[]> => {
 };
 
 /**
- * Add a new item for a specific user
+ * Add a new item for a specific user, keeping only the 5 most recent items
  */
 export const addUserItem = async (userId: string, data: string): Promise<Item> => {
   const tableName = await ensureUserTable(userId);
   const db = await getDb();
   
-  const result = await db.run(
-    `INSERT INTO ${tableName} (data) VALUES (?)`,
-    [data]
-  );
+  // Start a transaction
+  await db.exec('BEGIN TRANSACTION');
   
-  const item = await db.get(
-    `SELECT id, data, created_at_ms as createdAtMs
-     FROM ${tableName}
-     WHERE id = ?`,
-    [result.lastID]
-  );
-  
-  return {
-    ...item,
-    created_at: new Date(item.createdAtMs).toISOString()
-  };
+  try {
+    // Insert the new item
+    const result = await db.run(
+      `INSERT INTO ${tableName} (data) VALUES (?)`,
+      [data]
+    );
+    
+    // Get the newly inserted item
+    const item = await db.get(
+      `SELECT id, data, created_at_ms as createdAtMs
+       FROM ${tableName}
+       WHERE id = ?`,
+      [result.lastID]
+    );
+    
+    // Get the count of items
+    const countResult = await db.get(`SELECT COUNT(*) as count FROM ${tableName}`);
+    
+    // If we have more than 5 items, delete the oldest ones
+    if (countResult.count > 5) {
+      await db.run(
+        `DELETE FROM ${tableName}
+         WHERE id IN (
+           SELECT id FROM ${tableName}
+           ORDER BY created_at_ms ASC
+           LIMIT ?
+         )`,
+        [countResult.count - 5]
+      );
+    }
+    
+    // Commit the transaction
+    await db.exec('COMMIT');
+    
+    return {
+      ...item,
+      created_at: new Date(item.createdAtMs).toISOString()
+    };
+  } catch (error) {
+    // Rollback the transaction on error
+    await db.exec('ROLLBACK');
+    throw error;
+  }
 };
 
 /**
