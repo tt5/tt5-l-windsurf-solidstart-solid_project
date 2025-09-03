@@ -82,7 +82,7 @@ const Board: Component = () => {
       dir === 'up' ? y - 1 : dir === 'down' ? y + 1 : y
     ];
     
-    return moveSquares(selectedSquares(), dir)
+    return moveSquares(selectedSquares(), dir, [x, y])
       .then((squares) => {
         updateSquares(squares);
         setCurrentPosition(newPosition);

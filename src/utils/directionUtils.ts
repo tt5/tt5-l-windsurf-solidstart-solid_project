@@ -37,10 +37,15 @@ const moveIndex = (index: number, direction: Direction): number => {
 
 export const moveSquares = async (
   currentSquares: number[],
-  direction: Direction
+  direction: Direction,
+  currentPosition: [number, number]
 ): Promise<number[]> => {
   try {
     const borderIndices = getBorderIndices(direction);
+
+    const borderCoordinates = borderIndices.map(i => 
+      [(i % 7) - currentPosition[0], Math.floor(i / 7) - currentPosition[1]]
+    );
     
     // Move existing squares
     const movedSquares = currentSquares
@@ -50,9 +55,27 @@ export const moveSquares = async (
     // Get base points for each border index
     const basePoints = await getBasePoints(borderIndices.length);
     
-    // Convert base points to numbers by adding x and y
-    const newSquares = basePoints
-      .map(([x, y]) => x + y);
+    const newSquares = borderCoordinates.flatMap(
+      ([x,y]) => basePoints.map(([i,j]) => {
+        let xdiff = Math.abs(x - i);
+        let ydiff = Math.abs(y - j);
+        if (xdiff === ydiff) {
+          return ((x + currentPosition[0]) + (y + currentPosition[1]) * 7)
+        }
+        if (xdiff >= ydiff) {
+          const temp = xdiff
+          xdiff = ydiff
+          ydiff = temp
+        }
+        if (ydiff === 0) {
+          return x + y * 7
+        }
+        const isit = xdiff % ydiff;
+        if (isit === 0) {
+          return x + y * 7;
+        }
+      })
+    );
 
     // Combine and remove duplicates
     return [...new Set([...movedSquares, ...newSquares])];
