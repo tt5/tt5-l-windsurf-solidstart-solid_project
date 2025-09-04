@@ -1,52 +1,48 @@
-import { APIEvent, json } from 'solid-start';
+import { APIEvent } from '@solidjs/start/server';
 import { getDb } from '~/lib/server/db';
-import { getSession } from '@solid-mediakit/auth';
+import { withAuth } from '~/middleware/auth';
 
-type AuthAction = 'login' | 'logout' | 'delete-account';
-
-export async function POST({ request }: APIEvent) {
-  const { action, username } = await request.json();
-  
-  switch (action as AuthAction) {
-    case 'login':
-      return handleLogin(username);
-    case 'logout':
-      return handleLogout(request);
-    case 'delete-account':
-      return handleDeleteAccount(request);
-    default:
-      return json({ error: 'Invalid action' }, { status: 400 });
-  }
-}
-
-async function handleLogin(username: string) {
-  if (!username) {
-    return json({ error: 'Username is required' }, { status: 400 });
-  }
-  
-  // In a real app, you would validate credentials here
-  const userId = `user_${username.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-  
-  return json({
-    user: { id: userId, username },
-    token: 'dummy-jwt-token' // In production, use a real JWT
+function json(data: any, { status = 200, headers = {} } = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
   });
 }
 
-async function handleLogout(request: Request) {
-  // In a real app, you would invalidate the session/token
-  return json({ success: true });
-}
+type AuthAction = 'delete-account';
 
-async function handleDeleteAccount(request: Request) {
-  const session = await getSession(request);
-  if (!session) {
-    return json({ error: 'Not authenticated' }, { status: 401 });
+export const POST = withAuth(async ({ request, user }) => {
+  const { action } = await request.json();
+  
+  switch (action as AuthAction) {
+    case 'delete-account':
+      return handleDeleteAccount(user.userId);
+    default:
+      return json({ error: 'Invalid action' }, { status: 400 });
   }
+});
 
+async function handleDeleteAccount(userId: string) {
+  let db;
   try {
-    const db = await getDb();
-    await db.run('DELETE FROM users WHERE id = ?', [session.userId]);
+    db = await getDb();
+    // Delete user data from all related tables
+    await db.run('BEGIN');
+    await db.run('DELETE FROM user_items WHERE user_id = ?', [userId]);
+    await db.run('DELETE FROM base_points WHERE user_id = ?', [userId]);
+    await db.run('DELETE FROM users WHERE id = ?', [userId]);
+    await db.run('COMMIT');
+    
+    return json({ success: true });
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    await db?.run('ROLLBACK');
+    return json({ error: 'Failed to delete account' }, { status: 500 });
+  }
+}
     return json({ success: true });
   } catch (error) {
     console.error('Error deleting account:', error);

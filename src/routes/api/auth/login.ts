@@ -1,4 +1,7 @@
 import { APIEvent } from '@solidjs/start/server';
+import { getDb, getBasePointRepository } from '~/lib/server/db';
+import { generateToken } from '~/lib/server/auth/jwt';
+import { serialize } from 'cookie';
 
 function json(data: any, { status = 200, headers = {} } = {}) {
   return new Response(JSON.stringify(data), {
@@ -9,10 +12,6 @@ function json(data: any, { status = 200, headers = {} } = {}) {
     },
   });
 }
-import { getDb, getBasePointRepository } from '~/lib/server/db';
-import jwt from 'jsonwebtoken';
-const { sign } = jwt;
-import { serialize } from 'cookie';
 
 type LoginRequest = {
   username: string;
@@ -52,13 +51,10 @@ export async function POST({ request }: APIEvent) {
       await basePointRepo.add(user.id, 0, 0);
     }
 
-    // In a real app, use a proper JWT secret from environment variables
-    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-    const token = sign(
-      { userId: user.id, username: user.username },
-      jwtSecret,
-      { expiresIn: '7d' }
-    );
+    const token = generateToken({
+      userId: user.id,
+      username: user.username
+    });
 
     // Set HTTP-only cookie
     const cookie = serialize('auth_token', token, {
