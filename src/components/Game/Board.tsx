@@ -1,4 +1,4 @@
-import { Component, createEffect, createSignal, For, onCleanup, onMount } from 'solid-js';
+import { Component, createEffect, createResource, createSignal, For, onCleanup, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
@@ -91,22 +91,16 @@ const Board: Component = () => {
   });
 
   const {
-    items,
     selectedSquares,
     updateSquares,
-    handleSave,
-    handleClear,
   } = useUserItems(currentUser, { onClear: resetPosition });
   
   // Fetch base points for the current user
   const fetchBasePoints = async () => {
     if (!currentUser) {
-      console.log('No current user, skipping base points fetch');
       setBasePoints([]);
       return;
     }
-    
-    console.log('Fetching base points for user:', currentUser.id);
     
     try {
       const response = await fetch('/api/base-points', {
@@ -116,48 +110,26 @@ const Board: Component = () => {
         },
       });
       
-      console.log('Base points response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Failed to fetch base points:', response.status, errorText);
-        return;
+      if (response.ok) {
+        const data = await response.json();
+        if (data && Array.isArray(data.basePoints)) {
+          setBasePoints(data.basePoints);
+        } else {
+          setBasePoints([]);
+        }
       }
-      
-      const data = await response.json();
-      console.log('Received base points data:', data);
-      
-      if (data && Array.isArray(data.basePoints)) {
-        console.log(`Setting ${data.basePoints.length} base points`);
-        setBasePoints(data.basePoints);
-      } else {
-        console.error('Invalid base points data format:', data);
-        setBasePoints([]);
-      }
-    } catch (error) {
-      console.error('Error fetching base points:', error);
+    } catch {
+      // Silently handle errors
     }
   };
 
   // Handle adding a new base point
   const handleAddBasePoint = async (x: number, y: number) => {
-    if (!currentUser) {
-      console.error('Cannot add base point: No current user');
-      return;
-    }
-    
-    if (isSaving()) {
-      console.log('Already saving, ignoring click');
-      return;
-    }
+    if (!currentUser || isSaving()) return;
     
     setIsSaving(true);
-    console.log('[handleAddBasePoint] Starting to add base point', { x, y, userId: currentUser.id });
     
     try {
-      const requestBody = JSON.stringify({ x, y });
-      console.log('Sending request to /api/base-points with body:', requestBody);
-      
       const response = await fetch('/api/base-points', {
         method: 'POST',
         headers: { 
@@ -165,21 +137,17 @@ const Board: Component = () => {
           'Accept': 'application/json'
         },
         credentials: 'include',
-        body: requestBody
+        body: JSON.stringify({ x, y })
       });
       
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to save base point: ${response.status} ${errorText}`);
+        throw new Error('Failed to save base point');
       }
       
       const responseData = await response.json();
-      console.log('Received response:', responseData);
-      
-      // The server returns the base point directly, not nested under 'basePoint'
       setBasePoints(prev => [...prev, responseData]);
-    } catch (error) {
-      console.error('Error saving base point:', error);
+    } catch {
+      // Silently handle errors
     } finally {
       setIsSaving(false);
     }
@@ -189,34 +157,20 @@ const Board: Component = () => {
   const isBasePoint = (x: number, y: number) => {
     try {
       const points = basePoints();
-      if (!Array.isArray(points)) {
-        console.error('basePoints is not an array:', points);
-        return false;
-      }
+      if (!Array.isArray(points)) return false;
       
       const [playerX, playerY] = currentPosition();
       const relX = x - playerX;
       const relY = y - playerY;
       
-      console.log(`Checking base point at (${x},${y}), relative: (${relX},${relY})`);
-      console.log('Current base points:', points);
-      
-      const isBP = points.some(bp => {
-        if (!bp || typeof bp.x !== 'number' || typeof bp.y !== 'number') {
-          console.error('Invalid base point structure:', bp);
-          return false;
-        }
-        const match = bp.x === relX && bp.y === relY;
-        if (match) {
-          console.log(`Found matching base point:`, bp);
-        }
-        return match;
-      });
-      
-      console.log(`Base point at (${x},${y}) ${isBP ? 'found' : 'not found'}`);
-      return isBP;
-    } catch (error) {
-      console.error('Error in isBasePoint:', error);
+      return points.some(bp => 
+        bp && 
+        typeof bp.x === 'number' && 
+        typeof bp.y === 'number' && 
+        bp.x === relX && 
+        bp.y === relY
+      );
+    } catch {
       return false;
     }
   };
@@ -234,31 +188,24 @@ const Board: Component = () => {
     const userId = currentUser && 'id' in currentUser ? currentUser.id : currentUser;
     if (!userId) return;
     
-    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      return;
-    }
+    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) return;
     
     try {
-      const response = await fetch('/api/auth/delete-account', {
+      const response = await fetch('/api/delete-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })
       });
       
-      if (!response.ok) throw new Error('Failed to delete account');
-      await logout();
-      navigate('/');
-    } catch (error) {
-      console.error('Error deleting account:', error);
+      if (response.ok) {
+        await logout();
+        navigate('/');
+      } else {
+        throw new Error('Failed to delete account');
+      }
+    } catch {
       alert('Failed to delete account. Please try again.');
     }
-  };
-
-  const toggleSquare = async (index: number) => {
-    const update = selectedSquares().includes(index) 
-      ? selectedSquares().filter(i => i !== index)
-      : [...selectedSquares(), index];
-    updateSquares(update);
   };
 
   const handleSquareClick = async (index: number) => {
@@ -295,33 +242,29 @@ const Board: Component = () => {
       console.error('Error saving base point:', error);
     }
   };
-  
-  const generateSelection = (x: number, y: number) => {
-    return Array.from(
-      { length: BOARD_CONFIG.GRID_SIZE },
-      (_, i) => x + (y + i) * BOARD_CONFIG.GRID_SIZE
-    );
-  };
 
-  const handleRandomSelection = async () => {
-    try {
-      const response = await fetch('/api/calculate-squares', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          borderIndices: Array(BOARD_CONFIG.GRID_SIZE).fill(0).map((_, i) => i),
-          currentPosition: currentPosition(),
-          direction: 'right' // Default direction for initial selection
-        })
-      });
-      
-      if (!response.ok) throw new Error('Failed to fetch random selection');
-      const { squares } = await response.json();
-      updateSquares(squares);
-    } catch (error) {
-      console.error('Error in handleRandomSelection:', error);
+  // Create a resource for the async border calculation
+  const [borderData, { refetch: calculateBorder }] = createResource(async () => {
+    const response = await fetch('/api/calculate-squares', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        borderIndices: Array(BOARD_CONFIG.GRID_SIZE).fill(0).map((_, i) => i),
+        currentPosition: currentPosition(),
+        direction: 'right' // Default direction for initial selection
+      })
+    });
+    
+    if (!response.ok) throw new Error('Failed to calculate border');
+    return response.json();
+  });
+
+  // Update squares when border data changes
+  createEffect(() => {
+    if (borderData()) {
+      updateSquares(borderData().squares);
     }
-  };
+  });
 
   const handleDirection = (dir: Direction) => {
     const [x, y] = currentPosition();
@@ -338,10 +281,6 @@ const Board: Component = () => {
       .catch(console.error);
   };
 
-  const buttonHandlers = {
-    'Random': handleRandomSelection,
-    'Clear All': handleClear
-  } as const;
 
   return (
     <div class={styles.board}>
@@ -383,7 +322,7 @@ const Board: Component = () => {
               }}
               onContextMenu={(e) => {
                 e.preventDefault();
-                toggleSquare(index);
+                // Right click does nothing now
               }}
               title={isBP ? 'Base Point' : 'Left-click to add base point\nRight-click to select'}
             >
