@@ -1,4 +1,4 @@
-import { Component, createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { Component, createSignal, For, onCleanup, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
@@ -6,38 +6,47 @@ import { useUserItems } from '../../hooks/useUserItems';
 import type { Direction, Item, Point } from '../../types/board';
 import styles from './Board.module.css';
 
-type Direction = 'up' | 'down' | 'left' | 'right';
-
-type Point = [number, number];
+// Board configuration
+const BOARD_CONFIG = {
+  GRID_SIZE: 7, // 7x7 grid
+  DEFAULT_POSITION: [0, 0] as Point,
+  DIRECTION_MAP: {
+    'ArrowUp': 'up',
+    'ArrowDown': 'down',
+    'ArrowLeft': 'left',
+    'ArrowRight': 'right'
+  } as const,
+  BUTTONS: [
+    { label: 'Random', className: 'randomButton' },
+    { label: 'Clear All', className: 'clearButton' }
+  ] as const,
+  DIRECTIONS: [
+    { key: 'up', label: '↑ Up' },
+    { key: 'left', label: '← Left' },
+    { key: 'right', label: 'Right →' },
+    { key: 'down', label: '↓ Down' }
+  ] as const
+} as const;
 
 const Board: Component = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const currentUser = user();
-  const [currentPosition, setCurrentPosition] = createSignal<Point>([0, 0]);
+  const [currentPosition, setCurrentPosition] = createSignal<Point>([...BOARD_CONFIG.DEFAULT_POSITION]);
   const [activeDirection, setActiveDirection] = createSignal<Direction | null>(null);
   
-  const resetPosition = () => setCurrentPosition([0, 0]);
+  const resetPosition = () => setCurrentPosition([...BOARD_CONFIG.DEFAULT_POSITION]);
   
   // Handle keyboard events
   const handleKeyDown = (e: KeyboardEvent) => {
     // Only process arrow keys
-    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    if (!(e.key in BOARD_CONFIG.DIRECTION_MAP)) return;
     
     e.preventDefault();
     
-    const directionMap: Record<string, Direction> = {
-      'ArrowUp': 'up',
-      'ArrowDown': 'down',
-      'ArrowLeft': 'left',
-      'ArrowRight': 'right'
-    };
-    
-    const direction = directionMap[e.key];
-    if (direction) {
-      setActiveDirection(direction);
-      handleDirection(direction);
-    }
+    const direction = BOARD_CONFIG.DIRECTION_MAP[e.key as keyof typeof BOARD_CONFIG.DIRECTION_MAP];
+    setActiveDirection(direction);
+    handleDirection(direction);
   };
   
   const handleKeyUp = (e: KeyboardEvent) => {
@@ -89,30 +98,38 @@ const Board: Component = () => {
     }
   };
 
-  const toggleSquare = (i: number) => {
-    const update = selectedSquares().includes(i) 
-      ? selectedSquares().filter(j => j !== i)
-      : [...selectedSquares(), i];
+  const toggleSquare = (index: number) => {
+    const update = selectedSquares().includes(index) 
+      ? selectedSquares().filter(i => i !== index)
+      : [...selectedSquares(), index];
     updateSquares(update);
   };
 
-  const basePoints = [[0,0], [2,3]]
-
   const generateSelection = (x: number, y: number) => {
-    const borderIndices = [[0,0],[0,1],[0,2],[0,3],[0,4],[0,5],[0,6]]
-    return borderIndices.map(([i,j]) => i + j + x + y)
+    return Array.from(
+      { length: BOARD_CONFIG.GRID_SIZE },
+      (_, i) => x + (y + i) * BOARD_CONFIG.GRID_SIZE
+    );
   };
 
-  // Predefined sets of square selections
-  const predefinedSelections = () => {
-    const selection = basePoints.map(([x,y]) => generateSelection(x, y));
-    return selection;
-  }
-
-  const handleRandomSelection = () => {
-    const selections = predefinedSelections();
-    const randomIndex = Math.floor(Math.random() * selections.length);
-    updateSquares([...selections[randomIndex]]);
+  const handleRandomSelection = async () => {
+    try {
+      const response = await fetch('/api/calculate-squares', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          borderIndices: Array(BOARD_CONFIG.GRID_SIZE).fill(0).map((_, i) => i),
+          currentPosition: currentPosition(),
+          direction: 'right' // Default direction for initial selection
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch random selection');
+      const { squares } = await response.json();
+      updateSquares(squares);
+    } catch (error) {
+      console.error('Error in handleRandomSelection:', error);
+    }
   };
 
   const handleDirection = (dir: Direction) => {
@@ -130,17 +147,10 @@ const Board: Component = () => {
       .catch(console.error);
   };
     
-  const buttons = [
-    ['Random', handleRandomSelection, styles.randomButton],
-    ['Clear All', handleClear, styles.clearButton]
-  ] as const;
-
-  const directions = [
-    ['up', '↑ Up', styles.directionButton],
-    ['left', '← Left', styles.directionButton],
-    ['right', 'Right →', styles.directionButton],
-    ['down', '↓ Down', styles.directionButton]
-  ] as const;
+  const buttonHandlers = {
+    'Random': handleRandomSelection,
+    'Clear All': handleClear
+  } as const;
 
   return (
     <div class={styles.board}>
@@ -169,38 +179,53 @@ const Board: Component = () => {
         </ul>
         
         <div class={styles.controls}>
-          {buttons.map(([label, onClick, className]) => (
-            <button {...{class: className, onClick, children: label}} />
+          {BOARD_CONFIG.BUTTONS.map(({ label, className }) => (
+            <button 
+              key={label}
+              class={`${styles[className]}`}
+              onClick={buttonHandlers[label]}
+            >
+              {label}
+            </button>
           ))}
           <div class={styles.directionGroup}>
-            {directions.map(([dir, label, className]) => (
-              <button 
-                {...{
-                  class: `${className} ${activeDirection() === dir ? styles.active : ''}`,
-                  onClick: () => handleDirection(dir as Direction),
-                  children: label,
-                  'aria-label': `Move ${dir}`,
-                  'data-direction': dir
-                }}
-              />
+            {BOARD_CONFIG.DIRECTIONS.map(({ key, label }) => (
+              <button
+                key={key}
+                class={`${styles.directionButton} ${activeDirection() === key ? styles.active : ''}`}
+                onClick={() => handleDirection(key)}
+                aria-label={`Move ${key}`}
+                data-direction={key}
+              >
+                {label}
+              </button>
             ))}
           </div>
         </div>
       </div>
 
       <div class={styles.grid}>
-        {Array(49).fill(0).map((_, i) => (
-          <button 
-            onClick={() => toggleSquare(i)}
-            class={`${styles.square} ${selectedSquares().includes(i) ? styles.selected : ''}`}
-            aria-pressed={selectedSquares().includes(i)}
-            children={
+        {Array(BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE).fill(0).map((_, index) => {
+          const isSelected = selectedSquares().includes(index);
+          return (
+            <button 
+              key={index}
+              onClick={() => toggleSquare(index)}
+              class={`${styles.square} ${isSelected ? styles.selected : ''}`}
+              aria-pressed={isSelected}
+            >
               <svg width="100%" height="100%" viewBox="0 0 100 100" aria-hidden>
-                <circle cx="50" cy="50" r="40" fill={selectedSquares().includes(i) ? '#FFD700' : 'transparent'} stroke="#333"/>
+                <circle 
+                  cx="50" 
+                  cy="50" 
+                  r="40" 
+                  fill={isSelected ? '#FFD700' : 'transparent'} 
+                  stroke="#333"
+                />
               </svg>
-            }
-          />
-        ))}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
