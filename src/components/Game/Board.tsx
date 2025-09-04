@@ -1,4 +1,4 @@
-import { Component, createSignal, For, onCleanup, onMount } from 'solid-js';
+import { Component, createEffect, createSignal, For, onCleanup, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
@@ -28,12 +28,21 @@ const BOARD_CONFIG = {
   ] as const
 } as const;
 
+interface BasePoint {
+  id: number;
+  x: number;
+  y: number;
+  userId: string;
+}
+
 const Board: Component = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const currentUser = user();
   const [currentPosition, setCurrentPosition] = createSignal<Point>([...BOARD_CONFIG.DEFAULT_POSITION]);
   const [activeDirection, setActiveDirection] = createSignal<Direction | null>(null);
+  const [basePoints, setBasePoints] = createSignal<BasePoint[]>([]);
+  const [isSaving, setIsSaving] = createSignal(false);
   
   const resetPosition = () => setCurrentPosition([...BOARD_CONFIG.DEFAULT_POSITION]);
   
@@ -56,6 +65,21 @@ const Board: Component = () => {
   };
   
   // Add and remove event listeners
+  // Fetch base points when user changes
+  createEffect(async () => {
+    if (!currentUser) return;
+    
+    try {
+      const response = await fetch(`/api/base-points?userId=${currentUser.id}`);
+      if (response.ok) {
+        const { basePoints } = await response.json();
+        setBasePoints(basePoints || []);
+      }
+    } catch (error) {
+      console.error('Error fetching base points:', error);
+    }
+  });
+
   onMount(() => {
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
@@ -74,6 +98,65 @@ const Board: Component = () => {
     handleClear,
   } = useUserItems(currentUser, { onClear: resetPosition });
   
+  // Fetch base points for the current user
+  const fetchBasePoints = async () => {
+    if (!currentUser) return;
+    
+    try {
+      const response = await fetch(`/api/base-points?userId=${currentUser.id}`);
+      if (response.ok) {
+        const { basePoints: points } = await response.json();
+        setBasePoints(points || []);
+      }
+    } catch (error) {
+      console.error('Error fetching base points:', error);
+    }
+  };
+
+  // Handle adding a new base point
+  const handleAddBasePoint = async (x: number, y: number) => {
+    if (!currentUser || isSaving()) return;
+    
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/base-points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          x,
+          y,
+          userId: currentUser.id
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to save base point');
+      
+      const { basePoint } = await response.json();
+      setBasePoints(prev => [...prev, basePoint]);
+    } catch (error) {
+      console.error('Error saving base point:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Check if a grid cell is a base point
+  const isBasePoint = (x: number, y: number) => {
+    const [playerX, playerY] = currentPosition();
+    return basePoints().some(bp => 
+      bp.x === (x - playerX) && bp.y === (y - playerY)
+    );
+  };
+
+  // Fetch base points when user changes
+  createEffect(() => {
+    if (currentUser) {
+      fetchBasePoints();
+    } else {
+      setBasePoints([]);
+    }
+  });
+
   const handleDeleteAccount = async () => {
     const userId = currentUser && 'id' in currentUser ? currentUser.id : currentUser;
     if (!userId) return;
@@ -98,13 +181,48 @@ const Board: Component = () => {
     }
   };
 
-  const toggleSquare = (index: number) => {
+  const toggleSquare = async (index: number) => {
     const update = selectedSquares().includes(index) 
       ? selectedSquares().filter(i => i !== index)
       : [...selectedSquares(), index];
     updateSquares(update);
   };
 
+  const handleSquareClick = async (index: number) => {
+    if (!currentUser) return;
+    
+    // Calculate grid position from index
+    const gridX = index % BOARD_CONFIG.GRID_SIZE;
+    const gridY = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
+    
+    // Calculate relative position from player
+    const [playerX, playerY] = currentPosition();
+    const relativeX = gridX - playerX;
+    const relativeY = gridY - playerY;
+    
+    try {
+      const response = await fetch('/api/base-points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          x: relativeX,
+          y: relativeY,
+          userId: currentUser.id
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save base point');
+      }
+      
+      const { basePoint } = await response.json();
+      setBasePoints(prev => [...prev, basePoint]);
+      
+    } catch (error) {
+      console.error('Error saving base point:', error);
+    }
+  };
+  
   const generateSelection = (x: number, y: number) => {
     return Array.from(
       { length: BOARD_CONFIG.GRID_SIZE },
@@ -146,7 +264,7 @@ const Board: Component = () => {
       })
       .catch(console.error);
   };
-    
+
   const buttonHandlers = {
     'Random': handleRandomSelection,
     'Clear All': handleClear
@@ -169,60 +287,29 @@ const Board: Component = () => {
           </button>
         </div>
       </div>
-      <div class={styles.history}>
-        <h2>Current Position: x: {currentPosition()[0]} y: {currentPosition()[1]}</h2>
-        <h2>Selected Items History</h2>
-        <ul class={styles.historyList}>
-          <For each={items()}>{
-            (item: Item) => <li class={styles.historyItem}>{item.data}</li>
-          }</For>
-        </ul>
-        
-        <div class={styles.controls}>
-          {BOARD_CONFIG.BUTTONS.map(({ label, className }) => (
-            <button 
-              key={label}
-              class={`${styles[className]}`}
-              onClick={buttonHandlers[label]}
-            >
-              {label}
-            </button>
-          ))}
-          <div class={styles.directionGroup}>
-            {BOARD_CONFIG.DIRECTIONS.map(({ key, label }) => (
-              <button
-                key={key}
-                class={`${styles.directionButton} ${activeDirection() === key ? styles.active : ''}`}
-                onClick={() => handleDirection(key)}
-                aria-label={`Move ${key}`}
-                data-direction={key}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
+      
       <div class={styles.grid}>
-        {Array(BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE).fill(0).map((_, index) => {
+        {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
+          const x = index % BOARD_CONFIG.GRID_SIZE;
+          const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
           const isSelected = selectedSquares().includes(index);
+          const isBP = isBasePoint(x, y);
+          
           return (
-            <button 
+            <button
               key={index}
-              onClick={() => toggleSquare(index)}
-              class={`${styles.square} ${isSelected ? styles.selected : ''}`}
-              aria-pressed={isSelected}
+              class={`${styles.square} ${isSelected ? styles.selected : ''} ${isBP ? styles.basePoint : ''}`}
+              onClick={() => {
+                const [playerX, playerY] = currentPosition();
+                handleAddBasePoint(x - playerX, y - playerY);
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                toggleSquare(index);
+              }}
+              title={isBP ? 'Base Point' : 'Left-click to add base point\nRight-click to select'}
             >
-              <svg width="100%" height="100%" viewBox="0 0 100 100" aria-hidden>
-                <circle 
-                  cx="50" 
-                  cy="50" 
-                  r="40" 
-                  fill={isSelected ? '#FFD700' : 'transparent'} 
-                  stroke="#333"
-                />
-              </svg>
+              {isBP && <div class={styles.basePointMarker} />}
             </button>
           );
         })}

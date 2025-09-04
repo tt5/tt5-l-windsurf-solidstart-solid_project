@@ -131,6 +131,8 @@
   border-radius: 4px;
   transition: all 0.2s ease;
   border: 1px solid #e0e0e0;
+  position: relative;
+  padding: 0;
 }
 
 .square:hover {
@@ -142,5 +144,24 @@
 }
 
 .square.selected {
-  background-color: #f0f8ff;
+  background-color: #e3f2fd;
+  border-color: #2196F3;
+}
+
+/* Base Point Styles */
+.square.basePoint {
+  background-color: #e8f5e9;
+  border-color: #4CAF50;
+}
+
+.square.basePoint:hover {
+  background-color: #c8e6c9;
+}
+
+.basePointMarker {
+  width: 70%;
+  height: 70%;
+  background-color: #4CAF50;
+  border-radius: 50%;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
 }
