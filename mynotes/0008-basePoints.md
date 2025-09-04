@@ -6,3 +6,5 @@
 @mcp:sequential-thinking: Add a currentPosition of type Point to the board component. Initialize it with a starting value of [0,0]. Now everytime when the user moves update currentPosition.
 
 echo "\nJWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")" >> .env
+
+@mcp:sequential-thinking: @Login.tsx#L5-39 How is this form related to the login here @login.tsx#L15-17 

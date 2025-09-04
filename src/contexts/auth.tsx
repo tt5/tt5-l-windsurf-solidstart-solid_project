@@ -68,12 +68,22 @@ const createAuthStore = (): AuthStore => {
 
   const deleteAccount = async () => {
     try {
-      await fetch('/api/auth', {
+      const response = await fetch('/api/auth', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
         body: JSON.stringify({ action: 'delete-account' })
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete account');
+      }
+      
       return true;
-    } catch {
+    } catch (error) {
+      console.error('Delete account error:', error);
       return false;
     } finally {
       updateUser(null);

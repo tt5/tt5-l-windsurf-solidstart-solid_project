@@ -1,5 +1,6 @@
 import { createSignal } from 'solid-js';
 import { A, useNavigate, useLocation } from '@solidjs/router';
+import { useAuth } from '~/contexts/auth';
 
 export default function LoginForm() {
   const [username, setUsername] = createSignal('');
@@ -8,6 +9,7 @@ export default function LoginForm() {
   const [isLoading, setIsLoading] = createSignal(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const auth = useAuth();
 
   // Check for registration success message
   const registered = location.state?.registered;
@@ -36,8 +38,11 @@ export default function LoginForm() {
         throw new Error(data.error || 'Login failed');
       }
 
+      // Update auth context with the logged in user
+      auth.login(username());
+      
       // Redirect to game page after successful login
-      navigate('/game');
+      navigate('/game', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
