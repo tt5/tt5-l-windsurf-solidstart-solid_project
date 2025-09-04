@@ -24,14 +24,14 @@
   "dependencies": {
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.3",
-    "@solidjs/start": "^1.1.7",
+    "@solidjs/start": "^1.1.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/sqlite3": "^3.1.11",
     "jsonwebtoken": "^9.0.2",
-    "solid-js": "^1.9.9",
+    "solid-js": "^1.9.5",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
-    "vinxi": "^0.5.8"
+    "vinxi": "^0.5.7"
   },
   "engines": {
     "node": ">=22"
