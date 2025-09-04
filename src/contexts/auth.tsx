@@ -9,7 +9,18 @@ interface AuthStore {
 }
 
 const AuthContext = createContext<AuthStore>();
-const createUserId = (username: string) => `user_${username.toLowerCase().replace(/[^\w]/g, '_')}`;
+// This is a temporary function - in a real app, we should get the user ID from the server
+const createUserId = (username: string): string => {
+  // Generate a consistent hash-based ID for all usernames
+  const str = username.toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return 'user_' + Math.abs(hash).toString(16);
+};
 
 const createAuthStore = (): AuthStore => {
   const [user, setUser] = createSignal<User>(null);
