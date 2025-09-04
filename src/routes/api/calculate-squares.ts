@@ -1,5 +1,4 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { getSession } from '@solid-mediakit/auth';
 import { getBasePointRepository } from '~/lib/server/db';
 
 type CalculateSquaresRequest = {
