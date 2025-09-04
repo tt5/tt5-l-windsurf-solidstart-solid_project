@@ -4,6 +4,12 @@ import { BasePoint } from '../../types/board';
 export class BasePointRepository {
   constructor(private db: Database) {}
 
+  async getAll(): Promise<BasePoint[]> {
+    return this.db.all<BasePoint>(
+      'SELECT id, user_id as userId, x, y, created_at_ms as createdAtMs FROM base_points'
+    );
+  }
+
   async getByUser(userId: string): Promise<BasePoint[]> {
     return this.db.all<BasePoint>(
       'SELECT id, x, y, created_at_ms as createdAtMs FROM base_points WHERE user_id = ?',

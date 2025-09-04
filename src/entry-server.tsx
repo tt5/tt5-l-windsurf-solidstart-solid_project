@@ -1,7 +1,6 @@
 import { createHandler, StartServer } from "@solidjs/start/server";
 import { initializeServer } from './lib/server/init';
 
-// Initialize the database when the server starts
 initializeServer().catch(err => {
   console.error('Failed to initialize server:', err);
   process.exit(1);

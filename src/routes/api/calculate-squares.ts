@@ -1,4 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
+import { getSession } from '@solid-mediakit/auth';
+import { getBasePointRepository } from '~/lib/server/db';
 
 type CalculateSquaresRequest = {
   borderIndices: number[];
@@ -13,19 +15,32 @@ const directionMap = {
   'left': [-1, 0]
 } as const;
 
-
-
 export async function POST({ request }: APIEvent) {
   try {
     const { borderIndices, currentPosition, direction } = await request.json() as CalculateSquaresRequest;
     
+    // Get all base points from the database and remove duplicates
+    const basePointRepository = getBasePointRepository();
+    let basePoints = await basePointRepository.getAll();
+    
+    // Remove duplicate base points (same x, y coordinates)
+    const uniqueBasePoints = [
+      ...new Map(
+        basePoints.map(point => [`${point.x},${point.y}`, point])
+      ).values()
+    ];
+    
+    // Fallback to default if no base points exist
+    if (uniqueBasePoints.length === 0) {
+      uniqueBasePoints.push({ x: 0, y: 0, userId: 'default' });
+    }
+
     const borderCoordinates = borderIndices.map(i => 
       [(i % 7) - currentPosition[0], Math.floor(i / 7) - currentPosition[1]]
     );
-
-    let basePoints = [
-      [0,0],
-    ]
+    
+    // Convert base points to array of [x, y] arrays
+    const basePointCoords = uniqueBasePoints.map(p => [p.x, p.y]);
 
     const [dx, dy] = directionMap[direction];
 
@@ -33,7 +48,7 @@ export async function POST({ request }: APIEvent) {
       (x + currentPosition[0] + dx) + (y + currentPosition[1] + dy) * 7;
     
     const newSquares = borderCoordinates.flatMap(
-      ([x,y]) => basePoints.map(([i,j]) => {
+      ([x,y]) => basePointCoords.map(([i,j]) => {
         let xdiff = Math.abs(x - i);
         let ydiff = Math.abs(y - j);
         if (xdiff >= ydiff) [xdiff, ydiff] = [ydiff, xdiff];

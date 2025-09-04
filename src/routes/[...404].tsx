@@ -1,10 +1,8 @@
-import { Title } from '@solidjs/meta'
+import { Title } from '@solidjs/meta';
 
-export default function NotFound() {
-  return (
-    <main>
-      <Title>Not Found</Title>
-      <h1>Page Not Found</h1>
-    </main>
-  )
-}
+export default () => (
+  <main>
+    <Title>Not Found</Title>
+    <h1>Page Not Found</h1>
+  </main>
+);
