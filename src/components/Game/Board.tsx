@@ -373,6 +373,11 @@ const Board: Component = () => {
               key={index}
               class={`${styles.square} ${isSelected ? styles.selected : ''} ${isBP ? styles.basePoint : ''}`}
               onClick={() => {
+                // Don't add a base point if this square is already selected
+                if (isSelected) {
+                  console.log('Square is already selected, ignoring click');
+                  return;
+                }
                 const [playerX, playerY] = currentPosition();
                 handleAddBasePoint(x - playerX, y - playerY);
               }}
