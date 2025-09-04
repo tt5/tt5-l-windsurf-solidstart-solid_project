@@ -1,0 +1,23 @@
+.square {
+  aspect-ratio: 1;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  border: 1px solid #e0e0e0;
+}
+
+.square:hover {
+  background-color: #f5f5f5;
+}
+
+.square:active {
+  transform: scale(0.98);
+}
+
+.circle {
+  transition: all 0.2s ease;
+}

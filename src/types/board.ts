@@ -10,5 +10,3 @@ export interface Item {
 export interface ApiResponse {
   items: Item[];
 }
-
-export type SelectedSquares = number[];

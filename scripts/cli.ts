@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { createDatabaseConnection, ensureDbDirectory, backupDatabase, databaseExists } from './core/db.js';
+import { createDatabaseConnection, ensureDbDirectory, backupDatabase, databaseExists, DB_PATH } from './core/db.js';
 import { runMigrations } from './core/migrate.js';
 
 const program = new Command();
@@ -76,31 +76,51 @@ program
       
       try {
         // Get database info
-        const stats = await import('node:fs').then(fs => fs.statSync(db.name));
-        console.log(`🔍 Database: ${db.name}`);
+        const stats = await import('node:fs').then(fs => fs.statSync(DB_PATH));
+        console.log(`🔍 Database: ${DB_PATH}`);
         console.log(`💾 Size: ${(stats.size / 1024).toFixed(2)} KB`);
         
         // Get table info
-        const tables = db.prepare(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-        ).all() as { name: string }[];
+        const tables = await new Promise<any[]>((resolve, reject) => {
+          db.all(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+            (err, rows) => {
+              if (err) return reject(err);
+              resolve(rows as any[]);
+            }
+          );
+        });
         
         console.log(`\n📊 Tables (${tables.length}):`);
         
-        for (const { name } of tables) {
-          const count = db.prepare(`SELECT COUNT(*) as count FROM ${name}`).get() as { count: number };
+        // Get row counts for each table
+        for (const table of tables) {
+          const name = table.name;
+          const count = await new Promise<{count: number}>((resolve, reject) => {
+            db.get(`SELECT COUNT(*) as count FROM ${name}`, (err, row) => {
+              if (err) return reject(err);
+              resolve(row as {count: number});
+            });
+          });
           console.log(`- ${name}: ${count.count} rows`);
         }
         
         // Check migrations
         try {
-          const migrations = db.prepare('SELECT COUNT(*) as count FROM migrations').get() as { count: number };
+          const migrations = await new Promise<{count: number}>((resolve, reject) => {
+            db.get('SELECT COUNT(*) as count FROM migrations', (err, row) => {
+              if (err) return reject(err);
+              resolve(row as {count: number});
+            });
+          });
           console.log(`\n🔄 Applied migrations: ${migrations.count}`);
         } catch {
           console.log('\n⚠️  Migrations table not found');
         }
-        
+      } catch (error) {
+        console.error('❌ Error checking database status:', error);
       } finally {
+        // Close the database connection
         db.close();
       }
       

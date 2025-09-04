@@ -1,6 +1,11 @@
-// @refresh reload
 import { createHandler, StartServer } from "@solidjs/start/server";
-import './lib/server/init';
+import { initializeServer } from './lib/server/init';
+
+// Initialize the database when the server starts
+initializeServer().catch(err => {
+  console.error('Failed to initialize server:', err);
+  process.exit(1);
+});
 
 export default createHandler(() => (
   <StartServer

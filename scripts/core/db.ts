@@ -1,17 +1,21 @@
-import { Database } from 'better-sqlite3';
+import sqlite3 from 'sqlite3';
+const { Database } = sqlite3;
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdir, access, constants } from 'node:fs/promises';
+import { promisify } from 'util';
+
+type Database = sqlite3.Database;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = join(process.cwd(), 'data', 'app.db');
+export const DB_PATH = join(process.cwd(), 'data', 'app.db');
 const BACKUP_DIR = join(process.cwd(), 'data', 'backups');
 
 export interface Migration {
   id: string;
   description: string;
-  up: (db: Database) => void;
-  down?: (db: Database) => void;
+  up: (db: Database) => Promise<void>;
+  down?: (db: Database) => Promise<void>;
 }
 
 export async function ensureDbDirectory() {
@@ -19,22 +23,27 @@ export async function ensureDbDirectory() {
   await mkdir(BACKUP_DIR, { recursive: true });
 }
 
-let BetterSqlite3: any;
-
 export async function createDatabaseConnection(): Promise<Database> {
-  // Dynamic import to handle ESM properly
-  if (!BetterSqlite3) {
-    BetterSqlite3 = (await import('better-sqlite3')).default;
-  }
+  // Create the database directory if it doesn't exist
+  await ensureDbDirectory();
   
-  const db = new BetterSqlite3(DB_PATH);
-  
-  // Configure database with optimal settings
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
-  db.pragma('synchronous = NORMAL');
-  
-  return db;
+  return new Promise((resolve, reject) => {
+    // Create a new database connection
+    const db = new Database(DB_PATH, (err) => {
+      if (err) {
+        return reject(err);
+      }
+      
+      // Configure database with optimal settings
+      db.serialize(() => {
+        db.run('PRAGMA journal_mode = WAL;');
+        db.run('PRAGMA foreign_keys = ON;');
+        db.run('PRAGMA synchronous = NORMAL;');
+        
+        resolve(db);
+      });
+    });
+  });
 }
 
 export async function databaseExists(): Promise<boolean> {
@@ -81,7 +90,7 @@ export function applyMigration(db: Database, migration: Migration) {
 export const PATHS = {
   DB: DB_PATH,
   BACKUP_DIR,
-  getBackupPath: () => getBackupPath()
+  getBackupPath: getBackupPath
 };
 
 export default {

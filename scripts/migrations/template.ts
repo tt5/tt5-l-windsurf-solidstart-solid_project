@@ -1,4 +1,4 @@
-import { Database } from 'better-sqlite3';
+import { Database } from 'sqlite3';
 
 /**
  * Brief description of what this migration does

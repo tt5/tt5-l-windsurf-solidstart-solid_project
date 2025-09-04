@@ -1,6 +1,17 @@
-import { APIEvent, json } from 'solid-start';
-import { getDb } from '~/lib/server/db';
-import { sign } from 'jsonwebtoken';
+import { APIEvent } from '@solidjs/start/server';
+
+function json(data: any, { status = 200, headers = {} } = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+  });
+}
+import { getDb, getBasePointRepository } from '~/lib/server/db';
+import jwt from 'jsonwebtoken';
+const { sign } = jwt;
 import { serialize } from 'cookie';
 
 type LoginRequest = {
@@ -32,6 +43,13 @@ export async function POST({ request }: APIEvent) {
         { error: 'Invalid credentials' },
         { status: 401 }
       );
+    }
+
+    // Create base point if it doesn't exist for this user
+    const basePointRepo = getBasePointRepository();
+    const userBasePoints = await basePointRepo.getByUser(user.id);
+    if (userBasePoints.length === 0) {
+      await basePointRepo.add(user.id, 0, 0);
     }
 
     // In a real app, use a proper JWT secret from environment variables
