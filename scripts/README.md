@@ -6,48 +6,70 @@ This directory contains the database management scripts for the application.
 
 ### Prerequisites
 
-- Node.js 16+
+- Node.js 20+
 - SQLite3
-
-### Installation
-
-```bash
-# Install dependencies
-npm install better-sqlite3 @types/better-sqlite3
-```
 
 ## Available Commands
 
-### Using npm scripts
+### Database Initialization and Migration
 
 ```bash
-# Initialize a new database
+# Initialize a new database (creates required tables)
 npm run db:init
 
-# Run migrations
+# Run database migrations
 npm run db:migrate
 
-# Check database status
-npm run db:status
+# Check database status and verify integrity
+npm run db:check
 
-# Create a backup
-npm run db:backup
-
-# Reset the database (DANGEROUS!)
-npm run db:reset
+# Detailed database verification
+npm run db:verify
 ```
 
-### Using the CLI directly
+### Direct Script Usage
 
-You can also use the CLI directly:
+You can also run the scripts directly with `tsx`:
 
 ```bash
-# Install the CLI globally
-npm install -g .
+# Initialize database
+tsx scripts/migrate.ts init
 
-# Then use it from anywhere
-db --help
-db status
+# Run migrations
+tsx scripts/migrate.ts migrate
+
+# Check database status
+tsx scripts/check-db.ts
+
+# Detailed verification
+tsx scripts/check-db.ts verify
+```
+
+## Script Descriptions
+
+### `migrate.ts`
+
+A comprehensive database migration and initialization script that handles:
+- Database initialization with required tables
+- Running database migrations
+- Managing migration history
+
+### `check-db.ts`
+
+A database verification and health check script that provides:
+- Database connection verification
+- Table existence and structure validation
+- Row count statistics
+- Migration status
+- Data integrity checks
+
+## Best Practices
+
+1. **Always backup your database** before running migrations or initialization
+2. Use `db:check` regularly to verify database health
+3. Run `db:init` only when setting up a new environment
+4. Use `db:migrate` to apply database schema changes
+5. Check the output of verification scripts for any warnings or errors
 db migrate
 ```
 

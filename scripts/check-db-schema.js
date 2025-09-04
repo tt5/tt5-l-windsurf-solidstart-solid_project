@@ -1,49 +1,89 @@
-import sqlite3 from 'sqlite3';
-import { fileURLToPath } from 'url';
-import path from 'path';
+import { getDbConnection, getAppliedMigrations, tableExists } from './utils/db-utils.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const dbPath = path.join(process.cwd(), 'data', 'app.db');
-
-console.log('Checking database schema at:', dbPath);
-
-// Create a new database connection
-const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-    return;
+async function getTableInfo(db, tableName) {
+  try {
+    const [schema, count] = await Promise.all([
+      db.get('SELECT sql FROM sqlite_master WHERE type = ? AND name = ?', ['table', tableName]),
+      db.get(`SELECT COUNT(*) as count FROM ${tableName}`)
+    ]);
+    
+    return {
+      name: tableName,
+      schema: schema?.sql || 'N/A',
+      rowCount: count?.count || 0
+    };
+  } catch (error) {
+    console.error(`❌ Error fetching info for table ${tableName}:`, error.message);
+    return { name: tableName, error: error.message };
   }
+}
 
-  console.log('Connected to the database');
-
-  // Get all tables
-  db.all("SELECT name, sql FROM sqlite_master WHERE type='table'", [], (err, tables) => {
-    if (err) {
-      console.error('Error getting tables:', err.message);
-      return;
-    }
-
-    console.log('\n=== Tables in database ===');
-    tables.forEach(table => {
-      console.log(`\nTable: ${table.name}`);
-      console.log('Schema:', table.sql);
-    });
-
-    // Get migrations
-    db.all('SELECT * FROM migrations ORDER BY id', [], (err, migrations) => {
-      console.log('\n=== Applied Migrations ===');
-      if (err) {
-        console.error('Error getting migrations:', err.message);
-      } else {
-        migrations.forEach(m => {
-          const date = new Date(m.applied_at * 1000).toISOString();
-          console.log(`${m.id}. ${m.name} (applied at: ${date})`);
-        });
+async function checkDbSchema() {
+  console.log('\n=== Database Schema Check ===');
+  
+  try {
+    const db = await getDbConnection();
+    
+    try {
+      // Get all non-system tables
+      const tables = await db.all(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+      );
+      
+      // Get schema and row count for each table
+      console.log('\n📋 Database Tables:');
+      const tableInfo = [];
+      
+      for (const { name } of tables) {
+        const info = await getTableInfo(db, name);
+        tableInfo.push(info);
+        
+        if (!info.error) {
+          console.log(`\n🔹 ${name} (${info.rowCount} rows)`);
+          console.log(`   Schema: ${info.schema.split('(')[0]}(...)`);
+        }
       }
+      
+      // Show migrations status
+      console.log('\n🔄 Applied Migrations:');
+      if (await tableExists(db, 'migrations')) {
+        const migrations = await getAppliedMigrations(db);
+        
+        if (migrations.length > 0) {
+          const latest = migrations[migrations.length - 1];
+          console.log(`   ${migrations.length} migrations applied`);
+          console.log(`   Latest: ${latest.name} (${new Date(latest.applied_at * 1000).toISOString()})`);
+        } else {
+          console.log('   No migrations applied');
+        }
+      } else {
+        console.log('   Migrations table does not exist');
+      }
+      
+      return { success: true, tableCount: tableInfo.length };
+      
+    } finally {
+      await db.close();
+    }
+    
+  } catch (error) {
+    console.error('\n❌ Error checking database schema:', error.message);
+    return { success: false, error: error.message };
+  }
+}
 
-      // Close the database connection
-      db.close();
-    });
+// Run the check
+checkDbSchema()
+  .then(({ success, tableCount, error }) => {
+    if (success) {
+      console.log(`\n✅ Schema check completed (${tableCount} tables found)`);
+      process.exit(0);
+    } else {
+      console.log('\n❌ Schema check failed:', error);
+      process.exit(1);
+    }
+  })
+  .catch(error => {
+    console.error('\n❌ Unhandled error:', error);
+    process.exit(1);
   });
-});

@@ -1,54 +1,104 @@
-import { Database } from 'sqlite3';
-import { promisify } from 'util';
 import { join } from 'path';
 import { readdir } from 'fs/promises';
+import { getDbConnection } from './utils/db-utils';
 
 const MIGRATIONS_DIR = join(__dirname, 'migrations');
 
-async function getAppliedMigrations(db: Database): Promise<Set<string>> {
-  const all = promisify(db.all.bind(db));
-  
-  try {
-    const rows = await all('SELECT name FROM migrations');
-    return new Set(rows.map((r: any) => r.name));
-  } catch (error) {
-    // If migrations table doesn't exist yet, return empty set
-    return new Set();
-  }
+interface MigrationResult {
+  success: boolean;
+  applied: number;
+  error?: string;
 }
 
-async function runMigrations() {
-  const db = new Database('data/app.db');
-  const run = promisify(db.run.bind(db));
-  const all = promisify(db.all.bind(db));
+async function ensureMigrationsTable(db: any): Promise<void> {
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS migrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+async function runMigrations(): Promise<MigrationResult> {
+  console.log('\n=== Running Migrations ===');
   
   try {
-    // Ensure migrations directory exists
-    const migrationFiles = (await readdir(MIGRATIONS_DIR))
-      .filter(f => f.endsWith('.ts') && f !== 'index.ts')
-      .sort();
+    // 1. Initialize database connection
+    console.log('\n1. Connecting to database...');
+    const db = await getDbConnection();
     
-    const appliedMigrations = await getAppliedMigrations(db);
-    let migrationsRun = 0;
-    
-    for (const file of migrationFiles) {
-      const migrationName = file.replace(/\.ts$/, '');
+    try {
+      // 2. Ensure migrations table exists
+      await ensureMigrationsTable(db);
       
-      if (!appliedMigrations.has(migrationName)) {
-        console.log(`Running migration: ${migrationName}`);
-        const migration = await import(`./migrations/${migrationName}`);
-        await migration.up(db);
-        migrationsRun++;
+      // 3. Get migration files
+      const migrationFiles = (await readdir(MIGRATIONS_DIR))
+        .filter(f => f.endsWith('.ts') && f !== 'index.ts')
+        .sort();
+      
+      if (migrationFiles.length === 0) {
+        console.log('\nℹ️  No migration files found');
+        return { success: true, applied: 0 };
       }
+      
+      // 4. Get applied migrations
+      const appliedMigrations = new Set(
+        (await db.all('SELECT name FROM migrations')).map((m: any) => m.name)
+      );
+      
+      // 5. Find and run new migrations
+      const pendingMigrations = migrationFiles.filter(f => !appliedMigrations.has(f));
+      
+      if (pendingMigrations.length === 0) {
+        console.log(`\n✅ All ${migrationFiles.length} migrations already applied`);
+        return { success: true, applied: 0 };
+      }
+      
+      console.log(`\n2. Found ${pendingMigrations.length} new migrations to apply`);
+      
+      // 6. Run migrations in transaction
+      await db.run('BEGIN TRANSACTION');
+      
+      try {
+        for (const file of pendingMigrations) {
+          console.log(`\n   Applying: ${file}`);
+          const migration = await import(join(MIGRATIONS_DIR, file));
+          await migration.up(db);
+          await db.run('INSERT INTO migrations (name) VALUES (?)', [file]);
+          console.log(`   ✅ Applied`);
+        }
+        
+        await db.run('COMMIT');
+        console.log(`\n✅ Successfully applied ${pendingMigrations.length} migrations`);
+        return { success: true, applied: pendingMigrations.length };
+        
+      } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+      }
+      
+    } finally {
+      await db.close();
     }
     
-    console.log(`Migrations complete. ${migrationsRun} migrations were run.`);
   } catch (error) {
-    console.error('Migration failed:', error);
-    process.exit(1);
-  } finally {
-    db.close();
+    console.error('\n❌ Migration failed:', error.message);
+    return { success: false, applied: 0, error: error.message };
   }
 }
 
-runMigrations().catch(console.error);
+// Execute migrations
+runMigrations()
+  .then(({ success, applied, error }) => {
+    if (success) {
+      process.exit(0);
+    } else {
+      console.error('\n❌ Migration failed:', error);
+      process.exit(1);
+    }
+  })
+  .catch(error => {
+    console.error('\n❌ Unhandled error during migration:', error);
+    process.exit(1);
+  });

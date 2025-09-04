@@ -1,58 +1,98 @@
-import sqlite3 from 'sqlite3';
-import { fileURLToPath } from 'url';
+import { getDbConnection, getAllTables, getAppliedMigrations, tableExists } from './utils/db-utils.js';
+import fs from 'fs/promises';
 import path from 'path';
-import { promisify } from 'util';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const dbPath = path.join(__dirname, '..', 'data', 'app.db');
+const DB_PATH = path.join(process.cwd(), 'data', 'app.db');
 
-console.log(`Checking database at: ${dbPath}`);
-
-// Check if file exists
-import fs from 'fs';
-try {
-  const exists = fs.existsSync(dbPath);
-  console.log(`Database file exists: ${exists}`);
-  if (exists) {
-    const stats = fs.statSync(dbPath);
-    console.log(`Database size: ${stats.size} bytes`);
-    console.log(`Permissions: ${stats.mode.toString(8)}`);
+async function checkDatabaseFile() {
+  try {
+    const stats = await fs.stat(DB_PATH);
+    return {
+      exists: true,
+      size: stats.size,
+      permissions: (stats.mode & 0o777).toString(8).padStart(3, '0')
+    };
+  } catch (error) {
+    if (error.code === 'ENOENT') return { exists: false };
+    throw error;
   }
-} catch (error) {
-  console.error('Error checking file:', error);
 }
 
-// Try to open the database
-const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
-  if (err) {
-    console.error('Error opening database:', err);
-    return;
-  }
+async function checkDbDirect() {
+  console.log('\n=== Direct Database Check ===');
+  console.log(`Database path: ${DB_PATH}`);
   
-  console.log('Database opened successfully');
-  
-  // Try to query the tables
-  db.all("SELECT name FROM sqlite_master WHERE type='table'", (err, tables) => {
-    if (err) {
-      console.error('Error querying tables:', err);
-      return;
+  try {
+    // 1. Check database file
+    console.log('\n1. Checking database file...');
+    const dbInfo = await checkDatabaseFile();
+    
+    if (!dbInfo.exists) {
+      console.log('❌ Database file does not exist');
+      return { success: false, error: 'Database file not found' };
     }
     
-    console.log('Tables in database:', tables);
+    console.log(`✅ Database file exists (${dbInfo.size} bytes)`);
+    console.log(`   Permissions: ${dbInfo.permissions}`);
     
-    if (tables && tables.length > 0) {
-      // Try to query the migrations table
-      db.all("SELECT * FROM migrations", (err, migrations) => {
-        if (err) {
-          console.error('Error querying migrations:', err);
+    // 2. Open and check database
+    console.log('\n2. Connecting to database...');
+    const db = await getDbConnection(DB_PATH);
+    
+    try {
+      console.log('✅ Connected to database');
+      
+      // 3. Get all tables
+      console.log('\n3. Checking database tables...');
+      const tables = await getAllTables(db);
+      console.log(`✅ Found ${tables.length} tables`);
+      
+      if (tables.length > 0) {
+        console.log('\n   Tables:');
+        console.table(tables.map(t => ({
+          Name: t.name,
+          Type: t.type,
+          'Row Count': t.rowCount || 'N/A'
+        })));
+        
+        // 4. Check migrations
+        if (await tableExists(db, 'migrations')) {
+          const migrations = await getAppliedMigrations(db);
+          console.log(`\n✅ Found ${migrations.length} applied migrations`);
+          
+          if (migrations.length > 0) {
+            const latest = migrations[migrations.length - 1];
+            console.log(`   Latest migration: ${latest.name} (${new Date(latest.applied_at * 1000).toISOString()})`);
+          }
         } else {
-          console.log('Migrations:', migrations);
+          console.log('\n⚠️  Migrations table does not exist');
         }
-        db.close();
-      });
-    } else {
-      db.close();
+      }
+      
+      return { success: true, tableCount: tables.length };
+      
+    } finally {
+      await db.close();
     }
+    
+  } catch (error) {
+    console.error('\n❌ Error checking database:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// Run the check
+checkDbDirect()
+  .then(({ success, tableCount, error }) => {
+    if (success) {
+      console.log(`\n✅ Database check completed (${tableCount} tables found)`);
+      process.exit(0);
+    } else {
+      console.log('\n❌ Database check failed:', error);
+      process.exit(1);
+    }
+  })
+  .catch(error => {
+    console.error('\n❌ Unhandled error:', error);
+    process.exit(1);
   });
-});

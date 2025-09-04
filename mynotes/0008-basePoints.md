@@ -8,3 +8,5 @@
 echo "\nJWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")" >> .env
 
 @mcp:sequential-thinking: @Login.tsx#L5-39 How is this form related to the login here @login.tsx#L15-17 
+
+@mcp:sequential-thinking: @scripts Simplify all scripts in the scripts folder without increasing the overall linecount.

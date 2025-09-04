@@ -5,17 +5,21 @@
     "db": "./scripts/cli.js"
   },
   "scripts": {
-    "test-migrations": "tsx scripts/test-migrations.js",
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
-    "db:init": "tsx scripts/cli.ts init",
-    "db:reset": "tsx scripts/cli.ts reset --force",
-    "db:migrate": "tsx scripts/cli.ts migrate",
-    "db:status": "tsx scripts/cli.ts status",
-    "db:backup": "tsx scripts/cli.ts backup",
-    "db": "tsx scripts/cli.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    
+    "db:init": "tsx scripts/migrate.ts init",
+    "db:migrate": "tsx scripts/migrate.ts migrate",
+    "db:check": "tsx scripts/check-db.ts",
+    "db:verify": "tsx scripts/check-db.ts verify",
+    
+    "test": "tsx scripts/test-runner.ts",
+    "test:unit": "tsx scripts/test-runner.ts --unit",
+    "test:integration": "tsx scripts/test-runner.ts --integration",
+    "test:e2e": "tsx scripts/test-runner.ts --e2e",
+    
+    "db": "echo 'Use specific db commands: db:init, db:migrate, db:check, db:verify'"
   },
   "dependencies": {
     "@solidjs/meta": "^0.29.4",

@@ -2,6 +2,10 @@ import { createSignal } from 'solid-js';
 import { A, useNavigate, useLocation } from '@solidjs/router';
 import { useAuth } from '~/contexts/auth';
 
+interface LocationState {
+  registered?: boolean;
+}
+
 export default function LoginForm() {
   const [username, setUsername] = createSignal('');
   const [password, setPassword] = createSignal('');
@@ -12,7 +16,7 @@ export default function LoginForm() {
   const auth = useAuth();
 
   // Check for registration success message
-  const registered = location.state?.registered;
+  const registered = (location.state as LocationState)?.registered;
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
