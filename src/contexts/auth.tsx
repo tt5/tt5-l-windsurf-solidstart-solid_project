@@ -43,13 +43,26 @@ const createAuthStore = (): AuthStore => {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { 
+      const response = await fetch('/api/auth/logout', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
       });
-    } finally {
+      
+      if (!response.ok) {
+        throw new Error('Logout failed');
+      }
+      
+      // Clear the user from local storage and state
       updateUser(null);
+      
+      // Force a full page reload to clear any application state
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if the API call fails, clear the user from state
+      updateUser(null);
+      window.location.href = '/';
     }
   };
 
