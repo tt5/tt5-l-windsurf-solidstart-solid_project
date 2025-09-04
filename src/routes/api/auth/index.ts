@@ -43,9 +43,3 @@ async function handleDeleteAccount(userId: string) {
     return json({ error: 'Failed to delete account' }, { status: 500 });
   }
 }
-    return json({ success: true });
-  } catch (error) {
-    console.error('Error deleting account:', error);
-    return json({ error: 'Failed to delete account' }, { status: 500 });
-  }
-}

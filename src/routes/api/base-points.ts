@@ -36,13 +36,21 @@ export async function GET({ request }: APIEvent) {
 export async function POST({ request }: APIEvent) {
   console.log('[base-points] Received POST request');
   
+  console.log('[base-points] Starting POST request');
+  
   try {
     // Verify authentication
+    console.log('[base-points] Verifying authentication');
     const user = await getAuthUser(request);
     if (!user) {
-      console.error('[base-points] Unauthorized: No user found in session');
+      const error = 'No user found in session';
+      console.error(`[base-points] Unauthorized: ${error}`);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized: Please log in' }), 
+        JSON.stringify({ 
+          success: false,
+          error: 'Unauthorized: Please log in',
+          details: error
+        }), 
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -77,16 +85,31 @@ export async function POST({ request }: APIEvent) {
     console.log(`[base-points] Adding base point for user ${user.userId} at (${x}, ${y})`);
     
     try {
+      console.log('[base-points] Getting base point repository');
       const repository = getBasePointRepository();
+      
+      console.log(`[base-points] Adding base point to repository`);
       const basePoint = await repository.add(user.userId, x, y);
       
       if (!basePoint) {
-        throw new Error('Repository returned null/undefined base point');
+        const error = 'Repository returned null/undefined base point';
+        console.error(`[base-points] ${error}`);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Failed to save base point',
+            details: error
+          }), 
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
       }
       
-      console.log(`[base-points] Successfully added base point:`, basePoint);
+      console.log(`[base-points] Successfully added base point:`, JSON.stringify(basePoint, null, 2));
       
-      return new Response(JSON.stringify(basePoint), {
+      return new Response(JSON.stringify({
+        success: true,
+        data: basePoint
+      }), {
         status: 201,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -142,10 +165,22 @@ export async function DELETE({ request }: APIEvent) {
     }
     
     return new Response(null, { status: 204 });
-  } catch (error) {
-    console.error('Error removing base point:', error);
+  } catch (dbError) {
+    const errorMessage = dbError instanceof Error ? dbError.message : 'Unknown database error';
+    const errorStack = dbError instanceof Error ? dbError.stack : undefined;
+    
+    console.error('[base-points] Database error:', {
+      message: errorMessage,
+      stack: errorStack,
+      error: JSON.stringify(dbError, Object.getOwnPropertyNames(dbError))
+    });
+    
     return new Response(
-      JSON.stringify({ error: 'Failed to remove base point' }), 
+      JSON.stringify({ 
+        success: false,
+        error: 'Failed to remove base point',
+        details: errorMessage
+      }), 
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
