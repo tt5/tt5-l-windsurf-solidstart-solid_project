@@ -1,85 +1,60 @@
-import { join } from 'path';
-import { Database, DbMigration, TableInfo, createDatabaseConnection } from '../core/db';
+import { Database, DbMigration, TableInfo } from '../types/database';
+import { createDatabaseConnection } from '../core/db';
 
-export * from '../core/db';
+export type { Database, DbMigration, TableInfo };
 
-export type SqlValue = string | number | boolean | null | Buffer | Date;
-export type SqlParams = SqlValue | SqlValue[] | Record<string, SqlValue>;
+type SqlValue = string | number | boolean | null | Buffer | Date;
+type SqlParams = SqlValue | SqlValue[] | Record<string, SqlValue>;
 
-/**
- * Ensure the data directory and database file exist
- */
-export const ensureDataDirectory = async (): Promise<void> => {
-  const db = await createDatabaseConnection();
-  await db.close();
+export interface QueryResult<T = any> {
+  success: boolean;
+  data?: T;
+  error?: Error;
+}
+
+export const ensureDataDirectory = async (): Promise<boolean> => {
+  try {
+    const db = await createDatabaseConnection();
+    await db.close();
+    return true;
+  } catch (error) {
+    console.error('Failed to ensure data directory:', error);
+    return false;
+  }
 };
 
-/**
- * Get a database connection
- * @returns Promise<Database> A database connection
- */
 export const getDbConnection = createDatabaseConnection;
 
-/**
- * Check if the migrations table exists
- */
-export const checkMigrationsTable = async (db: Database): Promise<boolean> => {
-  const result = await db.get<{ name: string }>(
-    "SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'"
-  );
-  return !!result;
-};
+export const checkMigrationsTable = (db: Database) => 
+  db.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'").then(Boolean).catch(() => false);
 
-/**
- * Ensure the migrations table exists
- */
-export const ensureMigrationsTable = async (db: Database): Promise<void> => {
-  await db.exec(`
+export const ensureMigrationsTable = (db: Database) => 
+  checkMigrationsTable(db).then(exists => !exists && db.exec(`
     CREATE TABLE IF NOT EXISTS migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
-      applied_at INTEGER DEFAULT (strftime('%s', 'now'))
-    )
-  `);
-};
+      applied_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+    )`
+  ));
 
-/**
- * Get all applied migrations
- */
-export const getAppliedMigrations = (db: Database): Promise<DbMigration[]> => 
-  db.all<DbMigration>('SELECT * FROM migrations ORDER BY id');
+export const getAppliedMigrations = (db: Database) => 
+  db.all<DbMigration>('SELECT * FROM migrations ORDER BY id ASC');
 
-/**
- * Get all tables in the database
- */
-export const getAllTables = (db: Database): Promise<Array<{name: string; type: string}>> => 
+export const getAllTables = (db: Database) => 
   db.all<{name: string; type: string}>(
-    "SELECT name, type FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-  );
+    "SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'"
+  ).catch(() => []);
 
-/**
- * Check if a table exists
- */
-export const tableExists = async (db: Database, tableName: string): Promise<boolean> => {
-  const result = await db.get<{name: string}>(
+export const tableExists = (db: Database, tableName: string) => 
+  db.get<{ name: string }>(
     "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
     [tableName]
-  );
-  return !!result?.name;
-};
+  ).then(Boolean).catch(() => false);
 
-/**
- * Get the number of rows in a table
- */
-export const getTableRowCount = async (db: Database, tableName: string): Promise<number> => {
-  try {
-    const result = await db.get<{ count: number }>(`SELECT COUNT(*) as count FROM ${tableName}`);
-    return result?.count ?? 0;
-  } catch (error) {
-    console.error(`Error getting row count for table ${tableName}:`, error);
-    return 0;
-  }
-};
+export const getTableRowCount = (db: Database, tableName: string) => 
+  db.get<{ count: number }>(`SELECT COUNT(*) as count FROM ${tableName}`)
+    .then(r => r?.count ?? 0)
+    .catch(() => 0);
 
 /**
  * Get the SQL used to create a table

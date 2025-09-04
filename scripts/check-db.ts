@@ -1,240 +1,140 @@
-import { join } from 'path';
-import { getDbConnection, closeDbConnection } from './core/db';
-import { 
-  getAppliedMigrations, 
-  getAllTables, 
+import { createDatabaseConnection } from './core/db';
+import {
+  ensureDataDirectory,
+  getAppliedMigrations,
+  getAllTables,
+  tableExists,
   getTableRowCount,
   getTableSchema,
-  executeQuery,
-  ensureDataDirectory
+  QueryResult
 } from './utils/db-utils';
+import type { Database, DbMigration, TableInfo, CheckResult, TableDetails } from './types/database';
 
-type Command = 'verify' | 'check' | 'schema' | 'tables' | 'migrations' | 'help' | undefined;
-
-interface TableInfo {
-  name: string;
-  type: string;
-  rowCount: number;
-  schema?: string;
-  error?: string;
-}
-
-interface CheckResult {
-  success: boolean;
-  message: string;
-  details?: any;
-}
-
-const getDetailedTableInfo = async (db: any, tableName: string): Promise<TableInfo> => {
-  try {
-    const [schema, count] = await Promise.all([
-      getTableSchema(db, tableName),
-      getTableRowCount(db, tableName)
-    ]);
-    
-    return {
-      name: tableName,
-      type: 'table',
-      rowCount: count,
-      schema: schema?.sql || 'N/A'
-    };
-  } catch (error: any) {
-    return {
-      name: tableName,
-      type: 'table',
-      rowCount: -1,
-      error: error.message
-    };
-  }
-};
-
-const checkDatabaseConnection = async (db: any): Promise<CheckResult> => {
-  try {
-    await db.get('SELECT 1 as test');
-    return { success: true, message: '✅ Database connection successful' };
-  } catch (error: any) {
-    return { 
-      success: false, 
-      message: `❌ Database connection failed: ${error.message}`,
-      details: error
-    };
-  }
-};
-
-const checkTables = async (db: any): Promise<CheckResult> => {
-  try {
-    const tables = await getAllTables(db);
-    const tableInfo = await Promise.all(
-      tables.map(table => getDetailedTableInfo(db, table.name))
-    );
-    
-    return {
-      success: true,
-      message: `Found ${tables.length} tables`,
-      details: tableInfo
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      message: `Failed to check tables: ${error.message}`,
-      details: error
-    };
-  }
-};
-
-const checkMigrations = async (db: any): Promise<CheckResult> => {
-  try {
-    const migrations = await getAppliedMigrations(db);
-    return {
-      success: true,
-      message: `Found ${migrations.length} applied migrations`,
-      details: migrations
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      message: `Failed to check migrations: ${error.message}`,
-      details: error
-    };
-  }
-}
-
-const checkDatabase = async (command: Command = 'verify'): Promise<void> => {
-  console.log(`\n=== Database ${command.charAt(0).toUpperCase() + command.slice(1)} ===`);
-  const startTime = Date.now();
-  let db;
+const checkDatabase = async (): Promise<CheckResult> => {
+  const requiredTables = ['users', 'items', 'base_points'];
+  const result: CheckResult = {
+    success: false,
+    dbExists: false,
+    tables: [],
+    migrations: [],
+    missingTables: [],
+    requiredTables,
+    error: undefined
+  };
   
   try {
-    await ensureDataDirectory();
-    console.log('\n1. Connecting to database...');
+    // Check if database exists and is accessible
+    result.dbExists = await ensureDataDirectory();
+    if (!result.dbExists) {
+      result.error = 'Database file does not exist';
+      return result;
+    }
+
+    // Connect to the database
+    const db = await createDatabaseConnection();
     
-    db = await getDbConnection();
-    let result: CheckResult;
-    
-    switch (command) {
-      case 'verify':
-        result = await checkDatabaseConnection(db);
-        console.log(`\n${result.message}`);
-        
-        if (result.success) {
-          const tablesResult = await checkTables(db);
-          console.log(`\n${tablesResult.message}`);
-          
-          const migrationsResult = await checkMigrations(db);
-          console.log(`\n${migrationsResult.message}`);
-          
-          if (tablesResult.details) {
-            console.log('\nTables:');
-            (tablesResult.details as TableInfo[]).forEach(table => {
-              console.log(`- ${table.name}: ${table.rowCount} rows`);
-            });
-          }
-        }
-        break;
-        
-      case 'check':
-        result = await checkDatabaseConnection(db);
-        console.log(`\n${result.message}`);
-        break;
-        
-      case 'tables':
-        result = await checkTables(db);
-        console.log(`\n${result.message}`);
-        
-        if (result.details) {
-          console.log('\nTables:');
-          (result.details as TableInfo[]).forEach(table => {
-            console.log(`- ${table.name}: ${table.rowCount} rows`);
-            if (table.error) {
-              console.log(`  Error: ${table.error}`);
-            }
-          });
-        }
-        break;
-        
-      case 'migrations':
-        result = await checkMigrations(db);
-        console.log(`\n${result.message}`);
-        
-        if (result.details) {
-          console.log('\nMigrations:');
-          (result.details as any[]).forEach(migration => {
-            console.log(`- ${migration.name} (applied at: ${new Date(migration.applied_at * 1000).toISOString()})`);
-          });
-        }
-        break;
-        
-      case 'schema':
-        result = await checkTables(db);
-        console.log(`\n${result.message}`);
-        
-        if (result.details) {
-          console.log('\nTable Schemas:');
-          for (const table of result.details as TableInfo[]) {
-            console.log(`\n=== ${table.name} ===`);
-            console.log(table.schema || 'No schema found');
-          }
-        }
-        break;
-        
-      case 'help':
-      default:
-        showHelp();
-        return;
+    try {
+      // Get all tables and their details
+      const tables = await getAllTables(db);
+      
+      // Get detailed info for each table in parallel
+      result.tables = await Promise.all(
+        tables.map(async (table) => {
+          const schema = await getTableSchema(db, table.name);
+          return {
+            name: table.name,
+            rowCount: await getTableRowCount(db, table.name),
+            schema: schema || 'N/A'
+          };
+        })
+      );
+      
+      // Check for missing required tables
+      result.missingTables = requiredTables.filter(
+        tableName => !tables.some(table => table.name === tableName)
+      );
+      
+      // Check for applied migrations
+      if (await tableExists(db, 'migrations')) {
+        result.migrations = await getAppliedMigrations(db);
+      } else {
+        result.missingTables.push('migrations');
+      }
+      
+      result.success = result.missingTables.length === 0;
+    } finally {
+      await db.close();
     }
   } catch (error: any) {
-    console.error('\n❌ Error:', error.message);
-    process.exit(1);
-  } finally {
-    if (db) await closeDbConnection(db);
-    console.log(`\n⏱️  Completed in ${((Date.now() - startTime) / 1000).toFixed(2)}s`);
+    result.error = error.message;
   }
+  
+  return result;
 };
 
-async function initializeDatabase() {
-  console.log('\n=== Database Initialization ===');
-  const db = await getDbConnection();
+const verifyDatabaseSchema = async (): Promise<{ success: boolean; error?: string }> => {
+  const result = await checkDatabase();
   
-  try {
-    // Create users table if it doesn't exist
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        username TEXT NOT NULL UNIQUE,
-        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-        updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-      )
-    `);
-    console.log('✅ Users table created/verified');
-    
-    // Create sessions table if it doesn't exist
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS sessions (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        expires_at INTEGER NOT NULL,
-        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )
-    `);
-    console.log('✅ Sessions table created/verified');
-    
-    // Create migrations table if it doesn't exist
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS migrations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE,
-        applied_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-      )
-    `);
-    console.log('✅ Migrations table created/verified');
-    
-  } finally {
-    await db.close();
+  if (!result.success) {
+    return { 
+      success: false, 
+      error: result.error || 'Database verification failed' 
+    };
   }
-}
+  
+  if (result.missingTables?.length) {
+    return { 
+      success: false, 
+      error: `Missing required tables: ${result.missingTables.join(', ')}` 
+    };
+  }
+  
+  return { success: true };
+};
 
-const showHelp = () => console.log(`
+// Command line interface
+const main = async () => {
+  console.log('\n🔍 Checking database status...');
+  const startTime = Date.now();
+  
+  const result = await checkDatabase();
+  
+  // Display results
+  console.log('\n📊 Database Status:', result.dbExists ? '✅ Exists' : '❌ Not found');
+  
+  if (result.tables?.length) {
+    console.log('\n📋 Tables:');
+    for (const table of result.tables) {
+      console.log(`\n  ${table.name} (${table.rowCount} rows)`);
+      console.log(`  ${'-'.repeat(40)}`);
+      console.log(`  ${table.schema.replace(/\n/g, '\n  ')}`);
+    }
+  } else {
+    console.log('\nℹ️  No tables found in the database');
+  }
+  
+  if (result.migrations?.length) {
+    console.log('\n🔄 Applied Migrations:');
+    result.migrations.forEach(migration => {
+      const date = new Date(migration.applied_at * 1000).toISOString();
+      console.log(`  - ${migration.name} (${date})`);
+    });
+  } else {
+    console.log('\nℹ️  No migrations have been applied');
+  }
+  
+  if (result.missingTables?.length) {
+    console.log('\n❌ Missing Tables:');
+    result.missingTables.forEach(table => console.log(`  - ${table}`));
+  }
+  
+  console.log(`\n✅ Database check completed in ${((Date.now() - startTime) / 1000).toFixed(2)}s`);
+  process.exit(result.success ? 0 : 1);
+};
+
+// Show help information
+const showHelp = () => {
+  console.log(`
 Database Check Utility
 
 Usage:
@@ -249,39 +149,44 @@ Commands:
   help      Show this help message
 
 Examples:
-  npx tsx scripts/check-db.ts
+  npx tsx scripts/check-db.ts verify
+  npx tsx scripts/check-db.ts check
   npx tsx scripts/check-db.ts tables
   npx tsx scripts/check-db.ts schema
+  npx tsx scripts/check-db.ts migrations
 `);
+};
 
-// Parse command line arguments
-const args = process.argv.slice(2);
-const command = (args.find(arg => !arg.startsWith('-')) || 'verify') as Command;
+// Command line interface
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const args = process.argv.slice(2);
+  const command = args.find(arg => !arg.startsWith('-')) || 'verify';
 
-// Show help if requested
-if (command === 'help' || args.includes('--help') || args.includes('-h')) {
-  showHelp();
-  process.exit(0);
-}
-
-// Run the main function
-async function main() {
-  switch (command) {
-    case 'verify':
-    case 'check':
-      await checkDatabase(command);
-      break;
-    case 'init':
-      await initializeDatabase();
-      break;
-    case 'help':
-    default:
-      showHelp();
-      break;
+  // Show help if requested
+  if (command === 'help' || args.includes('--help') || args.includes('-h')) {
+    showHelp();
+    process.exit(0);
   }
+
+  // Run the appropriate command
+  (async () => {
+    try {
+      switch (command) {
+        case 'verify':
+        case 'check':
+          await main();
+          break;
+        case 'help':
+        default:
+          showHelp();
+          break;
+      }
+    } catch (error) {
+      console.error('\n❌ Operation failed:', error);
+      process.exit(1);
+    }
+  })();
 }
 
-main().catch(error => {
-  console.error('\n❌ Operation failed:', error);
-  process.exit(1);
-});
+// Export for programmatic use
+export { checkDatabase, verifyDatabaseSchema };

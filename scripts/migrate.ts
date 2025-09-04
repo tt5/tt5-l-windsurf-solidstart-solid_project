@@ -1,59 +1,26 @@
 import { join, dirname } from 'path';
-import { readdir, mkdir, readFile } from 'fs/promises';
+import { readdir, mkdir } from 'fs/promises';
 import { fileURLToPath } from 'url';
+import { createDatabaseConnection } from './core/db';
 import { 
-  Database, 
-  getDbConnection, 
-  DbMigration, 
-  TableInfo, 
-  MigrationFile, 
-  MigrationFunction 
-} from './core/db';
-import { 
-  getAllTables, 
-  getAppliedMigrations, 
-  tableExists, 
-  getTableRowCount, 
   ensureDataDirectory, 
-  execute,
-  getTableInfo
+  getAppliedMigrations, 
+  getAllTables, 
+  tableExists,
+  ensureMigrationsTable,
+  getTableRowCount,
+  getTableSchema
 } from './utils/db-utils';
+import type { Database, MigrationResult, InitResult } from './types/database';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const MIGRATIONS_DIR = join(__dirname, 'migrations');
+const MIGRATIONS_DIR = join(process.cwd(), 'scripts', 'migrations');
 
-interface MigrationResult {
-  success: boolean;
-  applied: number;
-  initialized?: boolean;
-  error?: string;
-  tables?: any[];
-  totalMigrations?: number;
-  pendingMigrations?: string[];
-}
-
-interface InitResult {
-  success: boolean;
-  error?: string;
-  tablesCreated: string[];
-}
-
-const ensureMigrationsTable = async (db: Database): Promise<void> => {
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS migrations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      applied_at INTEGER DEFAULT (strftime('%s', 'now'))
-    )
-  `);
-};
 
 const getMigrationFiles = async (): Promise<string[]> => {
   try {
     const files = await readdir(MIGRATIONS_DIR);
     return files
-      .filter(file => file.endsWith('.js') || file.endsWith('.ts'))
+      .filter(file => /^\d+_.+\.(js|ts)$/.test(file))
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   } catch (error: any) {
     if (error.code === 'ENOENT') {
@@ -65,49 +32,17 @@ const getMigrationFiles = async (): Promise<string[]> => {
   }
 };
 
-const loadMigration = async (file: string): Promise<MigrationFile> => {
-  const filePath = join(MIGRATIONS_DIR, file);
-  const content = await readFile(filePath, 'utf8');
-  
-  // Extract the migration ID and name from the filename
-  const match = file.match(/^(\d+)_([^.]+)\.(js|ts)$/);
-  if (!match) {
-    throw new Error(`Invalid migration filename: ${file}`);
+const loadMigration = async (file: string) => {
+  const { default: migration } = await import(`../migrations/${file}`);
+  if (!migration?.up) {
+    throw new Error(`Invalid migration: ${file}`);
   }
-  
-  const [_, id, name] = match;
-  
-  // Create a module-like object with the migration code
-  const module = { 
-    exports: {} as { up: MigrationFunction; down?: MigrationFunction } 
+  return {
+    id: file.split('_')[0],
+    name: file.replace(/\.(js|ts)$/, ''),
+    up: migration.up,
+    down: migration.down,
   };
-  
-  // Create a simple require function for migrations
-  const require = (path: string) => {
-    if (path === 'sqlite3') {
-      return { Database: { prototype: {} } }; // Minimal sqlite3 mock
-    }
-    throw new Error(`Cannot require ${path} in migration`);
-  };
-  
-  try {
-    // Use the Function constructor to create the migration function
-    const fn = new Function('module', 'exports', 'require', content);
-    fn(module, module.exports, require);
-    
-    if (typeof module.exports.up !== 'function') {
-      throw new Error('Migration must export an "up" function');
-    }
-    
-    if (module.exports.down && typeof module.exports.down !== 'function') {
-      throw new Error('If provided, "down" must be a function');
-    }
-    
-    return { id, name, up: module.exports.up, down: module.exports.down };
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Error loading migration ${file}: ${message}`);
-  }
 };
 
 const runMigrations = async (): Promise<MigrationResult> => {
@@ -115,20 +50,20 @@ const runMigrations = async (): Promise<MigrationResult> => {
   const startTime = Date.now();
   
   try {
-    await ensureDataDirectory();
-    console.log('\n1. Connecting to database...');
+    if (!(await ensureDataDirectory())) {
+      throw new Error('Failed to ensure data directory');
+    }
     
-    const db = await getDbConnection();
+    console.log('\n1. Connecting to database...');
+    const db = await createDatabaseConnection();
     
     try {
-      console.log('\n2. Current database state:');
-      
-      console.log('\n3. Checking for migration files...');
+      console.log('\n2. Checking for migration files...');
       await mkdir(MIGRATIONS_DIR, { recursive: true });
       const migrationFiles = await getMigrationFiles();
       console.log(`   Found ${migrationFiles.length} migration files`);
       
-      console.log('\n4. Checking for applied migrations...');
+      console.log('\n3. Checking for applied migrations...');
       await ensureMigrationsTable(db);
       const appliedMigrations = await getAppliedMigrations(db);
       console.log(`   Found ${appliedMigrations.length} applied migrations`);
@@ -139,15 +74,15 @@ const runMigrations = async (): Promise<MigrationResult> => {
       
       if (!pendingMigrations.length) {
         console.log('✅ Database is up to date');
-        return { success: true, applied: 0, totalMigrations: migrationFiles.length };
+        return { success: true, applied: 0 };
       }
       
-      console.log(`\n5. Found ${pendingMigrations.length} pending migrations:`);
+      console.log(`\n4. Found ${pendingMigrations.length} pending migrations:`);
       pendingMigrations.forEach((file, i) => 
         console.log(`   ${i + 1}. ${file}`)
       );
       
-      console.log('\n6. Applying migrations...');
+      console.log('\n5. Applying migrations...');
       let appliedCount = 0;
       
       for (const file of pendingMigrations) {
@@ -207,10 +142,13 @@ const initializeDatabase = async (): Promise<InitResult> => {
   const tablesCreated: string[] = [];
   
   try {
-    await ensureDataDirectory();
+    if (!(await ensureDataDirectory())) {
+      throw new Error('Failed to ensure data directory');
+    }
+    
     console.log('\n1. Connecting to database...');
     
-    const db = await getDbConnection();
+    const db = await createDatabaseConnection();
     
     try {
       console.log('\n2. Checking existing tables...');
@@ -279,7 +217,6 @@ const initializeDatabase = async (): Promise<InitResult> => {
       
       // Create tables in a transaction
       await db.run('BEGIN TRANSACTION');
-      
       try {
         for (const { name, sql } of tableDefs) {
           console.log(`   - Creating ${name} table`);
@@ -313,22 +250,27 @@ const initializeDatabase = async (): Promise<InitResult> => {
 const main = async () => {
   const command = process.argv[2]?.toLowerCase() || 'help';
   
-  switch (command) {
-    case 'init':
-      await initializeDatabase();
-      break;
-    case 'migrate':
-      await runMigrations();
-      break;
-    case 'help':
-    default:
-      showHelp();
-      process.exit(0);
+  try {
+    switch (command) {
+      case 'init':
+        await initializeDatabase();
+        break;
+      case 'migrate':
+        await runMigrations();
+        break;
+      case 'help':
+      default:
+        showHelp();
+        process.exit(0);
+    }
+  } catch (error: any) {
+    console.error('❌ Error:', error.message);
+    process.exit(1);
   }
 };
 
 const showHelp = () => console.log(`
-Database Migration Tool
+Database Management Tool
 
 Usage:
   npx tsx scripts/migrate.ts <command>
@@ -354,9 +296,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 export {
   runMigrations,
   initializeDatabase,
-  ensureMigrationsTable,
   getMigrationFiles,
   loadMigration,
   type MigrationResult,
-  type InitResult
+  type MigrationFile,
+  type MigrationFunction
 };
