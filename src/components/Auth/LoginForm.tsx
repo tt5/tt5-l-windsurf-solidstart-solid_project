@@ -36,8 +36,8 @@ export default function LoginForm() {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Redirect to home page after successful login
-      navigate('/');
+      // Redirect to game page after successful login
+      navigate('/game');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
