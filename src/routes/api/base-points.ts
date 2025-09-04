@@ -34,35 +34,79 @@ export async function GET({ request }: APIEvent) {
 }
 
 export async function POST({ request }: APIEvent) {
+  console.log('[base-points] Received POST request');
+  
   try {
+    // Verify authentication
     const user = await getAuthUser(request);
     if (!user) {
+      console.error('[base-points] Unauthorized: No user found in session');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }), 
+        JSON.stringify({ error: 'Unauthorized: Please log in' }), 
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
+    console.log(`[base-points] Authenticated user: ${user.userId}`);
 
-    const { x, y } = await request.json() as BasePointRequest;
-    
-    if (typeof x !== 'number' || typeof y !== 'number') {
+    // Parse and validate request body
+    let body: any;
+    try {
+      body = await request.json();
+      console.log('[base-points] Request body:', JSON.stringify(body));
+    } catch (e) {
+      console.error('[base-points] Error parsing JSON:', e);
       return new Response(
-        JSON.stringify({ error: 'Invalid coordinates' }), 
+        JSON.stringify({ error: 'Invalid JSON in request body' }), 
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const repository = getBasePointRepository();
-    const basePoint = await repository.add(user.userId, x, y);
+    const { x, y } = body as BasePointRequest;
     
-    return new Response(JSON.stringify(basePoint), {
-      status: 201,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
+      console.error(`[base-points] Invalid coordinates: x=${x}, y=${y}`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid coordinates',
+          details: { x, y, types: { x: typeof x, y: typeof y } }
+        }), 
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[base-points] Adding base point for user ${user.userId} at (${x}, ${y})`);
+    
+    try {
+      const repository = getBasePointRepository();
+      const basePoint = await repository.add(user.userId, x, y);
+      
+      if (!basePoint) {
+        throw new Error('Repository returned null/undefined base point');
+      }
+      
+      console.log(`[base-points] Successfully added base point:`, basePoint);
+      
+      return new Response(JSON.stringify(basePoint), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (dbError) {
+      console.error('[base-points] Database error:', dbError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Database error',
+          details: dbError instanceof Error ? dbError.message : 'Unknown error'
+        }), 
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
   } catch (error) {
-    console.error('Error adding base point:', error);
+    console.error('[base-points] Unexpected error:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to add base point' }), 
+      JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }), 
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

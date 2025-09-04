@@ -141,27 +141,43 @@ const Board: Component = () => {
 
   // Handle adding a new base point
   const handleAddBasePoint = async (x: number, y: number) => {
-    if (!currentUser || isSaving()) return;
+    if (!currentUser) {
+      console.error('Cannot add base point: No current user');
+      return;
+    }
+    
+    if (isSaving()) {
+      console.log('Already saving, ignoring click');
+      return;
+    }
     
     setIsSaving(true);
+    console.log('[handleAddBasePoint] Starting to add base point', { x, y, userId: currentUser.id });
+    
     try {
-      console.log('[handleAddBasePoint] Current user:', currentUser);
-      console.log(`[handleAddBasePoint] Adding base point at (${x}, ${y}) for user ${currentUser.id}`);
+      const requestBody = JSON.stringify({ x, y });
+      console.log('Sending request to /api/base-points with body:', requestBody);
       
       const response = await fetch('/api/base-points', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',  // Important for sending cookies
-        body: JSON.stringify({
-          x,
-          y
-        })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
+        body: requestBody
       });
       
-      if (!response.ok) throw new Error('Failed to save base point');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to save base point: ${response.status} ${errorText}`);
+      }
       
-      const { basePoint } = await response.json();
-      setBasePoints(prev => [...prev, basePoint]);
+      const responseData = await response.json();
+      console.log('Received response:', responseData);
+      
+      // The server returns the base point directly, not nested under 'basePoint'
+      setBasePoints(prev => [...prev, responseData]);
     } catch (error) {
       console.error('Error saving base point:', error);
     } finally {
@@ -182,14 +198,22 @@ const Board: Component = () => {
       const relX = x - playerX;
       const relY = y - playerY;
       
+      console.log(`Checking base point at (${x},${y}), relative: (${relX},${relY})`);
+      console.log('Current base points:', points);
+      
       const isBP = points.some(bp => {
         if (!bp || typeof bp.x !== 'number' || typeof bp.y !== 'number') {
-          console.error('Invalid base point:', bp);
+          console.error('Invalid base point structure:', bp);
           return false;
         }
-        return bp.x === relX && bp.y === relY;
+        const match = bp.x === relX && bp.y === relY;
+        if (match) {
+          console.log(`Found matching base point:`, bp);
+        }
+        return match;
       });
       
+      console.log(`Base point at (${x},${y}) ${isBP ? 'found' : 'not found'}`);
       return isBP;
     } catch (error) {
       console.error('Error in isBasePoint:', error);
