@@ -1,113 +1,92 @@
-import { open, Database as SqliteDatabase, ISqlite } from 'sqlite';
-import sqlite3 from 'sqlite3';
 import { join } from 'path';
-import { mkdir } from 'fs/promises';
+import { Database, DbMigration, TableInfo, createDatabaseConnection } from '../core/db';
 
-// Re-export types for convenience
-export type Database = SqliteDatabase<sqlite3.Database, sqlite3.Statement>;
+export * from '../core/db';
 
-// Type for SQLite query parameters
-type SqlValue = string | number | boolean | null | Buffer | Date;
-type SqlParams = SqlValue | SqlValue[] | Record<string, SqlValue>;
+export type SqlValue = string | number | boolean | null | Buffer | Date;
+export type SqlParams = SqlValue | SqlValue[] | Record<string, SqlValue>;
 
-// Extend the Database type with additional methods
-declare module 'sqlite' {
-  interface Database<Driver, Stmt> {
-    run(sql: string, ...params: any[]): Promise<{ lastID?: number | bigint; changes?: number }>;
-    all<T = any>(sql: string, ...params: any[]): Promise<T[]>;
-    get<T = any>(sql: string, ...params: any[]): Promise<T | undefined>;
-    exec(sql: string): Promise<void>;
-  }
-}
-
-export interface DbMigration {
-  id: number;
-  name: string;
-  applied_at: number;
-}
-
-export interface TableInfo {
-  cid: number;
-  name: string;
-  type: string;
-  notnull: 0 | 1;
-  dflt_value: any;
-  pk: 0 | 1;
-}
-
-export async function ensureDataDirectory(): Promise<void> {
-  const dataDir = join(process.cwd(), 'data');
-  try {
-    await mkdir(dataDir, { recursive: true });
-  } catch (error) {
-    if (error.code !== 'EEXIST') {
-      throw new Error(`Failed to create data directory: ${error.message}`);
-    }
-  }
-}
+/**
+ * Ensure the data directory and database file exist
+ */
+export const ensureDataDirectory = async (): Promise<void> => {
+  const db = await createDatabaseConnection();
+  await db.close();
+};
 
 /**
  * Get a database connection
- * @param dbPath Optional path to the database file
- * @returns A database connection
+ * @returns Promise<Database> A database connection
  */
-export async function getDbConnection(dbPath?: string): Promise<Database> {
-  const dbPathToUse = dbPath || join(process.cwd(), 'data', 'app.db');
-  try {
-    const db = await open({
-      filename: dbPathToUse,
-      driver: sqlite3.Database
-    });
-    
-    // Enable foreign key constraints
-    await db.exec('PRAGMA foreign_keys = ON');
-    
-    return db;
-  } catch (error) {
-    throw new Error(`Failed to connect to database at ${dbPathToUse}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
+export const getDbConnection = createDatabaseConnection;
 
-export async function checkMigrationsTable(db: Database): Promise<boolean> {
-  const result = await db.get(
+/**
+ * Check if the migrations table exists
+ */
+export const checkMigrationsTable = async (db: Database): Promise<boolean> => {
+  const result = await db.get<{ name: string }>(
     "SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'"
   );
   return !!result;
-}
+};
 
-export async function getAppliedMigrations(db: Database): Promise<DbMigration[]> {
-  const hasMigrations = await checkMigrationsTable(db);
-  if (!hasMigrations) return [];
-  return db.all<DbMigration>('SELECT id, name, applied_at FROM migrations ORDER BY id');
-}
+/**
+ * Ensure the migrations table exists
+ */
+export const ensureMigrationsTable = async (db: Database): Promise<void> => {
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS migrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      applied_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+  `);
+};
 
-export async function getAllTables(db: Database): Promise<{name: string}[]> {
-  return db.all<{name: string}>(
-    "SELECT name FROM sqlite_master " +
-    "WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'migrations' " +
-    "ORDER BY name"
+/**
+ * Get all applied migrations
+ */
+export const getAppliedMigrations = (db: Database): Promise<DbMigration[]> => 
+  db.all<DbMigration>('SELECT * FROM migrations ORDER BY id');
+
+/**
+ * Get all tables in the database
+ */
+export const getAllTables = (db: Database): Promise<Array<{name: string; type: string}>> => 
+  db.all<{name: string; type: string}>(
+    "SELECT name, type FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
   );
-}
 
-export async function tableExists(db: Database, tableName: string): Promise<boolean> {
-  const result = await db.get(
+/**
+ * Check if a table exists
+ */
+export const tableExists = async (db: Database, tableName: string): Promise<boolean> => {
+  const result = await db.get<{name: string}>(
     "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
     [tableName]
   );
-  return !!result;
-}
+  return !!result?.name;
+};
 
-export async function getTableRowCount(db: Database, tableName: string): Promise<number> {
-  const result = await db.get<{count: number}>(`SELECT COUNT(*) as count FROM ${tableName}`);
-  return result?.count ?? 0;
-}
+/**
+ * Get the number of rows in a table
+ */
+export const getTableRowCount = async (db: Database, tableName: string): Promise<number> => {
+  try {
+    const result = await db.get<{ count: number }>(`SELECT COUNT(*) as count FROM ${tableName}`);
+    return result?.count ?? 0;
+  } catch (error) {
+    console.error(`Error getting row count for table ${tableName}:`, error);
+    return 0;
+  }
+};
 
 /**
  * Get the SQL used to create a table
  */
-export async function getTableSchema(db: Database, tableName: string): Promise<string | null> {
+export const getTableSchema = async (db: Database, tableName: string): Promise<string | null> => {
   try {
-    const result = await db.get<{sql: string}>(
+    const result = await db.get<{ sql: string }>(
       "SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
       [tableName]
     );
@@ -116,144 +95,125 @@ export async function getTableSchema(db: Database, tableName: string): Promise<s
     console.error(`Error getting schema for table ${tableName}:`, error);
     return null;
   }
-}
+};
+
+/**
+ * Get all migration files from the migrations directory
+ */
+export const getMigrationFiles = async (): Promise<string[]> => {
+  const { readdir } = await import('fs/promises');
+  const { join } = await import('path');
+  
+  try {
+    const migrationsDir = join(process.cwd(), 'scripts', 'migrations');
+    const files = await readdir(migrationsDir);
+    
+    return files
+      .filter(file => /^\d+_.+\.(js|ts)$/.test(file))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  } catch (error: any) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+};
+
+/**
+ * Load a migration module
+ */
+export const loadMigration = async (file: string) => {
+  const { default: migration } = await import(`../migrations/${file}`);
+  
+  if (!migration || typeof migration.up !== 'function') {
+    throw new Error(`Migration ${file} must export an object with an 'up' function`);
+  }
+  
+  return {
+    name: file.replace(/\.[^/.]+$/, ''),
+    up: migration.up,
+    down: migration.down
+  };
+};
 
 /**
  * Execute a query and return all results
  */
-/**
- * Execute a query and return all results
- */
-/**
- * Execute a query and return all results
- * @param db Database connection
- * @param query SQL query string
- * @param params Query parameters
- * @returns Array of results
- */
-export async function executeQuery<T = any>(
+export const executeQuery = async <T = any>(
   db: Database,
   query: string,
   params: SqlParams[] = []
-): Promise<T[]> {
+): Promise<T[]> => {
   try {
-    // Handle both array and object parameters
-    if (Array.isArray(params[0])) {
-      return await db.all<T>(query, ...(params as SqlValue[]));
-    } else if (params && Object.keys(params).length > 0) {
-      return await db.all<T>(query, params);
-    } else {
-      return await db.all<T>(query);
-    }
+    return await db.all<T>(query, ...params);
   } catch (error) {
-    console.error('Error executing query:', { query, params, error });
-    throw error;
+    console.error('Error executing query:', error);
+    throw new Error(`Query failed: ${error.message}`);
   }
-}
+};
 
 /**
  * Execute a query and return the first result or null
  */
-/**
- * Execute a query and return the first result or null
- */
-/**
- * Execute a query and return the first result
- * @param db Database connection
- * @param query SQL query string
- * @param params Query parameters
- * @returns First result or null if no results
- */
-export async function queryOne<T = any>(
+export const queryOne = async <T = any>(
   db: Database,
   query: string,
   params: SqlParams[] = []
-): Promise<T | null> {
+): Promise<T | null> => {
   try {
-    // Handle both array and object parameters
-    if (Array.isArray(params[0])) {
-      return (await db.get<T>(query, ...(params as SqlValue[]))) || null;
-    } else if (params && Object.keys(params).length > 0) {
-      return (await db.get<T>(query, params)) || null;
-    } else {
-      return (await db.get<T>(query)) || null;
-    }
+    return (await db.get<T>(query, ...params)) || null;
   } catch (error) {
-    console.error('Error executing query:', { query, params, error });
-    throw error;
+    console.error('Error executing query:', error);
+    throw new Error(`Query failed: ${error.message}`);
   }
-}
+};
 
 /**
  * Execute a query that doesn't return results (INSERT, UPDATE, DELETE, etc.)
  */
-/**
- * Execute a query that doesn't return results (INSERT, UPDATE, DELETE, etc.)
- */
-/**
- * Execute a query that doesn't return results (INSERT, UPDATE, DELETE, etc.)
- * @param db Database connection
- * @param query SQL query string
- * @param params Query parameters
- * @returns Result of the execution
- */
-export async function execute(
+export const execute = async (
   db: Database,
   query: string,
   params: SqlParams[] = []
-): Promise<ISqlite.RunResult> {
+): Promise<{ lastID?: number | bigint; changes?: number }> => {
   try {
-    // Handle both array and object parameters
-    if (Array.isArray(params[0])) {
-      return await db.run(query, ...(params as SqlValue[]));
-    } else if (params && Object.keys(params).length > 0) {
-      return await db.run(query, params);
-    } else {
-      return await db.run(query);
-    }
+    return await db.run(query, ...params);
   } catch (error) {
-    console.error('Error executing query:', { query, params, error });
-    throw error;
+    console.error('Error executing query:', error);
+    throw new Error(`Execute failed: ${error.message}`);
   }
-}
+};
 
 /**
  * Get detailed information about a table's columns
  */
-export async function getTableInfo(
-  db: Database,
-  tableName: string
-): Promise<TableInfo[]> {
-  return db.all<TableInfo>(`PRAGMA table_info(${tableName})`);
-}
+export const getTableInfo = (db: Database, tableName: string): Promise<TableInfo[]> => 
+  db.all<TableInfo>(`PRAGMA table_info(${tableName})`);
 
 /**
  * Check if a column exists in a table
  */
-export async function columnExists(
+export const columnExists = async (
   db: Database,
   tableName: string,
   columnName: string
-): Promise<boolean> {
-  const columns = await db.all(
-    `PRAGMA table_info(${tableName}) WHERE name = ?`,
-    [columnName]
-  );
-  return columns.length > 0;
-}
+): Promise<boolean> => {
+  try {
+    const columns = await getTableInfo(db, tableName);
+    return columns.some(col => col.name === columnName);
+  } catch (error) {
+    console.error(`Error checking if column ${columnName} exists:`, error);
+    return false;
+  }
+};
 
 /**
  * Get the names of all indexes for a table
  */
-export async function getTableIndexes(
+export const getTableIndexes = (
   db: Database,
   tableName: string
-): Promise<{name: string, unique: 0 | 1, sql: string}[]> {
-  return db.all(
-    `SELECT name, [unique], sql 
-     FROM sqlite_master 
-     WHERE type = 'index' AND tbl_name = ? 
-     ORDER BY name`,
+): Promise<Array<{name: string, unique: 0 | 1, sql: string}>> => 
+  db.all<{name: string, unique: 0 | 1, sql: string}>(
+    `SELECT name, "unique" as unique, sql FROM sqlite_master 
+     WHERE type='index' AND tbl_name=? AND sql IS NOT NULL`,
     [tableName]
   );
-}

@@ -1,47 +1,27 @@
 import { join, dirname } from 'path';
 import { readdir, mkdir, readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
-import sqlite3 from 'sqlite3';
 import { 
-  Database,
+  Database, 
   getDbConnection, 
+  DbMigration, 
+  TableInfo, 
+  MigrationFile, 
+  MigrationFunction 
+} from './core/db';
+import { 
   getAllTables, 
-  getAppliedMigrations,
-  tableExists,
-  getTableRowCount,
-  ensureDataDirectory,
+  getAppliedMigrations, 
+  tableExists, 
+  getTableRowCount, 
+  ensureDataDirectory, 
   execute,
-  SqlParams,
-  DbMigration
+  getTableInfo
 } from './utils/db-utils';
-
-// Extend the Database type to include required methods
-type DatabaseWithRun = Database & {
-  run: (sql: string, ...params: any[]) => Promise<{ lastID?: number | bigint; changes?: number }>;
-  close: () => Promise<void>;
-  all: <T = any>(sql: string, ...params: any[]) => Promise<T[]>;
-  get: <T = any>(sql: string, ...params: any[]) => Promise<T | undefined>;
-  exec: (sql: string) => Promise<void>;
-  serialize?: () => void;
-  parallelize?: () => void;
-};
-
-// Type for migration functions
-type MigrationFunction = (db: DatabaseWithRun) => Promise<void>;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
 const MIGRATIONS_DIR = join(__dirname, 'migrations');
-const DB_PATH = join(process.cwd(), 'data', 'app.db');
-
-// Types
-interface MigrationFile {
-  id: string;
-  name: string;
-  up: MigrationFunction;
-  down?: MigrationFunction;
-}
 
 interface MigrationResult {
   success: boolean;
@@ -59,7 +39,7 @@ interface InitResult {
   tablesCreated: string[];
 }
 
-async function ensureMigrationsTable(db: DatabaseWithRun): Promise<void> {
+const ensureMigrationsTable = async (db: Database): Promise<void> => {
   await db.exec(`
     CREATE TABLE IF NOT EXISTS migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,14 +47,14 @@ async function ensureMigrationsTable(db: DatabaseWithRun): Promise<void> {
       applied_at INTEGER DEFAULT (strftime('%s', 'now'))
     )
   `);
-}
+};
 
-async function getMigrationFiles(): Promise<string[]> {
+const getMigrationFiles = async (): Promise<string[]> => {
   try {
     const files = await readdir(MIGRATIONS_DIR);
     return files
       .filter(file => file.endsWith('.js') || file.endsWith('.ts'))
-      .sort();
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   } catch (error: any) {
     if (error.code === 'ENOENT') {
       console.log('Migrations directory not found, creating...');
@@ -83,9 +63,9 @@ async function getMigrationFiles(): Promise<string[]> {
     }
     throw error;
   }
-}
+};
 
-async function loadMigration(file: string): Promise<MigrationFile> {
+const loadMigration = async (file: string): Promise<MigrationFile> => {
   const filePath = join(MIGRATIONS_DIR, file);
   const content = await readFile(filePath, 'utf8');
   
@@ -99,141 +79,94 @@ async function loadMigration(file: string): Promise<MigrationFile> {
   
   // Create a module-like object with the migration code
   const module = { 
-    exports: {} as { 
-      up: MigrationFunction; 
-      down?: MigrationFunction 
-    } 
+    exports: {} as { up: MigrationFunction; down?: MigrationFunction } 
   };
   
   // Create a simple require function for migrations
   const require = (path: string) => {
     if (path === 'sqlite3') {
-      // Return a minimal sqlite3-compatible object
-      return {
-        Database: sqlite3.Database,
-        verbose: () => ({
-          Database: sqlite3.verbose().Database
-        })
-      };
+      return { Database: { prototype: {} } }; // Minimal sqlite3 mock
     }
     throw new Error(`Cannot require ${path} in migration`);
   };
   
-  // Execute the migration code in a safe context
   try {
     // Use the Function constructor to create the migration function
-    // This is safe because we control the input (migration files)
     const fn = new Function('module', 'exports', 'require', content);
-    
-    // Call the function with our module context
     fn(module, module.exports, require);
     
-    // Validate the exported 'up' function
     if (typeof module.exports.up !== 'function') {
       throw new Error('Migration must export an "up" function');
     }
     
-    // Validate the exported 'down' function if it exists
     if (module.exports.down && typeof module.exports.down !== 'function') {
       throw new Error('If provided, "down" must be a function');
     }
+    
+    return { id, name, up: module.exports.up, down: module.exports.down };
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Error loading migration ${file}: ${errorMessage}`);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Error loading migration ${file}: ${message}`);
   }
-  
-  return {
-    id,
-    name,
-    up: module.exports.up,
-    down: module.exports.down
-  };
-}
+};
 
-async function runMigrations(): Promise<MigrationResult> {
+const runMigrations = async (): Promise<MigrationResult> => {
   console.log('\n=== Database Migration ===');
   const startTime = Date.now();
   
   try {
-    // 1. Ensure data directory exists
     await ensureDataDirectory();
-    
-    // 2. Initialize database connection
     console.log('\n1. Connecting to database...');
+    
     const db = await getDbConnection();
-    const dbWithRun = db as unknown as DatabaseWithRun;
     
     try {
-      // 3. Show current state before migration
       console.log('\n2. Current database state:');
       
-      // 4. Get all migration files
       console.log('\n3. Checking for migration files...');
       await mkdir(MIGRATIONS_DIR, { recursive: true });
       const migrationFiles = await getMigrationFiles();
       console.log(`   Found ${migrationFiles.length} migration files`);
       
-      // 5. Ensure migrations table exists and get applied migrations
       console.log('\n4. Checking for applied migrations...');
-      await ensureMigrationsTable(dbWithRun);
-      const appliedMigrations = await getAppliedMigrations(dbWithRun);
+      await ensureMigrationsTable(db);
+      const appliedMigrations = await getAppliedMigrations(db);
       console.log(`   Found ${appliedMigrations.length} applied migrations`);
       
-      // 6. Find pending migrations
       const pendingMigrations = migrationFiles.filter(
         file => !appliedMigrations.some(m => m.name === file.replace(/\.[^/.]+$/, ''))
-      ).sort((a, b) => {
-        // Sort migrations by their numeric prefix
-        const aNum = parseInt(a.split('_')[0], 10);
-        const bNum = parseInt(b.split('_')[0], 10);
-        return aNum - bNum;
-      });
+      ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
       
-      if (pendingMigrations.length === 0) {
+      if (!pendingMigrations.length) {
         console.log('✅ Database is up to date');
         return { success: true, applied: 0, totalMigrations: migrationFiles.length };
       }
       
       console.log(`\n5. Found ${pendingMigrations.length} pending migrations:`);
-      pendingMigrations.forEach((file, index) => {
-        console.log(`   ${index + 1}. ${file}`);
-      });
+      pendingMigrations.forEach((file, i) => 
+        console.log(`   ${i + 1}. ${file}`)
+      );
       
-      // 7. Apply pending migrations
       console.log('\n6. Applying migrations...');
       let appliedCount = 0;
       
       for (const file of pendingMigrations) {
+        console.log(`\n   🔄 Applying migration: ${file}`);
+        const migration = await loadMigration(file);
+        
         try {
-          console.log(`\n   🔄 Applying migration: ${file}`);
-          const migration = await loadMigration(file);
+          await db.run('BEGIN TRANSACTION');
+          await migration.up(db);
+          await db.run(
+            "INSERT INTO migrations (name, applied_at) VALUES (?, strftime('%s', 'now'))",
+            migration.name
+          );
+          await db.run('COMMIT');
           
-          // Start a transaction
-          await dbWithRun.run('BEGIN TRANSACTION');
-          
-          try {
-            // Run the migration
-            await migration.up(dbWithRun);
-            
-            // Record the migration
-            await dbWithRun.run(
-              "INSERT INTO migrations (name, applied_at) VALUES (?, strftime('%s', 'now'))",
-              migration.name
-            );
-            
-            // Commit the transaction
-            await dbWithRun.run('COMMIT');
-            
-            console.log(`   ✅ Applied migration: ${file}`);
-            appliedCount++;
-            
-          } catch (error: any) {
-            // Rollback on error
-            await dbWithRun.run('ROLLBACK');
-            throw new Error(`Failed to apply migration ${file}: ${error.message}`);
-          }
-          
+          console.log(`   ✅ Applied migration: ${file}`);
+          appliedCount++;
         } catch (error: any) {
+          await db.run('ROLLBACK');
           console.error(`   ❌ Failed to apply migration ${file}:`, error.message);
           return {
             success: false,
@@ -268,85 +201,96 @@ async function runMigrations(): Promise<MigrationResult> {
   }
 }
 
-async function initializeDatabase(): Promise<InitResult> {
+const initializeDatabase = async (): Promise<InitResult> => {
   console.log('\n=== Database Initialization ===');
   const startTime = Date.now();
   const tablesCreated: string[] = [];
   
   try {
-    // 1. Ensure data directory exists
     await ensureDataDirectory();
-    
-    // 2. Initialize database connection
     console.log('\n1. Connecting to database...');
+    
     const db = await getDbConnection();
     
     try {
-      // 3. Check if tables already exist
       console.log('\n2. Checking existing tables...');
       const tables = await getAllTables(db);
       
-      if (tables.length > 0) {
-        console.log('✅ Database already initialized with tables:', tables.join(', '));
+      if (tables.length) {
+        console.log('✅ Database already initialized with tables:', tables.map(t => t.name).join(', '));
         return { success: true, tablesCreated: [] };
       }
       
-      // 4. Create tables
       console.log('\n3. Creating tables...');
       
-      // Create migrations table
-      console.log('   - Creating migrations table');
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS migrations (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL UNIQUE,
-          applied_at INTEGER DEFAULT (strftime('%s', 'now'))
-        )
-      `);
-      tablesCreated.push('migrations');
+      // Table definitions
+      const tableDefs = [
+        {
+          name: 'migrations',
+          sql: `
+            CREATE TABLE IF NOT EXISTS migrations (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL UNIQUE,
+              applied_at INTEGER DEFAULT (strftime('%s', 'now'))
+            )
+          `
+        },
+        {
+          name: 'users',
+          sql: `
+            CREATE TABLE IF NOT EXISTS users (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              username TEXT NOT NULL UNIQUE,
+              email TEXT NOT NULL UNIQUE,
+              password_hash TEXT NOT NULL,
+              created_at INTEGER DEFAULT (strftime('%s', 'now')),
+              updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+            )
+          `
+        },
+        {
+          name: 'items',
+          sql: `
+            CREATE TABLE IF NOT EXISTS items (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              name TEXT NOT NULL,
+              description TEXT,
+              created_at INTEGER DEFAULT (strftime('%s', 'now')),
+              updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+          `
+        },
+        {
+          name: 'base_points',
+          sql: `
+            CREATE TABLE IF NOT EXISTS base_points (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              points INTEGER NOT NULL DEFAULT 0,
+              created_at INTEGER DEFAULT (strftime('%s', 'now')),
+              updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+          `
+        }
+      ];
       
-      // Create users table
-      console.log('   - Creating users table');
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          username TEXT NOT NULL UNIQUE,
-          email TEXT NOT NULL UNIQUE,
-          password_hash TEXT NOT NULL,
-          created_at INTEGER DEFAULT (strftime('%s', 'now')),
-          updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-        )
-      `);
-      tablesCreated.push('users');
+      // Create tables in a transaction
+      await db.run('BEGIN TRANSACTION');
       
-      // Create items table
-      console.log('   - Creating items table');
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS items (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          name TEXT NOT NULL,
-          description TEXT,
-          created_at INTEGER DEFAULT (strftime('%s', 'now')),
-          updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-      `);
-      tablesCreated.push('items');
-      
-      // Create base_points table
-      console.log('   - Creating base_points table');
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS base_points (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          points INTEGER NOT NULL DEFAULT 0,
-          created_at INTEGER DEFAULT (strftime('%s', 'now')),
-          updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-      `);
-      tablesCreated.push('base_points');
+      try {
+        for (const { name, sql } of tableDefs) {
+          console.log(`   - Creating ${name} table`);
+          await db.exec(sql);
+          tablesCreated.push(name);
+        }
+        await db.run('COMMIT');
+      } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+      }
       
       console.log(`✅ Database initialized with ${tablesCreated.length} tables`);
       return { success: true, tablesCreated };
@@ -354,7 +298,6 @@ async function initializeDatabase(): Promise<InitResult> {
     } finally {
       await db.close();
     }
-    
   } catch (error: any) {
     console.error('❌ Database initialization failed:', error.message);
     return { 
@@ -362,34 +305,29 @@ async function initializeDatabase(): Promise<InitResult> {
       error: error.message || 'Unknown error during initialization',
       tablesCreated: []
     };
-    
   } finally {
     console.log(`⏱️  Initialization completed in ${((Date.now() - startTime) / 1000).toFixed(2)}s`);
   }
 }
 
-// Main function to handle CLI commands
-async function main() {
-  const command = process.argv[2] || 'help';
+const main = async () => {
+  const command = process.argv[2]?.toLowerCase() || 'help';
   
-  switch (command.toLowerCase()) {
+  switch (command) {
     case 'init':
       await initializeDatabase();
       break;
-      
     case 'migrate':
       await runMigrations();
       break;
-      
     case 'help':
     default:
       showHelp();
       process.exit(0);
   }
-}
+};
 
-function showHelp() {
-  console.log(`
+const showHelp = () => console.log(`
 Database Migration Tool
 
 Usage:
@@ -404,9 +342,8 @@ Examples:
   npx tsx scripts/migrate.ts init
   npx tsx scripts/migrate.ts migrate
 `);
-}
 
-// Execute the appropriate command
+// Execute the appropriate command when run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(error => {
     console.error('\n❌ Fatal error:', error);
@@ -419,5 +356,7 @@ export {
   initializeDatabase,
   ensureMigrationsTable,
   getMigrationFiles,
-  loadMigration
+  loadMigration,
+  type MigrationResult,
+  type InitResult
 };

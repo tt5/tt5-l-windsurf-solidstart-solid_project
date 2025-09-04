@@ -1,21 +1,47 @@
 import sqlite3 from 'sqlite3';
-const { Database } = sqlite3;
+import { open, Database as SqliteDatabase } from 'sqlite';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdir, access, constants } from 'node:fs/promises';
-import { promisify } from 'util';
 
-type Database = sqlite3.Database;
+export type Database = SqliteDatabase<sqlite3.Database, sqlite3.Statement>;
+
+// Extend the Database type with additional methods
+declare module 'sqlite' {
+  interface Database<Driver, Stmt> {
+    run(sql: string, ...params: any[]): Promise<{ lastID?: number | bigint; changes?: number }>;
+    all<T = any>(sql: string, ...params: any[]): Promise<T[]>;
+    get<T = any>(sql: string, ...params: any[]): Promise<T | undefined>;
+    exec(sql: string): Promise<void>;
+  }
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const DB_PATH = join(process.cwd(), 'data', 'app.db');
 const BACKUP_DIR = join(process.cwd(), 'data', 'backups');
 
-export interface Migration {
+export interface DbMigration {
+  id: number;
+  name: string;
+  applied_at: number;
+}
+
+export interface TableInfo {
+  cid: number;
+  name: string;
+  type: string;
+  notnull: 0 | 1;
+  dflt_value: any;
+  pk: 0 | 1;
+}
+
+export type MigrationFunction = (db: Database) => Promise<void>;
+
+export interface MigrationFile {
   id: string;
-  description: string;
-  up: (db: Database) => Promise<void>;
-  down?: (db: Database) => Promise<void>;
+  name: string;
+  up: MigrationFunction;
+  down?: MigrationFunction;
 }
 
 export async function ensureDbDirectory() {
@@ -24,26 +50,19 @@ export async function ensureDbDirectory() {
 }
 
 export async function createDatabaseConnection(): Promise<Database> {
-  // Create the database directory if it doesn't exist
   await ensureDbDirectory();
   
-  return new Promise((resolve, reject) => {
-    // Create a new database connection
-    const db = new Database(DB_PATH, (err) => {
-      if (err) {
-        return reject(err);
-      }
-      
-      // Configure database with optimal settings
-      db.serialize(() => {
-        db.run('PRAGMA journal_mode = WAL;');
-        db.run('PRAGMA foreign_keys = ON;');
-        db.run('PRAGMA synchronous = NORMAL;');
-        
-        resolve(db);
-      });
-    });
+  const db = await open({
+    filename: DB_PATH,
+    driver: sqlite3.Database,
   });
+
+  // Configure database with optimal settings
+  await db.exec('PRAGMA journal_mode = WAL;');
+  await db.exec('PRAGMA foreign_keys = ON;');
+  await db.exec('PRAGMA synchronous = NORMAL;');
+  
+  return db;
 }
 
 export async function databaseExists(): Promise<boolean> {
