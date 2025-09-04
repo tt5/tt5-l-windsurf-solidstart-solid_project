@@ -7,8 +7,12 @@ import {
   tableExists, 
   getTableRowCount,
   getTableSchema,
-  executeQuery
+  executeQuery,
+  ensureDataDirectory
 } from './utils/db-utils';
+
+// Command line interface type
+type Command = 'verify' | 'check' | 'schema' | 'tables' | 'migrations' | 'help' | undefined;
 
 const DB_PATH = join(process.cwd(), 'data', 'app.db');
 
@@ -18,6 +22,12 @@ interface TableInfo {
   rowCount: number;
   schema?: string;
   error?: string;
+}
+
+interface CheckResult {
+  success: boolean;
+  message: string;
+  details?: any;
 }
 
 async function getDetailedTableInfo(db: any, tableName: string): Promise<TableInfo> {
@@ -43,23 +53,76 @@ async function getDetailedTableInfo(db: any, tableName: string): Promise<TableIn
   }
 }
 
-async function checkDatabase(detailed: boolean = false) {
-  console.log('\n=== Database Health Check ===');
+async function checkDatabaseConnection(db: any): Promise<CheckResult> {
+  try {
+    await db.get('SELECT 1 as test');
+    return { success: true, message: '✅ Database connection successful' };
+  } catch (error) {
+    return { 
+      success: false, 
+      message: `❌ Database connection failed: ${error.message}`,
+      details: error
+    };
+  }
+}
+
+async function checkTables(db: any): Promise<CheckResult> {
+  try {
+    const tables = await getAllTables(db);
+    const tableInfo = await Promise.all(
+      tables.map(table => getDetailedTableInfo(db, table.name))
+    );
+    
+    return {
+      success: true,
+      message: `Found ${tables.length} tables`,
+      details: tableInfo
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Failed to check tables: ${error.message}`,
+      details: error
+    };
+  }
+}
+
+async function checkMigrations(db: any): Promise<CheckResult> {
+  try {
+    const migrations = await getAppliedMigrations(db);
+    return {
+      success: true,
+      message: `Found ${migrations.length} applied migrations`,
+      details: migrations
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Failed to check migrations: ${error.message}`,
+      details: error
+    };
+  }
+}
+
+async function checkDatabase(command: Command = 'verify'): Promise<void> {
+  console.log(`\n=== Database ${command.charAt(0).toUpperCase() + command.slice(1)} ===`);
   const startTime = Date.now();
   
   try {
     // 1. Ensure data directory exists
-    console.log('\n1. Verifying data directory...');
-    await fs.mkdir(join(process.cwd(), 'data'), { recursive: true });
-    console.log('✅ Data directory verified');
+    if (command === 'verify' || command === 'check') {
+      console.log('\n1. Verifying data directory...');
+      await ensureDataDirectory();
+      console.log('✅ Data directory verified');
 
-    // 2. Check database file
-    console.log('\n2. Checking database file...');
-    try {
-      const stats = await fs.stat(DB_PATH);
-      console.log(`✅ Database file exists (${(stats.size / 1024).toFixed(2)} KB)`);
-    } catch (error) {
-      console.log('ℹ️ Database file does not exist, it will be created on first connection');
+      // 2. Check database file
+      console.log('\n2. Checking database file...');
+      try {
+        const stats = await fs.stat(DB_PATH);
+        console.log(`✅ Database file exists (${(stats.size / 1024).toFixed(2)} KB)`);
+      } catch (error) {
+        console.log('ℹ️ Database file does not exist, it will be created on first connection');
+      }
     }
 
     // 3. Connect to database
@@ -67,36 +130,67 @@ async function checkDatabase(detailed: boolean = false) {
     const db = await getDbConnection();
     
     try {
-      console.log('✅ Connected to database');
+      const connectionCheck = await checkDatabaseConnection(db);
+      console.log(connectionCheck.message);
       
-      // 4. Check migrations
-      console.log('\n4. Checking migrations...');
-      const migrations = await getAppliedMigrations(db);
-      console.log(`Found ${migrations.length} applied migrations`);
-      
-      if (migrations.length > 0) {
-        console.log(`Latest migration: ${migrations[migrations.length - 1].name}`);
-      } else {
-        console.log('⚠️  Migrations table does not exist');
+      if (!connectionCheck.success) {
+        throw new Error(connectionCheck.message);
       }
       
-      // 5. Verify and list all tables
-      console.log('\n5. Verifying database structure...');
-      const tables = await getAllTables(db);
-      console.log(`Found ${tables.length} tables`);
-      
-      // 6. Verify required tables exist
-      const requiredTables = ['users', 'sessions', 'migrations'];
-      for (const table of requiredTables) {
-        const exists = await tableExists(db, table);
-        console.log(`   ${exists ? '✅' : '❌'} ${table} ${exists ? 'exists' : 'MISSING'}`);
+      // Execute command-specific checks
+      switch (command) {
+        case 'tables':
+          const tablesCheck = await checkTables(db);
+          console.log(`\n${tablesCheck.message}`);
+          if (tablesCheck.details) {
+            console.table(tablesCheck.details.map((t: TableInfo) => ({
+              Name: t.name,
+              'Row Count': t.rowCount,
+              Status: t.error ? `❌ ${t.error}` : '✅ OK'
+            })));
+          }
+          break;
+          
+        case 'migrations':
+          const migrationsCheck = await checkMigrations(db);
+          console.log(`\n${migrationsCheck.message}`);
+          if (migrationsCheck.details?.length > 0) {
+            console.log('\nLatest migrations:');
+            console.table(migrationsCheck.details.slice(-5).map((m: any) => ({
+              ID: m.id,
+              Name: m.name,
+              'Applied At': new Date(m.applied_at * 1000).toISOString()
+            })));
+          }
+          break;
+          
+        case 'verify':
+        case 'check':
+        default:
+          // Run all checks
+          const [tablesResult, migrationsResult] = await Promise.all([
+            checkTables(db),
+            checkMigrations(db)
+          ]);
+          
+          console.log(`\n4. ${tablesResult.message}`);
+          console.log(`5. ${migrationsResult.message}`);
+          
+          if (tablesResult.details) {
+            console.log('\nTable status:');
+            console.table(tablesResult.details.map((t: TableInfo) => ({
+              Name: t.name,
+              'Row Count': t.rowCount,
+              Status: t.error ? `❌ ${t.error}` : '✅ OK'
+            })));
+          }
+          
+          if (migrationsResult.details?.length > 0) {
+            const latest = migrationsResult.details[migrationsResult.details.length - 1];
+            console.log(`\nLatest migration: ${latest.name} (${new Date(latest.applied_at * 1000).toISOString()})`);
+          }
+          break;
       }
-
-      // 7. Get row counts for each table
-      console.log('\n6. Table row counts:');
-      const tableInfo = await Promise.all(
-        tables.map(table => getDetailedTableInfo(db, table.name))
-      );
       
       // Display basic table info
       tableInfo.forEach(({ name, rowCount, error }) => {
@@ -119,82 +213,33 @@ async function checkDatabase(detailed: boolean = false) {
         console.log('\n📋 Database Tables:');
         console.table(tables.map(t => ({
           Name: t.name,
-          Type: t.type,
-          'Row Count': t.rowCount >= 0 ? t.rowCount : 'N/A',
-          'Has Schema': detailed ? '✅' : 'ℹ️  (use --detailed for schema)'
-        })));
-        
-        // Show detailed schema if requested
-        if (detailed) {
-          console.log('\n📜 Table Schemas:');
-          for (const table of tableInfo) {
-            console.log(`\n🔹 ${table.name} (${table.rowCount} rows)`);
-            if (table.error) {
-              console.log(`   ❌ Error: ${table.error}`);
-            } else if (table.schema) {
-              console.log(`   ${table.schema}`);
-            }
-          }
-        }
-      }
-      
-      // 6. Check specific tables
-      const importantTables = ['users', 'sessions', 'base_points'];
-      console.log('\n4. Checking important tables...');
-      
-      for (const table of importantTables) {
-        const exists = await tableExists(db, table);
-        if (exists) {
-          const count = await getTableRowCount(db, table);
-          console.log(`   • ${table.padEnd(12)}: ${count.toString().padStart(4)} rows`);
-        } else {
-          console.log(`   • ${table.padEnd(12)}: ❌ Does not exist`);
-        }
-      }
-      
-      // 7. Database integrity check
-      console.log('\n5. Running integrity check...');
-      try {
-        const integrity = await db.get('PRAGMA integrity_check');
-        console.log(`   • Integrity: ${integrity.integrity_check === 'ok' ? '✅' : '❌'}`);
-      } catch (error) {
-        console.log('   • Integrity check not supported');
-      }
-      
-      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`\n✅ Database check completed in ${duration}s`);
-      
-      return { 
-        success: true, 
-        tableCount: tables.length,
-        migrationCount: migrations.length,
-        duration: parseFloat(duration)
-      };
       
     } finally {
       await db.close();
     }
     
   } catch (error) {
-    console.error('\n❌ Error checking database:', error.message);
-    return { 
-      success: false, 
-      error: error.message,
-      duration: ((Date.now() - startTime) / 1000).toFixed(2)
-    };
+    console.error('\n❌ Operation failed:', error.message);
+    process.exit(1);
   }
 }
 
 // Parse command line arguments
 const args = process.argv.slice(2);
-const detailed = args.includes('--detailed') || args.includes('-d');
-const command = args.find(arg => !arg.startsWith('-'));
+const command = (args.find(arg => !arg.startsWith('-')) || 'verify') as Command;
 
+// Show help if requested
+if (command === 'help' || args.includes('--help') || args.includes('-h')) {
+  showHelp();
+  process.exit(0);
+}
+
+// Execute the requested command
 async function main() {
   switch (command) {
     case 'verify':
-    case undefined:
-      await checkDatabase(detailed);
+    case 'check':
+      await checkDatabase(command);
       break;
     case 'init':
       await initializeDatabase();
@@ -252,17 +297,23 @@ async function initializeDatabase() {
 // Show help message
 function showHelp() {
   console.log(`
-Database Management Commands:
-  check-db [command] [options]
+Database Management Tool
+
+Usage:
+  npx tsx scripts/check-db.ts [command]
 
 Commands:
-  verify    Verify database integrity (default)
-  init      Initialize database structure
-  help      Show this help message
+  verify      Run all database checks (default)
+  check       Alias for verify
+  tables      List all tables and row counts
+  migrations  Show applied migrations
+  help        Show this help message
 
-Options:
-  --detailed, -d  Show detailed information
-  `);
+Examples:
+  npx tsx scripts/check-db.ts verify
+  npx tsx scripts/check-db.ts tables
+  npx tsx scripts/check-db.ts migrations
+`);
 }
 
 // Run the main function

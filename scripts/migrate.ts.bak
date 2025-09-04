@@ -29,6 +29,7 @@ type DatabaseWithRun = Database & {
 // Type for migration functions
 type MigrationFunction = (db: DatabaseWithRun) => Promise<void>;
 
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -75,7 +76,7 @@ async function getMigrationFiles(): Promise<string[]> {
     return files
       .filter(file => file.endsWith('.js') || file.endsWith('.ts'))
       .sort();
-  } catch (error: any) {
+  } catch (error) {
     if (error.code === 'ENOENT') {
       console.log('Migrations directory not found, creating...');
       await mkdir(MIGRATIONS_DIR, { recursive: true });
@@ -97,6 +98,7 @@ async function loadMigration(file: string): Promise<MigrationFile> {
   
   const [_, id, name] = match;
   
+  // Create a module-like object with the migration code
   // Create a module-like object with the migration code
   const module = { 
     exports: {} as { 
@@ -141,6 +143,9 @@ async function loadMigration(file: string): Promise<MigrationFile> {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     throw new Error(`Error loading migration ${file}: ${errorMessage}`);
   }
+  
+  // Type assertion to ensure the migration has the correct shape
+  const migration = module.exports as { up: MigrationFunction; down?: MigrationFunction };
   
   return {
     id,
@@ -194,18 +199,13 @@ async function runMigrations(): Promise<MigrationResult> {
         return { success: true, applied: 0, totalMigrations: migrationFiles.length };
       }
       
-      console.log(`\n5. Found ${pendingMigrations.length} pending migrations:`);
-      pendingMigrations.forEach((file, index) => {
-        console.log(`   ${index + 1}. ${file}`);
-      });
+      console.log(`Found ${pendingMigrations.length} pending migrations`);
       
-      // 7. Apply pending migrations
-      console.log('\n6. Applying migrations...');
+      // Apply pending migrations
       let appliedCount = 0;
-      
       for (const file of pendingMigrations) {
         try {
-          console.log(`\n   🔄 Applying migration: ${file}`);
+          console.log(`\n🔹 Applying migration: ${file}`);
           const migration = await loadMigration(file);
           
           // Start a transaction
@@ -224,21 +224,22 @@ async function runMigrations(): Promise<MigrationResult> {
             // Commit the transaction
             await dbWithRun.run('COMMIT');
             
-            console.log(`   ✅ Applied migration: ${file}`);
+            console.log(`✅ Applied migration: ${file}`);
             appliedCount++;
             
-          } catch (error: any) {
+          } catch (error) {
             // Rollback on error
             await dbWithRun.run('ROLLBACK');
-            throw new Error(`Failed to apply migration ${file}: ${error.message}`);
+            throw error;
           }
           
-        } catch (error: any) {
-          console.error(`   ❌ Failed to apply migration ${file}:`, error.message);
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error(`❌ Failed to apply migration ${file}:`, errorMessage);
           return {
             success: false,
             applied: appliedCount,
-            error: `Migration failed: ${file} - ${error.message}`,
+            error: `Migration failed: ${file} - ${errorMessage}`,
             pendingMigrations: pendingMigrations.slice(appliedCount)
           };
         }
@@ -255,23 +256,95 @@ async function runMigrations(): Promise<MigrationResult> {
       await db.close();
     }
     
-  } catch (error: any) {
-    console.error('❌ Migration failed:', error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error during migration';
+    console.error('\n❌ Migration failed:', errorMessage);
     return {
       success: false,
       applied: 0,
-      error: error.message || 'Unknown error during migration'
+      error: errorMessage
     };
-    
   } finally {
     console.log(`⏱️  Migration completed in ${((Date.now() - startTime) / 1000).toFixed(2)}s`);
   }
 }
 
 async function initializeDatabase(): Promise<InitResult> {
-  console.log('\n=== Database Initialization ===');
   const startTime = Date.now();
-  const tablesCreated: string[] = [];
+  console.log('\n=== Database Initialization ===');
+  
+  try {
+    await ensureDataDirectory();
+    const db = await getDbConnection();
+    const tablesCreated: string[] = [];
+
+    try {
+      // Enable foreign keys
+      await db.exec('PRAGMA foreign_keys = ON;');
+      
+      // Create migrations table if it doesn't exist
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS migrations (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          applied_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        );
+      `);
+      tablesCreated.push('migrations');
+
+      // Create users table if it doesn't exist
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          username TEXT NOT NULL UNIQUE,
+          created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+          updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        );
+      `);
+      tablesCreated.push('users');
+
+      // Create sessions table if it doesn't exist
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS sessions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          expires_at INTEGER NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+      `);
+      tablesCreated.push('sessions');
+
+      // Create base_points table if it doesn't exist
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS base_points (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT,
+          created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+          updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+      `);
+      tablesCreated.push('base_points');
+
+      console.log(`✅ Database initialized with ${tablesCreated.length} tables`);
+      return { success: true, tablesCreated };
+    } finally {
+      await db.close();
+    }
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error);
+    return { success: false, error: error.message, tablesCreated: [] };
+  } finally {
+    console.log(`⏱️  Initialization completed in ${((Date.now() - startTime) / 1000).toFixed(2)}s`);
+  }
+}
+
+async function runMigrations(): Promise<MigrationResult> {
+  console.log('\n=== Database Migration ===');
+  const startTime = Date.now();
   
   try {
     // 1. Ensure data directory exists
@@ -282,109 +355,151 @@ async function initializeDatabase(): Promise<InitResult> {
     const db = await getDbConnection();
     
     try {
-      // 3. Check if tables already exist
-      console.log('\n2. Checking existing tables...');
-      const tables = await getAllTables(db);
+      // 2. Show current state before migration
+      console.log('\n2. Current database state:');
       
-      if (tables.length > 0) {
-        console.log('✅ Database already initialized with tables:', tables.join(', '));
-        return { success: true, tablesCreated: [] };
+      // Get existing migrations
+      await ensureMigrationsTable(db);
+      const currentMigrations = await getAppliedMigrations(db);
+      console.log(`   • Found ${currentMigrations.length} existing migrations`);
+      
+      if (currentMigrations.length > 0) {
+        const latest = currentMigrations[currentMigrations.length - 1];
+        console.log(`   • Latest migration: ${latest.name} (${new Date(latest.applied_at * 1000).toISOString()})`);
       }
       
-      // 4. Create tables
-      console.log('\n3. Creating tables...');
+      // Get current tables
+      const tables = await getAllTables(db);
+      console.log(`   • Found ${tables.length} tables`);
       
-      // Create migrations table
-      console.log('   - Creating migrations table');
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS migrations (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL UNIQUE,
-          applied_at INTEGER DEFAULT (strftime('%s', 'now'))
-        )
-      `);
-      tablesCreated.push('migrations');
+      // 3. Find and run new migrations
+      const migrationFiles = (await readdir(MIGRATIONS_DIR))
+        .filter(f => f.endsWith('.ts') && f !== 'index.ts' && f !== 'template.ts')
+        .sort();
       
-      // Create users table
-      console.log('   - Creating users table');
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          username TEXT NOT NULL UNIQUE,
-          email TEXT NOT NULL UNIQUE,
-          password_hash TEXT NOT NULL,
-          created_at INTEGER DEFAULT (strftime('%s', 'now')),
-          updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-        )
-      `);
-      tablesCreated.push('users');
+      if (migrationFiles.length === 0) {
+        console.log('\nℹ️  No migration files found');
+        return { success: true, applied: 0, tables, totalMigrations: currentMigrations.length };
+      }
       
-      // Create items table
-      console.log('   - Creating items table');
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS items (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          name TEXT NOT NULL,
-          description TEXT,
-          created_at INTEGER DEFAULT (strftime('%s', 'now')),
-          updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-      `);
-      tablesCreated.push('items');
+      const appliedMigrations = new Set(
+        currentMigrations.map((m: any) => m.name)
+      );
       
-      // Create base_points table
-      console.log('   - Creating base_points table');
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS base_points (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          points INTEGER NOT NULL DEFAULT 0,
-          created_at INTEGER DEFAULT (strftime('%s', 'now')),
-          updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-      `);
-      tablesCreated.push('base_points');
+      const pendingMigrations = migrationFiles.filter(f => !appliedMigrations.has(f));
       
-      console.log(`✅ Database initialized with ${tablesCreated.length} tables`);
-      return { success: true, tablesCreated };
+      if (pendingMigrations.length === 0) {
+        console.log(`\n✅ All ${migrationFiles.length} migrations already applied`);
+        return { success: true, applied: 0, tables, totalMigrations: currentMigrations.length };
+      }
+      
+      console.log(`\n3. Found ${pendingMigrations.length} new migrations to apply`);
+      
+      // 4. Run migrations in transaction
+      await db.run('BEGIN TRANSACTION');
+      
+      try {
+        for (const file of pendingMigrations) {
+          const startTime = Date.now();
+          console.log(`\n   🔄 Applying: ${file}`);
+          
+          // Import and run migration
+          const migration = await import(join(MIGRATIONS_DIR, file));
+          await migration.up(db);
+          
+          // Record migration
+          await db.run('INSERT INTO migrations (name) VALUES (?)', [file]);
+          
+          const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+          console.log(`   ✅ Applied in ${duration}s`);
+        }
+        
+        await db.run('COMMIT');
+        
+        // 5. Show updated state
+        console.log('\n4. Updated database state:');
+        
+        const updatedTables = await getAllTables(db);
+        console.log(`   • Found ${updatedTables.length} tables`);
+        
+        if (updatedTables.length > 0) {
+          console.log('\n   Tables:');
+          console.table(updatedTables.map(t => ({
+            Name: t.name,
+            Type: t.type,
+            'Row Count': t.rowCount >= 0 ? t.rowCount : 'N/A'
+          })));
+        }
+        
+        const updatedMigrations = await getAppliedMigrations(db);
+        console.log(`\n✅ Successfully applied ${pendingMigrations.length} migrations`);
+        console.log(`   • Total migrations: ${updatedMigrations.length}`);
+        
+        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+        console.log(`\n✨ Migration completed in ${duration}s`);
+        
+        return { 
+          success: true, 
+          applied: pendingMigrations.length, 
+          tables: updatedTables,
+          totalMigrations: updatedMigrations.length
+        };
+        
+      } catch (error) {
+        await db.run('ROLLBACK');
+        console.error('\n❌ Migration failed, rolling back changes...');
+        throw error;
+      }
       
     } finally {
       await db.close();
     }
     
-  } catch (error: any) {
-    console.error('❌ Database initialization failed:', error.message);
+  } catch (error) {
+    console.error('\n❌ Migration failed:', error.message);
     return { 
       success: false, 
-      error: error.message || 'Unknown error during initialization',
-      tablesCreated: []
+      applied: 0, 
+      error: error.message,
+      tables: []
     };
-    
-  } finally {
-    console.log(`⏱️  Initialization completed in ${((Date.now() - startTime) / 1000).toFixed(2)}s`);
   }
 }
 
 // Main function to handle CLI commands
 async function main() {
-  const command = process.argv[2] || 'help';
+  const command = process.argv[2];
   
-  switch (command.toLowerCase()) {
-    case 'init':
-      await initializeDatabase();
-      break;
-      
-    case 'migrate':
-      await runMigrations();
-      break;
-      
-    case 'help':
-    default:
-      showHelp();
-      process.exit(0);
+  try {
+    switch (command) {
+      case 'init':
+        const { success: initSuccess, error: initError, tablesCreated } = await initializeDatabase();
+        if (initSuccess) {
+          console.log('\n✅ Database initialized successfully');
+          if (tablesCreated.length > 0) {
+            console.log('\nCreated tables:', tablesCreated.join(', '));
+          }
+        } else {
+          throw new Error(initError || 'Unknown error during initialization');
+        }
+        break;
+        
+      case 'migrate':
+      case undefined:
+        const migrationResult = await runMigrations();
+        if (!migrationResult.success) {
+          throw new Error(migrationResult.error || 'Migration failed');
+        }
+        break;
+        
+      case 'help':
+      default:
+        showHelp();
+        break;
+    }
+  } catch (error) {
+    console.error('\n❌ Error:', error.message);
+    process.exit(1);
   }
 }
 
@@ -393,12 +508,12 @@ function showHelp() {
 Database Migration Tool
 
 Usage:
-  npx tsx scripts/migrate.ts <command>
+  npx tsx scripts/migrate.ts [command]
 
 Commands:
-  init     Initialize the database with required tables
-  migrate  Run pending database migrations
-  help     Show this help message
+  init      Initialize database with required tables
+  migrate   Run database migrations (default)
+  help      Show this help message
 
 Examples:
   npx tsx scripts/migrate.ts init
