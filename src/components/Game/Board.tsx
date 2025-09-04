@@ -100,13 +100,39 @@ const Board: Component = () => {
   
   // Fetch base points for the current user
   const fetchBasePoints = async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.log('No current user, skipping base points fetch');
+      setBasePoints([]);
+      return;
+    }
+    
+    console.log('Fetching base points for user:', currentUser.id);
     
     try {
-      const response = await fetch(`/api/base-points?userId=${currentUser.id}`);
-      if (response.ok) {
-        const { basePoints: points } = await response.json();
-        setBasePoints(points || []);
+      const response = await fetch('/api/base-points', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('Base points response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to fetch base points:', response.status, errorText);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log('Received base points data:', data);
+      
+      if (data && Array.isArray(data.basePoints)) {
+        console.log(`Setting ${data.basePoints.length} base points`);
+        setBasePoints(data.basePoints);
+      } else {
+        console.error('Invalid base points data format:', data);
+        setBasePoints([]);
       }
     } catch (error) {
       console.error('Error fetching base points:', error);
@@ -119,13 +145,16 @@ const Board: Component = () => {
     
     setIsSaving(true);
     try {
+      console.log('[handleAddBasePoint] Current user:', currentUser);
+      console.log(`[handleAddBasePoint] Adding base point at (${x}, ${y}) for user ${currentUser.id}`);
+      
       const response = await fetch('/api/base-points', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',  // Important for sending cookies
         body: JSON.stringify({
           x,
-          y,
-          userId: currentUser.id
+          y
         })
       });
       
@@ -142,10 +171,30 @@ const Board: Component = () => {
 
   // Check if a grid cell is a base point
   const isBasePoint = (x: number, y: number) => {
-    const [playerX, playerY] = currentPosition();
-    return basePoints().some(bp => 
-      bp.x === (x - playerX) && bp.y === (y - playerY)
-    );
+    try {
+      const points = basePoints();
+      if (!Array.isArray(points)) {
+        console.error('basePoints is not an array:', points);
+        return false;
+      }
+      
+      const [playerX, playerY] = currentPosition();
+      const relX = x - playerX;
+      const relY = y - playerY;
+      
+      const isBP = points.some(bp => {
+        if (!bp || typeof bp.x !== 'number' || typeof bp.y !== 'number') {
+          console.error('Invalid base point:', bp);
+          return false;
+        }
+        return bp.x === relX && bp.y === relY;
+      });
+      
+      return isBP;
+    } catch (error) {
+      console.error('Error in isBasePoint:', error);
+      return false;
+    }
   };
 
   // Fetch base points when user changes

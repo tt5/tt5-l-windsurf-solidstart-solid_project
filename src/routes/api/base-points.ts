@@ -1,28 +1,27 @@
 import { APIEvent } from '@solidjs/start/server';
 import { getBasePointRepository } from '~/lib/server/db';
+import { getAuthUser } from '~/lib/server/auth/jwt';
 
 type BasePointRequest = {
   x: number;
   y: number;
-  userId: string;
 };
 
 export async function GET({ request }: APIEvent) {
   try {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
-    
-    if (!userId) {
+    const user = await getAuthUser(request);
+    if (!user) {
       return new Response(
-        JSON.stringify({ error: 'User ID is required' }), 
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Unauthorized' }), 
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     const repository = getBasePointRepository();
-    const basePoints = await repository.getByUser(userId);
+    const basePoints = await repository.getByUser(user.userId);
     
     return new Response(JSON.stringify({ basePoints }), {
+      status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
@@ -36,17 +35,25 @@ export async function GET({ request }: APIEvent) {
 
 export async function POST({ request }: APIEvent) {
   try {
-    const { x, y, userId } = await request.json() as BasePointRequest;
-    
-    if (typeof x !== 'number' || typeof y !== 'number' || !userId) {
+    const user = await getAuthUser(request);
+    if (!user) {
       return new Response(
-        JSON.stringify({ error: 'Invalid request body' }), 
+        JSON.stringify({ error: 'Unauthorized' }), 
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { x, y } = await request.json() as BasePointRequest;
+    
+    if (typeof x !== 'number' || typeof y !== 'number') {
+      return new Response(
+        JSON.stringify({ error: 'Invalid coordinates' }), 
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     const repository = getBasePointRepository();
-    const basePoint = await repository.add(userId, x, y);
+    const basePoint = await repository.add(user.userId, x, y);
     
     return new Response(JSON.stringify(basePoint), {
       status: 201,
@@ -63,17 +70,25 @@ export async function POST({ request }: APIEvent) {
 
 export async function DELETE({ request }: APIEvent) {
   try {
-    const { x, y, userId } = await request.json() as BasePointRequest;
-    
-    if (typeof x !== 'number' || typeof y !== 'number' || !userId) {
+    const user = await getAuthUser(request);
+    if (!user) {
       return new Response(
-        JSON.stringify({ error: 'Invalid request body' }), 
+        JSON.stringify({ error: 'Unauthorized' }), 
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { x, y } = await request.json() as BasePointRequest;
+    
+    if (typeof x !== 'number' || typeof y !== 'number') {
+      return new Response(
+        JSON.stringify({ error: 'Invalid coordinates' }), 
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     const repository = getBasePointRepository();
-    const success = await repository.remove(userId, x, y);
+    const success = await repository.remove(user.userId, x, y);
     
     if (!success) {
       return new Response(

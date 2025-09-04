@@ -19,48 +19,80 @@ export class BasePointRepository {
 
   async add(userId: string, x: number, y: number): Promise<BasePoint> {
     const now = Date.now();
+    console.log(`[BasePointRepository] Adding base point - userId: ${userId}, x: ${x}, y: ${y}`);
     
     try {
       // Start a transaction to ensure both operations succeed or fail together
+      console.log('[BasePointRepository] Starting transaction');
       await this.db.run('BEGIN TRANSACTION');
       
-      // Check if user exists in user_tables or create a new entry
-      await this.db.run(
-        `INSERT INTO user_tables (user_id, table_name, created_at_ms) 
-         VALUES (?, ?, ?) 
-         ON CONFLICT(user_id) DO NOTHING`,
-        [userId, `user_${userId}`, now]
-      );
+      try {
+        // Check if user exists in user_tables
+        console.log(`[BasePointRepository] Checking user_tables for userId: ${userId}`);
+        const userExists = await this.db.get<{count: number}>(
+          'SELECT COUNT(*) as count FROM user_tables WHERE user_id = ?',
+          [userId]
+        );
+        
+        console.log(`[BasePointRepository] User ${userId} exists: ${userExists?.count > 0}`);
+        
+        // Insert or ignore into user_tables
+        console.log(`[BasePointRepository] Upserting into user_tables for userId: ${userId}`);
+        await this.db.run(
+          `INSERT INTO user_tables (user_id, table_name, created_at_ms) 
+           VALUES (?, ?, ?) 
+           ON CONFLICT(user_id) DO NOTHING`,
+          [userId, `user_${userId}`, now]
+        );
 
-      // First, try to get the existing base point
-      const existing = await this.db.get<BasePoint>(
-        'SELECT id, x, y, created_at_ms as createdAtMs FROM base_points WHERE user_id = ? AND x = ? AND y = ?',
-        [userId, x, y]
-      );
+        // First, try to get the existing base point
+        console.log(`[BasePointRepository] Checking for existing base point at (${x}, ${y})`);
+        const existing = await this.db.get<BasePoint>(
+          'SELECT id, x, y, created_at_ms as createdAtMs FROM base_points WHERE user_id = ? AND x = ? AND y = ?',
+          [userId, x, y]
+        );
 
-      if (existing) {
+        if (existing) {
+          console.log(`[BasePointRepository] Found existing base point:`, existing);
+          await this.db.run('COMMIT');
+          return existing;
+        }
+
+        // Insert the new base point
+        console.log(`[BasePointRepository] Inserting new base point`);
+        const result = await this.db.run(
+          'INSERT INTO base_points (user_id, x, y, created_at_ms, updated_at_ms) VALUES (?, ?, ?, ?, ?)',
+          [userId, x, y, now, now]
+        );
+        
+        console.log(`[BasePointRepository] Base point inserted with ID: ${result.lastID}`);
         await this.db.run('COMMIT');
-        return existing;
+        
+        return {
+          id: result.lastID!,
+          x,
+          y,
+          userId,
+          createdAtMs: now
+        };
+      } catch (error) {
+        console.error('[BasePointRepository] Error in transaction:', error);
+        await this.db.run('ROLLBACK');
+        throw error;
       }
-
-      // Insert the new base point
-      const result = await this.db.run(
-        'INSERT INTO base_points (user_id, x, y, created_at_ms, updated_at_ms) VALUES (?, ?, ?, ?, ?)',
-        [userId, x, y, now, now]
-      );
-      
-      await this.db.run('COMMIT');
-      
-      return {
-        id: result.lastID!,
+    } catch (error) {
+      console.error('[BasePointRepository] Error in add method:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        userId,
         x,
         y,
-        userId,
-        createdAtMs: now
-      };
-    } catch (error) {
-      await this.db.run('ROLLBACK');
-      console.error('Error in BasePointRepository.add:', error);
+        now,
+        dbState: {
+          userExists: await this.db.get('SELECT * FROM user_tables WHERE user_id = ?', [userId]),
+          basePoints: await this.db.all('SELECT * FROM base_points WHERE user_id = ?', [userId])
+        }
+      });
       throw new Error(`Failed to add base point: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
