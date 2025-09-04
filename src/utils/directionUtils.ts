@@ -85,17 +85,3 @@ export const moveSquares = async (
     return currentSquares;
   }
 };
-
-type BasePoint = [number, number]; // [x, y] coordinates
-
-const getBasePoints = async (count: number): Promise<BasePoint[]> => {
-  const response = await fetch(`/api/random-base-points?count=${count}`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch base points: ${response.statusText}`);
-  }
-  const data = await response.json();
-  if (!Array.isArray(data.basePoints)) {
-    throw new Error('Invalid response format from base points service');
-  }
-  return data.basePoints;
-};

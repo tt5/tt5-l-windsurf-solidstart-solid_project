@@ -268,18 +268,41 @@ async function initializeRepositories() {
   if (!db) await getDb();
   userItemRepo = new UserItemRepository(db);
   
-  // Create tables if they don't exist
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS user_items (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL,
-      data TEXT NOT NULL,
-      created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  // Run migrations
+  await runMigrations();
+}
+
+async function runMigrations() {
+  if (!db) throw new Error('Database not initialized');
+  
+  try {
+    // Get all migration files
+    const migrationFiles = (await import('fs/promises')).readdir(
+      new URL('../../../scripts/migrations', import.meta.url).pathname
     );
     
-    CREATE INDEX IF NOT EXISTS idx_user_items_user_id ON user_items(user_id);
-  `);
+    // Get applied migrations
+    const appliedMigrations = await db.all<{name: string}>(
+      'SELECT name FROM migrations ORDER BY name'
+    );
+    
+    const appliedSet = new Set(appliedMigrations.map(m => m.name));
+    
+    // Run pending migrations
+    for (const file of (await migrationFiles).sort()) {
+      if (!file.endsWith('.ts') || file === 'index.ts') continue;
+      
+      const migrationName = file.replace(/\.ts$/, '');
+      if (!appliedSet.has(migrationName)) {
+        console.log(`Running migration: ${migrationName}`);
+        const migration = await import(`../../../scripts/migrations/${migrationName}`);
+        await migration.up(db);
+      }
+    }
+  } catch (error) {
+    console.error('Migration failed:', error);
+    throw error;
+  }
 }
 
 export { 
