@@ -82,6 +82,60 @@ const Board: Component = () => {
   const [basePoints, setBasePoints] = createSignal<BasePoint[]>([]);
   const [isSaving, setIsSaving] = createSignal<boolean>(false);
   const [isLoading, setIsLoading] = createSignal<boolean>(true);
+  const [lastFetchTime, setLastFetchTime] = createSignal<number>(0);
+  const [isFetching, setIsFetching] = createSignal<boolean>(false);
+  
+  // Cache key based on user ID
+  const cacheKey = () => currentUser?.id ? `basePoints_${currentUser.id}` : '';
+  
+  // Single effect to handle base points fetching
+  createEffect(() => {
+    const currentUser = user();
+    
+    // Clear state if no user
+    if (!currentUser) {
+      setBasePoints([]);
+      setIsLoading(false);
+      return;
+    }
+    
+    // Don't fetch if already fetching or recently fetched
+    const now = Date.now();
+    if (isFetching() || (now - lastFetchTime() < 5000)) {
+      return;
+    }
+    
+    // Fetch base points
+    const fetchData = async () => {
+      setIsFetching(true);
+      try {
+        const response = await fetch('/api/base-points', {
+          credentials: 'include',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+          setBasePoints(data.data.basePoints);
+          setLastFetchTime(now);
+        }
+      } catch (error) {
+        console.error('Error fetching base points:', error);
+      } finally {
+        setIsFetching(false);
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  });
   
   // Derived state with explicit return types
   const gridSize = (): number => BOARD_CONFIG.GRID_SIZE;
@@ -129,89 +183,6 @@ const Board: Component = () => {
         window.removeEventListener(event, handler);
       });
     };
-  });
-
-  // Effect to fetch base points when the component mounts or when the user changes
-  createEffect(() => {
-    const currentUser = user(); // React to user changes
-    console.log('User changed, fetching base points for:', currentUser?.username || 'no user');
-    if (currentUser) {
-      console.log('Calling fetchBasePoints...');
-      fetchBasePoints()
-        .then(() => console.log('fetchBasePoints completed'))
-        .catch(err => console.error('Error in fetchBasePoints:', err));
-    } else {
-      console.log('No user, not fetching base points');
-      setIsLoading(false);
-    }
-  });
-
-  // Fetch base points for the current user
-  const fetchBasePoints = async (): Promise<void> => {
-    console.log('fetchBasePoints called');
-    console.log('Current loading state before set:', isLoading());
-    setIsLoading(true);
-    console.log('Loading state after set:', isLoading());
-    
-    const currentUser = user(); // Get the latest user value
-    console.log('Current user in fetchBasePoints:', currentUser?.username || 'none');
-    
-    if (!currentUser) {
-      console.log('No current user, skipping base points fetch');
-      setBasePoints([]);
-      setIsLoading(false);
-      return;
-    }
-    
-    console.log('Fetching base points for user:', currentUser.id);
-    
-    try {
-      const response = await fetch('/api/base-points', {
-        credentials: 'include',
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-      }
-      
-      const responseData = await response.json();
-      console.log('Base points response:', responseData);
-      
-      // The API returns { basePoints: BasePoint[] }
-      if (responseData && Array.isArray(responseData.basePoints)) {
-        console.log(`Found ${responseData.basePoints.length} base points`);
-        setBasePoints(responseData.basePoints);
-      } else {
-        // Fallback to default base points if the response is not in the expected format
-        console.warn('Unexpected response format, using default base points');
-        setBasePoints([{ x: 3, y: 3, value: 1 }]); // Center of 7x7 grid
-      }
-    } catch (error) {
-      console.error('Error fetching base points:', error);
-      // Fallback to default base points if there's an error
-      setBasePoints([{ x: 3, y: 3, value: 1 }]); // Center of 7x7 grid
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  // Effect to fetch base points when user changes
-  createEffect(() => {
-    fetchBasePoints().catch(() => {});
-  });
-
-  onMount(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-  });
-  
-  onCleanup(() => {
-    window.removeEventListener('keydown', handleKeyDown);
-    window.removeEventListener('keyup', handleKeyUp);
   });
 
   const {
@@ -280,15 +251,6 @@ const Board: Component = () => {
       return false;
     }
   };
-
-  // Fetch base points when user changes
-  createEffect(() => {
-    if (currentUser) {
-      fetchBasePoints();
-    } else {
-      setBasePoints([]);
-    }
-  });
 
   const handleDeleteAccount = async () => {
     const userId = currentUser && 'id' in currentUser ? currentUser.id : currentUser;
