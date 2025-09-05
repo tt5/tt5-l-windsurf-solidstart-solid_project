@@ -17,12 +17,12 @@ const getBorderIndices = (direction: Direction): number[] => {
   }
 };
 
-const canMove = (index: number, direction: Direction): boolean => {
+const isVisible = (index: number, direction: Direction): boolean => {
   switch (direction) {
     case 'up': return index >= 7;
     case 'down': return index < 42;
     case 'left': return index % 7 !== 0;
-    case 'right': return index % 7 !== 6;
+    case 'right': return (index + 1) % 7 !== 0;
   }
 };
 
@@ -75,7 +75,7 @@ export const moveSquares = async (
 
     // Move existing squares
     const movedSquares = currentSquares
-      .filter(i => canMove(i, direction))
+      .filter(i => isVisible(i, direction))
       .map(i => moveIndex(i, direction));
     
     // Combine and remove duplicates
