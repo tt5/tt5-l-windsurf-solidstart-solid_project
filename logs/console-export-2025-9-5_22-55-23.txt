@@ -1,0 +1,107 @@
+Firefox can’t establish a connection to the server at ws://localhost:45549/_build/. client:1035:20
+Firefox can’t establish a connection to the server at ws://localhost:45549/_build/. client:1035:20
+Firefox can’t establish a connection to the server at ws://localhost:45549/_build/. client:1035:20
+Firefox can’t establish a connection to the server at ws://localhost:45549/_build/. client:1035:20
+Firefox can’t establish a connection to the server at ws://localhost:45549/_build/. client:1035:20
+Firefox can’t establish a connection to the server at ws://localhost:45549/_build/. client:1035:20
+Firefox can’t establish a connection to the server at ws://localhost:45549/_build/. client:1035:20
+Firefox can’t establish a connection to the server at ws://localhost:45549/_build/. client:1035:20
+Firefox can’t establish a connection to the server at ws://localhost:45549/_build/. client:1035:20
+Firefox can’t establish a connection to the server at ws://localhost:45549/_build/. client:1035:20
+Navigated to http://localhost:3000/game
+GamePage - Component rendering index.tsx:9:10
+GamePage - Not initialized yet, showing loading... index.tsx:28:12
+Auth effect running... auth.tsx:46:12
+Development mode: true auth.tsx:48:12
+Saved user from localStorage: null auth.tsx:52:12
+No saved user found in localStorage auth.tsx:79:14
+Setting isInitialized to true auth.tsx:83:12
+[Auth] Setting isInitialized to: true 
+setIsInitialized@http://localhost:3000/_build/src/contexts/auth.tsx:20:62
+createAuthStore/<@http://localhost:3000/_build/src/contexts/auth.tsx:60:21
+runComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:741:22
+updateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:723:17
+runTop@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:832:24
+runUserEffects@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:942:42
+completeUpdates/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:899:44
+runUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:848:17
+completeUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:899:27
+runUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/…
+auth.tsx:33:12
+Development mode - attempting to auto-login auth.tsx:88:14
+[setupDevUser] Starting development user setup... auth.tsx:106:12
+[setupDevUser] Environment variables: 
+Object { NODE_ENV: undefined, DEV: true, PROD: false }
+auth.tsx:111:12
+[setupDevUser] Attempting to log in with username: devuser auth.tsx:119:14
+[setupDevUser] Making request to: /api/auth/login auth.tsx:121:14
+GamePage - isInitialized: true index.tsx:14:12
+GamePage - user: null index.tsx:15:12
+localStorage user: null index.tsx:19:14
+Environment is development: true index.tsx:20:14
+Current URL: http://localhost:3000/game index.tsx:21:14
+Auth context: 
+Object { user: BoundFunctionObject, login: login(username), logout: async logout(), deleteAccount: async deleteAccount(), isInitialized: BoundFunctionObject }
+index.tsx:22:14
+[setupDevUser] Login response received in 39ms auth.tsx:140:14
+[setupDevUser] Login response status: 200 auth.tsx:141:14
+[setupDevUser] Response body: {"user":{"id":"user_6e989e5b08d138426efcfbff4022d49e","username":"devuser"}} auth.tsx:145:14
+[setupDevUser] Login successful, user data: 
+Object { user: {…} }
+auth.tsx:150:18
+[setupDevUser] User saved to localStorage auth.tsx:162:18
+GamePage - isInitialized: true index.tsx:14:12
+GamePage - user: 
+Object { id: "user_qhqxuw4h6", username: "devuser" }
+index.tsx:15:12
+localStorage user: {"user":{"id":"user_qhqxuw4h6","username":"devuser"}} index.tsx:19:14
+Environment is development: true index.tsx:20:14
+Current URL: http://localhost:3000/game index.tsx:21:14
+Auth context: 
+Object { user: BoundFunctionObject, login: login(username), logout: async logout(), deleteAccount: async deleteAccount(), isInitialized: BoundFunctionObject }
+index.tsx:22:14
+[Auth] Setting isInitialized to: true setIsInitialized@http://localhost:3000/_build/src/contexts/auth.tsx:20:62
+setupDevUser@http://localhost:3000/_build/src/contexts/auth.tsx:122:27
+async*createAuthStore/<@http://localhost:3000/_build/src/contexts/auth.tsx:63:7
+runComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:741:22
+updateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:723:17
+runTop@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:832:24
+runUserEffects@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:942:42
+completeUpdates/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:899:44
+runUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:848:17
+completeUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:899:27
+runUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:849:20
+writeSignal@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:698:17
+setter@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:229:12
+lazy/wrap/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:1468:12
+promise callback*wrap@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:1465:25
+devComponent/c</<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:585:12
+untrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:474:12
+devComponent/c<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:581:44
+runComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:741:22
+updateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:723:17
+devComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:592:20
+createComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:1301:29
+outlet@http://localhost:3000/_build/node_modules/@solidjs/router/dist/routing.js?v=e4407584:568:31
+get children@http://localhost:3000/_build/node_modules/@solidjs/router/dist/routers/components.jsx?v=e4407584:132:23
+createProvider/provider/</res</<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:1056:29
+runComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:741:22
+updateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:723:17
+createMemo@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:272:27
+children@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:615:31
+createProvider/provider/</res<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:1056:14
+untrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:474:12
+createProvider/provider/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:1051:36
+runComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:741:22
+updateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:723:17
+createRenderEffect@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:239:92
+provider@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:1051:23
+devComponent/c</<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:585:12
+untrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:474:12
+devComponent/c<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:581:44
+runComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:741:22
+updateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:723:17
+devComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:592:20
+createComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=e4407584:1301:29
+children@http://localhost:3000/_build/node_modules/@solidjs/router/dist/routers/components.jsx?v=e4407584:129:44
+auth.tsx:33:12

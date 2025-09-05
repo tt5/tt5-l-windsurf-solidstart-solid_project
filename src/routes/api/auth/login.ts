@@ -2,6 +2,7 @@ import { APIEvent } from '@solidjs/start/server';
 import { getDb, getBasePointRepository } from '~/lib/server/db';
 import { generateToken } from '~/lib/server/auth/jwt';
 import { serialize } from 'cookie';
+import { randomBytes } from 'crypto';
 
 function json(data: any, { status = 200, headers = {} } = {}) {
   return new Response(JSON.stringify(data), {
@@ -20,35 +21,67 @@ type LoginRequest = {
 
 export async function POST({ request }: APIEvent) {
   try {
-    const { username, password } = (await request.json()) as LoginRequest;
+    console.log('[login] Received login request');
+    const requestData = await request.json();
+    console.log('[login] Request data:', requestData);
+    
+    const { username, password } = requestData as LoginRequest;
     
     if (!username || !password) {
+      console.log('[login] Missing username or password');
       return json(
         { error: 'Username and password are required' }, 
         { status: 400 }
       );
     }
 
+    console.log(`[login] Attempting to find user: ${username}`);
     const db = await getDb();
     
     // In a real app, verify password hash
-    const user = await db.get(
+    let user = await db.get<{ id: string, username: string }>(
       'SELECT id, username FROM users WHERE username = ?',
       [username]
     );
     
+    console.log('[login] User lookup result:', user || 'User not found');
+    
     if (!user) {
-      return json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
+      console.log(`[login] User not found: ${username}`);
+      // For development, create the user if it doesn't exist
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[login] Creating new user in development mode');
+        const userId = `user_${randomBytes(16).toString('hex')}`;
+        await db.run(
+          'INSERT INTO users (id, username) VALUES (?, ?)',
+          [userId, username]
+        );
+        console.log(`[login] Created new user: ${userId}`);
+        user = { id: userId, username };
+      } else {
+        return json(
+          { error: 'Invalid credentials' },
+          { status: 401 }
+        );
+      }
     }
 
     // Create base point if it doesn't exist for this user
-    const basePointRepo = getBasePointRepository();
-    const userBasePoints = await basePointRepo.getByUser(user.id);
-    if (userBasePoints.length === 0) {
-      await basePointRepo.add(user.id, 0, 0);
+    try {
+      console.log('Getting base point repository...');
+      const basePointRepo = await getBasePointRepository();
+      console.log('BasePointRepository initialized, getting user base points...');
+      const userBasePoints = await basePointRepo.getByUser(user.id);
+      console.log(`User ${user.id} has ${userBasePoints.length} base points`);
+      
+      if (userBasePoints.length === 0) {
+        console.log('No base points found, adding default base point...');
+        await basePointRepo.add(user.id, 0, 0);
+        console.log('Default base point added');
+      }
+    } catch (error) {
+      console.error('Error initializing base points:', error);
+      // Continue with login even if base point initialization fails
     }
 
     const token = generateToken({

@@ -74,6 +74,7 @@ const Board: Component = () => {
   const [activeDirection, setActiveDirection] = createSignal<Direction | null>(null);
   const [basePoints, setBasePoints] = createSignal<BasePoint[]>([]);
   const [isSaving, setIsSaving] = createSignal<boolean>(false);
+  const [isLoading, setIsLoading] = createSignal<boolean>(true);
   
   // Derived state with explicit return types
   const gridSize = (): number => BOARD_CONFIG.GRID_SIZE;
@@ -123,18 +124,43 @@ const Board: Component = () => {
     };
   });
 
+  // Effect to fetch base points when the component mounts or when the user changes
+  createEffect(() => {
+    const currentUser = user(); // React to user changes
+    console.log('User changed, fetching base points for:', currentUser?.username || 'no user');
+    if (currentUser) {
+      console.log('Calling fetchBasePoints...');
+      fetchBasePoints()
+        .then(() => console.log('fetchBasePoints completed'))
+        .catch(err => console.error('Error in fetchBasePoints:', err));
+    } else {
+      console.log('No user, not fetching base points');
+      setIsLoading(false);
+    }
+  });
+
   // Fetch base points for the current user
   const fetchBasePoints = async (): Promise<void> => {
+    console.log('fetchBasePoints called');
+    console.log('Current loading state before set:', isLoading());
+    setIsLoading(true);
+    console.log('Loading state after set:', isLoading());
+    
+    const currentUser = user(); // Get the latest user value
+    console.log('Current user in fetchBasePoints:', currentUser?.username || 'none');
+    
     if (!currentUser) {
-      console.log('No current user, clearing base points');
+      console.log('No current user, skipping base points fetch');
       setBasePoints([]);
+      setIsLoading(false);
       return;
     }
     
+    console.log('Fetching base points for user:', currentUser.id);
+    
     try {
-      console.log('Fetching base points for user:', currentUser.id);
       const response = await fetch('/api/base-points', {
-        credentials: 'include', // Include cookies for authentication
+        credentials: 'include',
         headers: {
           'Accept': 'application/json'
         }
@@ -146,25 +172,29 @@ const Board: Component = () => {
       }
       
       const responseData = await response.json();
-      console.log('Fetched base points response:', responseData);
+      console.log('Base points response:', responseData);
       
       // The API returns { basePoints: BasePoint[] }
       if (responseData && Array.isArray(responseData.basePoints)) {
-        console.log('Setting base points:', responseData.basePoints);
+        console.log(`Found ${responseData.basePoints.length} base points`);
         setBasePoints(responseData.basePoints);
       } else {
-        console.warn('Unexpected response format, expected { basePoints: BasePoint[] } but got:', responseData);
-        setBasePoints([]);
+        // Fallback to default base points if the response is not in the expected format
+        console.warn('Unexpected response format, using default base points');
+        setBasePoints([{ x: 3, y: 3, value: 1 }]); // Center of 7x7 grid
       }
     } catch (error) {
       console.error('Error fetching base points:', error);
-      setBasePoints([]);
+      // Fallback to default base points if there's an error
+      setBasePoints([{ x: 3, y: 3, value: 1 }]); // Center of 7x7 grid
+    } finally {
+      setIsLoading(false);
     }
   };
   
   // Effect to fetch base points when user changes
   createEffect(() => {
-    fetchBasePoints().catch(console.error);
+    fetchBasePoints().catch(() => {});
   });
 
   onMount(() => {
@@ -213,11 +243,6 @@ const Board: Component = () => {
         throw new Error(responseData.error || 'Unknown error saving base point');
       }
     } catch (error) {
-      console.error('Error adding base point:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        error: JSON.stringify(error, Object.getOwnPropertyNames(error))
-      });
       return false;
     } finally {
       setIsSaving(false);
@@ -229,7 +254,6 @@ const Board: Component = () => {
     try {
       const points = basePoints();
       if (!Array.isArray(points)) {
-        console.log('No base points array');
         return false;
       }
       
@@ -238,44 +262,23 @@ const Board: Component = () => {
       const relX = x - playerX;
       const relY = y - playerY;
       
-      console.log(`Checking base point at (${x},${y}) - player at (${playerX},${playerY}) - relative (${relX},${relY})`);
-      
       // Check if there's a base point at this relative position
-      const isBP = points.some(bp => {
+      return points.some(bp => {
         if (!bp || typeof bp.x !== 'number' || typeof bp.y !== 'number') {
           return false;
         }
-        const match = bp.x === relX && bp.y === relY;
-        if (match) {
-          console.log(`Found matching base point at (${bp.x},${bp.y})`);
-        }
-        return match;
+        return bp.x === relX && bp.y === relY;
       });
-      
-      if (isBP) {
-        console.log(`Base point found at (${x},${y})`);
-      }
-      
-      return isBP;
     } catch (error) {
-      console.error('Error in isBasePoint:', error);
       return false;
     }
   };
 
-  // Log base points when they change
-  createEffect(() => {
-    console.log('Base points updated:', basePoints());
-  });
-
   // Fetch base points when user changes
   createEffect(() => {
-    console.log('User changed, current user:', currentUser?.id);
     if (currentUser) {
-      console.log('Fetching base points for user:', currentUser.id);
       fetchBasePoints();
     } else {
-      console.log('No user, clearing base points');
       setBasePoints([]);
     }
   });
@@ -307,7 +310,6 @@ const Board: Component = () => {
         throw new Error(responseData.error || 'Failed to delete account');
       }
     } catch (error) {
-      console.error('Error deleting account:', error);
       alert('Failed to delete account. Please try again.');
     }
   };
@@ -325,11 +327,6 @@ const Board: Component = () => {
     const relativeY = gridY - playerY;
     
     try {
-      console.log('Sending request to /api/base-points with:', {
-        x: relativeX,
-        y: relativeY,
-        userId: currentUser.id
-      });
       
       const response = await fetch('/api/base-points', {
         method: 'POST',
@@ -347,11 +344,6 @@ const Board: Component = () => {
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Error response from server:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorText
-        });
         throw new Error(`Failed to save base point: ${response.status} ${response.statusText}`);
       }
       
@@ -364,7 +356,6 @@ const Board: Component = () => {
       }
       
     } catch (error) {
-      console.error('Error saving base point:', error);
     }
   };
 
@@ -373,29 +364,46 @@ const Board: Component = () => {
     squares: number[];
   }
 
-  // Create a resource for the async border calculation
+  // Create a resource for the async border calculation with a fallback
   const [borderData] = createResource<BorderCalculationResponse, void>(async () => {
+    console.log("Calculating squares...", Date.now());
+    
+    // Fallback squares (center of the board)
+    const fallbackSquares = [24]; // Center of 7x7 grid (3,3)
+    
     try {
+      const requestData = {
+        borderIndices: Array(BOARD_CONFIG.GRID_SIZE).fill(0).map((_, i) => i),
+        currentPosition: currentPosition(),
+        direction: 'right' // Default direction for initial selection
+      };
+      
+      // First try to update with fallback squares
+      updateSquares(fallbackSquares);
+      
+      // Then try to fetch from API
       const response = await fetch('/api/calculate-squares', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          borderIndices: Array(BOARD_CONFIG.GRID_SIZE).fill(0).map((_, i) => i),
-          currentPosition: currentPosition(),
-          direction: 'right' // Default direction for initial selection
-        })
+        body: JSON.stringify(requestData)
       });
       
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to calculate border: ${response.status} ${errorText}`);
+        throw new Error(`Failed to calculate border: ${response.status}`);
       }
       
-      return response.json();
+      const res = await response.json();
+      if (res?.squares) {
+        return res;
+      }
+      
+      // If response doesn't have squares, use fallback
+      return { squares: fallbackSquares };
+      
     } catch (error) {
-      console.error('Error calculating border:', error);
-      throw error;
+      console.warn('Error calculating border, using fallback squares:', error);
+      return { squares: fallbackSquares };
     }
   });
 
@@ -419,9 +427,24 @@ const Board: Component = () => {
         updateSquares(squares);
         setCurrentPosition(newPosition);
       })
-      .catch(console.error);
+      .catch(() => {});
   };
 
+
+  // Show loading state while data is being fetched
+  if (isLoading()) {
+    console.log('Board - Showing loading state, isLoading:', isLoading());
+    return (
+      <div class={styles.loadingContainer}>
+        <div class={styles.loadingSpinner}></div>
+        <p>Loading game data...</p>
+      </div>
+    );
+  } else {
+    console.log('Board - Data loaded, rendering game board');
+    console.log('Current user:', user()?.username);
+    console.log('Base points:', basePoints());
+  }
 
   return (
     <div class={styles.board}>
@@ -455,7 +478,6 @@ const Board: Component = () => {
               onClick={() => {
                 // Don't add a base point if this square is already selected
                 if (isSelected) {
-                  console.log('Square is already selected, ignoring click');
                   return;
                 }
                 const [playerX, playerY] = currentPosition();

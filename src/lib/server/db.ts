@@ -347,18 +347,42 @@ const deleteUser = async (userId: string): Promise<boolean> => {
   }
 };
 
-function getUserItemRepository(): UserItemRepository {
-  if (!userItemRepo) {
-    throw new Error('Database not initialized. Call getDb() first.');
+async function ensureRepositoriesInitialized() {
+  if (!userItemRepo || !basePointRepo) {
+    console.log('Initializing repositories...');
+    try {
+      await initializeRepositories();
+    } catch (error) {
+      console.error('Failed to initialize repositories:', error);
+      throw new Error('Failed to initialize database repositories');
+    }
   }
-  return userItemRepo;
 }
 
-function getBasePointRepository(): BasePointRepository {
-  if (!basePointRepo) {
-    throw new Error('Database not initialized. Call getDb() first.');
+async function getUserItemRepository(): Promise<UserItemRepository> {
+  try {
+    await ensureRepositoriesInitialized();
+    if (!userItemRepo) {
+      throw new Error('UserItemRepository not available after initialization');
+    }
+    return userItemRepo;
+  } catch (error) {
+    console.error('Error getting UserItemRepository:', error);
+    throw error;
   }
-  return basePointRepo;
+}
+
+async function getBasePointRepository(): Promise<BasePointRepository> {
+  try {
+    await ensureRepositoriesInitialized();
+    if (!basePointRepo) {
+      throw new Error('BasePointRepository not available after initialization');
+    }
+    return basePointRepo;
+  } catch (error) {
+    console.error('Error getting BasePointRepository:', error);
+    throw error;
+  }
 }
 
 // Initialize repositories when the database is ready

@@ -16,11 +16,21 @@ const directionMap = {
 
 export async function POST({ request }: APIEvent) {
   try {
-    const { borderIndices, currentPosition, direction } = await request.json() as CalculateSquaresRequest;
+    const requestData = await request.json() as CalculateSquaresRequest;
+    const { borderIndices, currentPosition, direction } = requestData;
+    
+    console.log('=== Calculate Squares API Request ===');
+    console.log('Input:', {
+      borderIndices,
+      currentPosition,
+      direction,
+      requestData
+    });
     
     // Get all base points from the database and remove duplicates
     const basePointRepository = getBasePointRepository();
     let basePoints = await basePointRepository.getAll();
+    console.log('Retrieved base points from DB:', basePoints);
     
     // Remove duplicate base points (same x, y coordinates)
     const uniqueBasePoints = [
@@ -38,8 +48,11 @@ export async function POST({ request }: APIEvent) {
       [(i % 7) - currentPosition[0], Math.floor(i / 7) - currentPosition[1]]
     );
     
+    console.log('Calculated border coordinates:', borderCoordinates);
+    
     // Convert base points to array of [x, y] arrays
     const basePointCoords = uniqueBasePoints.map(p => [p.x, p.y]);
+    console.log('Base point coordinates:', basePointCoords);
 
     const [dx, dy] = directionMap[direction];
 
@@ -57,8 +70,14 @@ export async function POST({ request }: APIEvent) {
       }).filter((n): n is number => n !== -1)
     );
 
+    const resultSquares = [...new Set(newSquares)];
+    
+    console.log('=== Calculate Squares API Response ===');
+    console.log('Result squares:', resultSquares);
+    console.log('Total squares:', resultSquares.length);
+    
     return new Response(JSON.stringify({ 
-      squares: [...new Set(newSquares)] 
+      squares: resultSquares 
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
