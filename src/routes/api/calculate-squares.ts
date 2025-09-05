@@ -1,5 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { getBasePointRepository } from '~/lib/server/db';
+import { getAuthUser } from '~/lib/server/auth/jwt';
 
 type CalculateSquaresRequest = {
   borderIndices: number[];
@@ -16,6 +17,22 @@ const directionMap = {
 
 export async function POST({ request }: APIEvent) {
   try {
+    // Verify authentication
+    const user = await getAuthUser(request);
+    if (!user) {
+      console.warn('Unauthorized access attempt to /api/calculate-squares');
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Authentication required' 
+        }), 
+        { 
+          status: 401, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     const requestData = await request.json() as CalculateSquaresRequest;
     const { borderIndices, currentPosition, direction } = requestData;
     

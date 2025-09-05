@@ -1,50 +1,72 @@
 import { Title } from "@solidjs/meta";
-import { Show, createEffect } from 'solid-js';
-import { Navigate } from '@solidjs/router';
+import { createEffect } from 'solid-js';
 import { useAuth } from '~/contexts/auth';
+import { Show } from 'solid-js';
 import Board from '~/components/Game/Board';
-import styles from './GamePage.module.css';
 
 export default function GamePage() {
-  console.log('GamePage - Component rendering');
   const { user, isInitialized } = useAuth();
   
-  // Log state changes for debugging
   createEffect(() => {
-    console.log('GamePage - isInitialized:', isInitialized());
-    console.log('GamePage - user:', user());
-    
-    // Additional debug info
-    if (typeof window !== 'undefined') {
-      console.log('localStorage user:', localStorage.getItem('user'));
-      console.log('Environment is development:', import.meta.env.DEV);
-      console.log('Current URL:', window.location.href);
-      console.log('Auth context:', useAuth());
-    }
+    const currentUser = user();
+    console.log('GamePage - Auth state:', {
+      isInitialized: isInitialized(),
+      hasUser: !!currentUser,
+      user: currentUser
+    });
   });
 
-  // Show loading state only if we're not initialized yet
-  if (!isInitialized()) {
-    console.log('GamePage - Not initialized yet, showing loading...');
-    return <div>Loading... (isInitialized: {isInitialized().toString()})</div>;
-  }
-
-  // If we're initialized but don't have a user, redirect to login
-  if (!user()) {
-    console.log('GamePage - No user, redirecting to login...');
-    return (
-      <div>
-        <div>Redirecting to login...</div>
-        <Navigate href="/login" />
-      </div>
-    );
-  }
-
-  // If we have a user, show the game
   return (
-    <main class={styles.container}>
+    <div style={{ padding: '20px' }}>
       <Title>Game</Title>
-      <Board />
-    </main>
+      
+      <Show when={isInitialized()} fallback={
+        <div>
+          <h1>Loading Game...</h1>
+          <div>Initializing authentication...</div>
+        </div>
+      }>
+        <Show when={user()} fallback={
+          <div>
+            <h1>Not Logged In</h1>
+            <p>Please log in to access the game.</p>
+          </div>
+        }>
+          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div style={{ marginBottom: '20px' }}>
+              <h1>Game Page</h1>
+              <div>Welcome, {user()!.username}!</div>
+              <div>User ID: {user()!.id}</div>
+            </div>
+            
+            <div style={{
+              border: '2px solid #333',
+              borderRadius: '8px',
+              padding: '20px',
+              backgroundColor: '#f9f9f9'
+            }}>
+              <Board />
+            </div>
+            
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+              <button 
+                onClick={() => window.location.reload()}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px'
+                }}
+              >
+                Refresh Game
+              </button>
+            </div>
+          </div>
+        </Show>
+      </Show>
+    </div>
   );
 }

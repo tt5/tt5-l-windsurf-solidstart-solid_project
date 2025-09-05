@@ -32,6 +32,11 @@ const createAuthStore = (): AuthStore => {
   const setIsInitialized = (value: boolean) => {
     console.log(`[Auth] Setting isInitialized to: ${value}`, new Error().stack);
     _setIsInitialized(value);
+    
+    // Verify the state was actually updated
+    setTimeout(() => {
+      console.log('[Auth] isInitialized after set:', isInitialized());
+    }, 0);
   };
   
   const updateUser = (userData: User) => {
@@ -41,10 +46,15 @@ const createAuthStore = (): AuthStore => {
 
   // Initialize auth state
   createEffect(() => {
-    if (typeof window === 'undefined') return;
+    console.log('Auth effect - Starting...');
+    if (typeof window === 'undefined') {
+      console.log('Auth effect - Server-side, skipping');
+      return;
+    }
     
-    console.log('Auth effect running...');
-    const isDev = import.meta.env.DEV;
+    console.log('Auth effect - Running in browser');
+    const isDev = typeof import.meta.env.DEV !== 'undefined' ? import.meta.env.DEV : process.env.NODE_ENV !== 'production';
+    console.log('Auth effect - isDev:', isDev);
     console.log('Development mode:', isDev);
     
     // Check for saved user first
@@ -55,25 +65,33 @@ const createAuthStore = (): AuthStore => {
       console.log('Found saved user in localStorage');
       try {
         const parsed = JSON.parse(savedUser);
-        if (parsed && typeof parsed === 'object' && parsed.user && parsed.user.id) {
-          console.log('Updating user from localStorage:', parsed);
-          updateUser(parsed.user);
+        
+        // Handle both formats: { user: { id, username } } and { id, username }
+        const userData = parsed.user || parsed;
+        
+        if (userData && typeof userData === 'object' && userData.id) {
+          console.log('Updating user from localStorage:', userData);
+          updateUser(userData);
           
           // In development, verify the session is still valid
           if (isDev) {
-            console.log('Verifying session for user:', parsed.user.id);
-            verifySession(parsed.user);
+            console.log('Verifying session for user:', userData.id);
+            verifySession(userData);
           } else {
             console.log('Production mode, skipping session verification');
             setIsInitialized(true);
           }
           return;
         } else {
-          console.warn('Saved user is not in the expected format:', parsed);
+          console.warn('Saved user is not in a valid format:', parsed);
+          // Clear invalid user data
+          localStorage.removeItem('user');
         }
       } catch (error) {
         console.error('Error parsing saved user:', error);
         updateUser(null);
+        // Clear corrupted user data
+        localStorage.removeItem('user');
       }
     } else {
       console.log('No saved user found in localStorage');
@@ -98,21 +116,25 @@ const createAuthStore = (): AuthStore => {
   
   // Development-only function to set up a test user
   const setupDevUser = async () => {
-    if (import.meta.env.PROD) {
-      console.log('Not in production, skipping dev user setup');
+    console.log('[setupDevUser] Starting development user setup...');
+    
+    // Debug environment variables
+    console.log('[setupDevUser] import.meta.env:', JSON.stringify(import.meta.env));
+    console.log('[setupDevUser] process.env.NODE_ENV:', process.env.NODE_ENV);
+    
+    const isProd = (typeof import.meta.env.PROD !== 'undefined' && import.meta.env.PROD) || 
+                  (typeof process.env.NODE_ENV !== 'undefined' && process.env.NODE_ENV === 'production');
+    
+    if (isProd) {
+      console.log('[setupDevUser] Running in production, skipping dev user setup');
       return;
     }
     
-    console.log('[setupDevUser] Starting development user setup...');
     // Use devuser for development
     const testUsername = 'devuser';
     const testPassword = 'devpassword'; // In a real app, use environment variables
     
-    console.log('[setupDevUser] Environment variables:', {
-      NODE_ENV: import.meta.env.NODE_ENV,
-      DEV: import.meta.env.DEV,
-      PROD: import.meta.env.PROD
-    });
+    console.log('[setupDevUser] Using test credentials:', { testUsername });
     
     try {
       // First, try to log in
@@ -146,23 +168,31 @@ const createAuthStore = (): AuthStore => {
       
       if (loginResponse.ok) {
         try {
-          const userData = JSON.parse(responseText);
-          console.log('[setupDevUser] Login successful, user data:', userData);
+          const responseData = JSON.parse(responseText);
+          console.log('[setupDevUser] Login successful, response data:', responseData);
           
-          // Ensure the user data is in the correct format
+          // Extract user data from the response
+          // The response might be in format { user: { id, username } } or { id, username }
+          const userData = responseData.user || responseData;
+          
+          if (!userData || !userData.id) {
+            throw new Error('Invalid user data in response');
+          }
+          
+          // Ensure required fields
           const formattedUser = {
-            user: {
-              id: userData.id || `user_${Math.random().toString(36).substr(2, 9)}`,
-              username: userData.username || testUsername
-            }
+            id: userData.id,
+            username: userData.username || testUsername
           };
           
-          // Save the formatted user to localStorage
+          console.log('[setupDevUser] Saving user to localStorage:', formattedUser);
+          
+          // Save the user data directly (not nested under 'user')
           localStorage.setItem('user', JSON.stringify(formattedUser));
           console.log('[setupDevUser] User saved to localStorage');
           
           // Update the user state
-          updateUser(formattedUser.user);
+          updateUser(formattedUser);
           setIsInitialized(true);
           return;
         } catch (error) {
@@ -255,58 +285,17 @@ const createAuthStore = (): AuthStore => {
     }
   };
 
-  // Function to verify the current session
+// Function to verify the current session
   const verifySession = async (savedUser: User) => {
     try {
       console.log('Verifying session for user:', savedUser?.id);
       
-      // Skip verification in development for now to prevent hanging
-      if (import.meta.env.DEV) {
-        console.log('Development mode - skipping session verification');
-        setIsInitialized(true);
-        return;
-      }
-      
-      console.log('Making request to /api/auth/me...');
-      const response = await fetch('/api/auth/me', {
-        credentials: 'include',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      console.log('Session verification response status:', response.status);
-      
-      if (response.ok) {
-        console.log('Session is valid');
-        setIsInitialized(true);
-      } else {
-        const errorText = await response.text().catch(() => 'Failed to read error message');
-        console.log(`Session invalid (${response.status}):`, errorText);
-        
-        // In development, just continue with the saved user
-        if (import.meta.env.DEV) {
-          console.log('Development mode - continuing with saved user');
-          setIsInitialized(true);
-          return;
-        }
-        
-        // In production, try to log in again
-        console.log('Attempting to log in...');
-        try {
-          await setupDevUser();
-        } catch (err) {
-          console.error('Error in setupDevUser:', err);
-          setIsInitialized(true);
-        }
-      }
+      // Skip verification in development to prevent hanging
+      console.log('Skipping session verification in development mode');
+      setIsInitialized(true);
+      return;
     } catch (error) {
-      console.error('Error verifying session:', error);
-      // In development, continue anyway
-      if (import.meta.env.DEV) {
-        console.log('Development mode - continuing despite session verification error');
-      }
+      console.error('Error in verifySession:', error);
       setIsInitialized(true);
     }
   };

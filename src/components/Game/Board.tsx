@@ -64,9 +64,16 @@ interface AddBasePointResponse extends ApiResponse<BasePoint> {}
 interface DeleteAccountResponse extends ApiResponse<{ success: boolean }> {}
 
 const Board: Component = () => {
+  console.log('Board - Component mounting...');
+  
   // Hooks
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  
+  // Log when user changes
+  createEffect(() => {
+    console.log('Board - Current user:', user());
+  });
   
   // State with explicit types
   const currentUser = user();
@@ -315,7 +322,10 @@ const Board: Component = () => {
   };
 
   const handleSquareClick = async (index: number) => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.warn('No user logged in');
+      return;
+    }
     
     // Calculate grid position from index
     const gridX = index % BOARD_CONFIG.GRID_SIZE;
@@ -325,6 +335,9 @@ const Board: Component = () => {
     const [playerX, playerY] = currentPosition();
     const relativeX = gridX - playerX;
     const relativeY = gridY - playerY;
+    
+    // Don't proceed if the click is on the player's position
+    if (relativeX === 0 && relativeY === 0) return;
     
     try {
       
@@ -366,7 +379,12 @@ const Board: Component = () => {
 
   // Create a resource for the async border calculation with a fallback
   const [borderData] = createResource<BorderCalculationResponse, void>(async () => {
-    console.log("Calculating squares...", Date.now());
+    console.log("Board - Starting border calculation...", Date.now());
+    setIsLoading(true);
+    
+    // Log the current state
+    console.log('Board - Current position:', currentPosition());
+    console.log('Board - Current user:', user()?.username);
     
     // Fallback squares (center of the board)
     const fallbackSquares = [24]; // Center of 7x7 grid (3,3)
@@ -399,10 +417,11 @@ const Board: Component = () => {
       }
       
       // If response doesn't have squares, use fallback
+      console.log('Board - Using fallback squares');
       return { squares: fallbackSquares };
       
     } catch (error) {
-      console.warn('Error calculating border, using fallback squares:', error);
+      console.warn('Board - Error calculating border, using fallback squares:', error);
       return { squares: fallbackSquares };
     }
   });
@@ -410,9 +429,16 @@ const Board: Component = () => {
   // Update squares when border data changes
   createEffect(() => {
     const data = borderData();
+    console.log('Board - Border data updated:', data);
     if (data?.squares) {
       updateSquares(data.squares);
+      setIsLoading(false); // Set loading to false once we have data
     }
+  });
+  
+  // Log loading state changes
+  createEffect(() => {
+    console.log('Board - isLoading:', isLoading());
   });
 
   const handleDirection = (dir: Direction) => {

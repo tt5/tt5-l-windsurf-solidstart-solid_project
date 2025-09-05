@@ -1,6 +1,13 @@
 import { defineConfig } from "vinxi/config";
 import solid from "vite-plugin-solid";
 
+// Load environment variables
+const env = {
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  DEV: process.env.NODE_ENV !== 'production',
+  PROD: process.env.NODE_ENV === 'production'
+};
+
 export default defineConfig({
   server: {
     port: 3000,
@@ -12,6 +19,18 @@ export default defineConfig({
     solid({
       ssr: true,
     }),
+    {
+      name: 'vite-plugin-env',
+      config() {
+        return {
+          define: {
+            'import.meta.env.NODE_ENV': JSON.stringify(env.NODE_ENV),
+            'import.meta.env.DEV': env.DEV,
+            'import.meta.env.PROD': env.PROD
+          }
+        };
+      }
+    },
   ],
   ssr: {
     noExternal: true,
