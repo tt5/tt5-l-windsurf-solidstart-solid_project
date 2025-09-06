@@ -1,4 +1,5 @@
 import { Component, createEffect, createSignal, onMount, createResource } from 'solid-js';
+import { useNavigate } from '@solidjs/router';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
 import { useUserItems } from '../../hooks/useUserItems';
@@ -56,8 +57,14 @@ const BOARD_CONFIG: BoardConfig = {
 // Type for the response when adding a base point
 interface AddBasePointResponse extends ApiResponse<BasePoint> {}
 
+type DeleteAccountResponse = {
+  success: boolean;
+  error?: string;
+};
 
 const Board: Component = () => {
+  const navigate = useNavigate();
+  const [board, setBoard] = createSignal<BoardConfig>(BOARD_CONFIG);
   
   // Hooks
   const { user, logout } = useAuth();
@@ -164,8 +171,8 @@ const Board: Component = () => {
   const handleKeyDown: KeyboardHandler = (e) => {
     
     // Type guard to ensure we only handle arrow keys
-    const isArrowKey = (key: string): key is keyof typeof BOARD_CONFIG.DIRECTION_MAP => 
-      key in BOARD_CONFIG.DIRECTION_MAP;
+    const isArrowKey = (key: string | number): key is keyof typeof BOARD_CONFIG.DIRECTION_MAP => 
+      typeof key === 'string' && key in BOARD_CONFIG.DIRECTION_MAP;
     
     if (!isArrowKey(e.key)) {
       return;

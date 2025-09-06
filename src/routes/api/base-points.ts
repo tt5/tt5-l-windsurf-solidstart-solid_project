@@ -68,7 +68,7 @@ export async function POST({ request }: APIEvent) {
     validateCoordinates(data.x, data.y);
     
     const repository = await getBasePointRepository();
-    const basePoint = await repository.create({ ...data, userId: user.userId });
+    const basePoint = await repository.add(user.userId, data.x, data.y);
     
     return createApiResponse(
       { success: true, data: { basePoint } },
