@@ -47,7 +47,31 @@ export function getTokenFromRequest(request: Request): string | null {
 }
 
 export async function getAuthUser(request: Request): Promise<TokenPayload | null> {
-  const token = getTokenFromRequest(request);
-  if (!token) return null;
-  return verifyToken(token);
+  try {
+    const token = getTokenFromRequest(request);
+    
+    if (!token) {
+      console.log('No authentication token found in request');
+      return null;
+    }
+    
+    console.log('Found auth token, verifying...');
+    const payload = verifyToken(token);
+    
+    if (!payload) {
+      console.warn('Token verification failed');
+      return null;
+    }
+    
+    console.log('Token verified successfully for user:', {
+      userId: payload.userId,
+      username: payload.username
+    });
+    
+    return payload;
+    
+  } catch (error) {
+    console.error('Error in getAuthUser:', error);
+    return null;
+  }
 }

@@ -88,12 +88,28 @@ const Board: Component = () => {
   // Cache key based on user ID
   const cacheKey = () => currentUser?.id ? `basePoints_${currentUser.id}` : '';
   
+  // Initialize loading state on mount
+  onMount(() => {
+    console.log('Board - Component mounted, initializing state');
+    setIsLoading(true);
+    setBasePoints([]);
+  });
+  
+  // Track the current fetch promise to prevent duplicate requests
+  let currentFetch: Promise<void> | null = null;
+  
   // Single effect to handle base points fetching
   createEffect(() => {
     const currentUser = user();
+    console.log('Board - Auth effect triggered', { 
+      hasUser: !!currentUser,
+      userId: currentUser?.id,
+      currentTime: new Date().toISOString()
+    });
     
     // Clear state if no user
     if (!currentUser) {
+      console.log('Board - No current user, clearing state');
       setBasePoints([]);
       setIsLoading(false);
       return;
@@ -101,40 +117,111 @@ const Board: Component = () => {
     
     // Don't fetch if already fetching or recently fetched
     const now = Date.now();
-    if (isFetching() || (now - lastFetchTime() < 5000)) {
+    const timeSinceLastFetch = now - lastFetchTime();
+    const hasData = basePoints().length > 0;
+    const shouldSkipFetch = isFetching() || currentFetch || (timeSinceLastFetch < 30000 && hasData);
+    
+    if (shouldSkipFetch) {
+      console.log('Board - Skipping fetch:', { 
+        isFetching: isFetching(),
+        hasCurrentFetch: !!currentFetch,
+        timeSinceLastFetch,
+        lastFetchTime: lastFetchTime(),
+        basePointsCount: basePoints().length
+      });
       return;
     }
     
-    // Fetch base points
+    // Only set loading state if we don't have any data yet
+    if (!hasData) {
+      console.log('Board - Starting initial data load');
+      setIsLoading(true);
+    }
+    
+    // Fetch base points with deduplication
     const fetchData = async () => {
-      setIsFetching(true);
-      try {
-        const response = await fetch('/api/base-points', {
-          credentials: 'include',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
+      // If there's already a fetch in progress, wait for it
+      if (currentFetch) {
+        console.log('Board - Waiting for existing fetch to complete');
+            await currentFetch;
+            return;
           }
-        });
+      
+      console.log('Board - Starting base points fetch...');
+      setIsFetching(true);
+      
+      try {
+        // Create a new promise for this fetch
+        currentFetch = (async () => {
+          try {
+            console.log('Board - Fetching base points from /api/base-points');
+            const response = await fetch('/api/base-points', {
+              credentials: 'include',
+              headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+              }
+            });
+            
+            console.log('Board - Base points response status:', response.status);
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error('Board - Error response:', errorText);
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('Board - Base points response data:', data);
+            
+            if (data.success) {
+              const points = data.data?.basePoints || [];
+              console.log(`Board - Setting ${points.length} base points`);
+              setBasePoints(points);
+              setLastFetchTime(now);
+              
+              // If we have points, we can clear the loading state
+              if (points.length > 0) {
+                console.log('Board - Clearing loading state after successful fetch');
+                setIsLoading(false);
+              }
+            } else {
+              console.warn('Board - API returned success:false', data);
+              setBasePoints([]);
+            }
+          } finally {
+            // Clear the current fetch promise when done
+            currentFetch = null;
+          }
+        })();
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        if (data.success) {
-          setBasePoints(data.data.basePoints);
-          setLastFetchTime(now);
-        }
+        await currentFetch;
       } catch (error) {
-        console.error('Error fetching base points:', error);
-      } finally {
-        setIsFetching(false);
+        console.error('Error in base points fetch:', error);
+        // Clear loading states on error
         setIsLoading(false);
+        setIsFetching(false);
+        currentFetch = null;
+        
+        // If we don't have any squares yet, ensure we show something
+        if (selectedSquares().length === 0) {
+          console.log('Board - Setting fallback squares after error');
+          updateSquares([24]); // Fallback to center square
+        }
       }
     };
     
-    fetchData();
+    // Call fetchData and handle any uncaught errors
+    fetchData().catch(error => {
+      console.error('Unhandled error in fetchData:', error);
+      setIsLoading(false);
+      setIsFetching(false);
+      currentFetch = null;
+      
+      if (selectedSquares().length === 0) {
+        updateSquares([24]); // Fallback to center square
+      }
+    });
   });
   
   // Derived state with explicit return types
@@ -342,7 +429,6 @@ const Board: Component = () => {
   // Create a resource for the async border calculation with a fallback
   const [borderData] = createResource<BorderCalculationResponse, void>(async () => {
     console.log("Board - Starting border calculation...", Date.now());
-    setIsLoading(true);
     
     // Log the current state
     console.log('Board - Current position:', currentPosition());
@@ -361,7 +447,7 @@ const Board: Component = () => {
       // First try to update with fallback squares
       updateSquares(fallbackSquares);
       
-      // Then try to fetch from API
+      console.log('Board - Fetching border data from API...');
       const response = await fetch('/api/calculate-squares', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -369,32 +455,86 @@ const Board: Component = () => {
         body: JSON.stringify(requestData)
       });
       
+      console.log('Board - Border API response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`Failed to calculate border: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Board - Error response from border API:', errorText);
+        throw new Error(`Failed to calculate border: ${response.status} - ${errorText}`);
       }
       
       const res = await response.json();
-      if (res?.squares) {
-        return res;
+      console.log('Board - Border API response data:', res);
+      
+      // Handle the new response format with success and data wrapper
+      if (res?.success && res.data?.squares) {
+        console.log('Board - Using squares from API response (new format)');
+        return { squares: res.data.squares };
+      } else if (res?.squares) {
+        // Fallback for old response format
+        console.log('Board - Using squares from API response (old format)');
+        return { squares: res.squares };
       }
       
       // If response doesn't have squares, use fallback
-      console.log('Board - Using fallback squares');
+      console.log('Board - No squares in response, using fallback');
       return { squares: fallbackSquares };
       
     } catch (error) {
-      console.warn('Board - Error calculating border, using fallback squares:', error);
+      console.error('Board - Error calculating border:', error);
+      console.warn('Board - Using fallback squares due to error');
       return { squares: fallbackSquares };
     }
   });
 
-  // Update squares when border data changes
+  // Single effect to handle border data and loading states
   createEffect(() => {
     const data = borderData();
-    console.log('Board - Border data updated:', data);
-    if (data?.squares) {
-      updateSquares(data.squares);
-      setIsLoading(false); // Set loading to false once we have data
+    const currentState = borderData.state;
+    const currentSquares = selectedSquares();
+    
+    console.log('Board - Border data state update:', {
+      state: currentState,
+      hasData: !!data,
+      hasSquares: data?.squares?.length > 0,
+      currentSquaresLength: currentSquares.length,
+      isLoading: isLoading(),
+      isFetching: isFetching()
+    });
+
+    switch (currentState) {
+      case 'ready':
+        if (data?.squares) {
+          console.log('Board - Updating squares from border data');
+          updateSquares(data.squares);
+        }
+        // Clear loading states
+        if (isLoading() || isFetching()) {
+          console.log('Board - Clearing loading states (ready state)');
+          setIsLoading(false);
+          setIsFetching(false);
+        }
+        break;
+        
+      case 'errored':
+        console.warn('Board - Border data error, using fallback');
+        // Ensure we have some squares to display
+        if (currentSquares.length === 0) {
+          console.log('Board - Setting fallback squares');
+          updateSquares([24]); // Fallback to center square
+        }
+        // Clear loading states
+        setIsLoading(false);
+        setIsFetching(false);
+        break;
+        
+      case 'pending':
+        // Only set loading if we don't have any squares yet
+        if (currentSquares.length === 0) {
+          console.log('Board - Setting initial loading state');
+          setIsLoading(true);
+        }
+        break;
     }
   });
   
@@ -410,29 +550,70 @@ const Board: Component = () => {
       dir === 'up' ? y - 1 : dir === 'down' ? y + 1 : y
     ];
     
-    return moveSquares(selectedSquares(), dir, [x, y])
+    // Add loading state for better UX
+    setIsLoading(true);
+    
+    moveSquares(selectedSquares(), dir, [x, y])
       .then((squares) => {
-        updateSquares(squares);
-        setCurrentPosition(newPosition);
+        if (Array.isArray(squares)) {
+          updateSquares(squares);
+          setCurrentPosition(newPosition);
+        } else {
+          console.error('Invalid squares array received from moveSquares:', squares);
+        }
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.error('Error in handleDirection:', error);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
 
-  // Show loading state while data is being fetched
-  if (isLoading()) {
-    console.log('Board - Showing loading state, isLoading:', isLoading());
+  // Determine if we should show loading state
+  const showLoading = () => {
+    // If we're in a loading or fetching state and don't have any squares yet
+    if ((isLoading() || isFetching()) && selectedSquares().length === 0) {
+      return true;
+    }
+    
+    // If border data is still pending and we don't have any squares
+    if (borderData.state === 'pending' && selectedSquares().length === 0) {
+      return true;
+    }
+    
+    return false;
+  };
+  
+  // Log rendering state for debugging
+  console.log('Board - Rendering check:', {
+    isLoading: isLoading(),
+    isFetching: isFetching(),
+    borderDataState: borderData.state,
+    hasSquares: selectedSquares().length > 0,
+    showLoading: showLoading()
+  });
+
+  // Show loading state if needed
+  if (showLoading()) {
     return (
       <div class={styles.loadingContainer}>
         <div class={styles.loadingSpinner}></div>
         <p>Loading game data...</p>
+        <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#666' }}>
+          {!user() ? 'Waiting for user authentication...' : 'Fetching game data...'}
+        </div>
       </div>
     );
-  } else {
-    console.log('Board - Data loaded, rendering game board');
-    console.log('Current user:', user()?.username);
-    console.log('Base points:', basePoints());
   }
+  
+  console.log('Board - Data loaded, rendering game board', {
+    currentUser: user()?.username,
+    basePointsCount: basePoints().length,
+    selectedSquaresCount: selectedSquares().length,
+    lastFetchTime: lastFetchTime()
+  });
 
   return (
     <div class={styles.board}>

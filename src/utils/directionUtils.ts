@@ -72,7 +72,15 @@ export const moveSquares = async (
       throw new Error('Failed to calculate new squares');
     }
 
-    const { squares: newSquares } = await response.json();
+    const responseData = await response.json();
+    
+    // Handle both response formats for backward compatibility
+    const newSquares = responseData.squares || (responseData.data?.squares || []);
+    
+    if (!Array.isArray(newSquares)) {
+      console.error('Invalid response format from calculate-squares API:', responseData);
+      return currentSquares;
+    }
 
     // Move existing squares
     const movedSquares = currentSquares

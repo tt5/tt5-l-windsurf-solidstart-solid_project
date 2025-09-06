@@ -8,24 +8,41 @@ type BasePointRequest = {
 };
 
 export async function GET({ request }: APIEvent) {
-  console.log(`[${new Date().toISOString()}] GET /api/base-points`);
+  const requestId = Math.random().toString(36).substring(2, 9);
+  console.log(`[${new Date().toISOString()}] [${requestId}] GET /api/base-points`);
   
   try {
+    // Log request headers for debugging
+    const headers = Object.fromEntries(request.headers.entries());
+    console.log(`[${requestId}] Request headers:`, JSON.stringify(headers, null, 2));
+    
     // Verify authentication
+    console.log(`[${requestId}] Verifying authentication...`);
     const user = await getAuthUser(request);
+    
     if (!user) {
-      console.warn('Unauthorized access attempt to /api/base-points');
+      console.warn(`[${requestId}] Unauthorized access attempt to /api/base-points`);
       return new Response(
         JSON.stringify({ 
+          requestId,
           success: false,
-          error: 'Authentication required' 
+          error: 'Authentication required',
+          timestamp: new Date().toISOString()
         }), 
         { 
           status: 401, 
-          headers: { 'Content-Type': 'application/json' } 
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-Request-ID': requestId
+          } 
         }
       );
     }
+    
+    console.log(`[${requestId}] Authenticated user:`, {
+      userId: user.userId,
+      username: user.username
+    });
 
     console.log(`Fetching base points for user: ${user.userId}`);
     const repository = await getBasePointRepository();

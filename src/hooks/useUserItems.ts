@@ -14,13 +14,18 @@ export const useUserItems = (currentUser: any, options: UseUserItemsOptions = {}
   // Load items when user changes
   createEffect(() => {
     if (!currentUser) {
+      console.log('useUserItems - No current user, clearing state');
       setItems([]);
       setSelectedSquares([]);
       return;
     }
     
-    // For now, just set default selection
-    setSelectedSquares([...DEFAULT_SELECTION]);
+    console.log('useUserItems - User changed, initializing with default selection');
+    // Only set default selection if we don't have any squares yet
+    if (selectedSquares().length === 0) {
+      console.log('useUserItems - Setting default selection');
+      setSelectedSquares([...DEFAULT_SELECTION]);
+    }
   });
 
   const updateSquares = (squares: SelectedSquares) => {
