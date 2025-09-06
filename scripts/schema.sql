@@ -7,15 +7,6 @@ CREATE TABLE IF NOT EXISTS users (
   created_at_ms INTEGER DEFAULT (strftime('%s', 'now') * 1000)
 );
 
--- User items table
-CREATE TABLE IF NOT EXISTS user_items (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id TEXT NOT NULL,
-  data TEXT NOT NULL,
-  created_at_ms INTEGER DEFAULT (strftime('%s', 'now') * 1000 + (strftime('%f', 'now') * 1000) % 1000),
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
 -- User tables registry
 CREATE TABLE IF NOT EXISTS user_tables (
   user_id TEXT PRIMARY KEY,
