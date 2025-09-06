@@ -330,17 +330,19 @@ const Board: Component = () => {
         return false;
       }
       
-      const [playerX, playerY] = currentPosition();
-      // Calculate the relative position from the player's perspective
-      const relX = x - playerX;
-      const relY = y - playerY;
-      
-      // Check if there's a base point at this relative position
+      // Check if there's a base point at this exact position
+      // Note: The base points are already stored in relative coordinates
       return points.some(bp => {
         if (!bp || typeof bp.x !== 'number' || typeof bp.y !== 'number') {
           return false;
         }
-        return bp.x === relX && bp.y === relY;
+        // The x,y coordinates passed in are already in world coordinates
+        // and the base points are stored in relative coordinates
+        const [playerX, playerY] = currentPosition();
+        const relX = x - playerX;
+        const relY = y - playerY;
+        
+        return Math.abs(bp.x - relX) < 0.001 && Math.abs(bp.y - relY) < 0.001;
       });
     } catch (error) {
       console.error('Error in isBasePoint:', error);
@@ -579,16 +581,31 @@ const Board: Component = () => {
       
       console.log('Current position:', [x, y], 'Current squares:', currentSquareIndices);
       
-      // Calculate new position
-      const newPosition: Point = [
-        dir === 'left' ? x - 1 : dir === 'right' ? x + 1 : x,
-        dir === 'up' ? y - 1 : dir === 'down' ? y + 1 : y
-      ];
+      // Calculate movement deltas based on direction
+      let dx = 0, dy = 0;
+      switch (dir) {
+        case 'left': dx = -1; break;
+        case 'right': dx = 1; break;
+        case 'up': dy = -1; break;
+        case 'down': dy = 1; break;
+      }
       
+      // Calculate new position
+      const newPosition: Point = [x + dx, y + dy];
       console.log('New position will be:', newPosition);
       
       // Update the position
       setCurrentPosition(newPosition);
+      
+      // Update base points to maintain their relative positions
+      const currentBasePoints = basePoints();
+      const updatedBasePoints = currentBasePoints.map(bp => ({
+        ...bp,
+        // Move base points in the opposite direction to maintain their relative position
+        x: bp.x - dx,
+        y: bp.y - dy
+      }));
+      setBasePoints(updatedBasePoints);
       
       // Add loading state for better UX
       setIsLoading(true);
