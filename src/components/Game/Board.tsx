@@ -462,71 +462,62 @@ const Board: Component = () => {
     }
   });
   
-  const handleDirection = (dir: Direction) => {
-    
-    // Set movement and manual update flags
+  // Calculate movement deltas based on direction
+  const getMovementDeltas = (dir: Direction): [number, number] => {
+    switch (dir) {
+      case 'left': return [-1, 0];
+      case 'right': return [1, 0];
+      case 'up': return [0, -1];
+      case 'down': return [0, 1];
+    }
+  };
+
+  // Convert square indices to coordinates
+  const indicesToCoords = (indices: number[]) => 
+    indices.map(index => [
+      index % BOARD_CONFIG.GRID_SIZE,
+      Math.floor(index / BOARD_CONFIG.GRID_SIZE)
+    ] as [number, number]);
+
+  // Convert coordinates back to indices
+  const coordsToIndices = (coords: [number, number][]) => 
+    coords.map(([x, y]) => y * BOARD_CONFIG.GRID_SIZE + x);
+
+  const handleDirection = async (dir: Direction) => {
     setIsMoving(true);
     setIsManualUpdate(true);
     
     try {
-      // Get current state
       const [x, y] = currentPosition();
-      const currentSquareIndices = [...selectedSquares()];
-      
-      // Calculate movement deltas based on direction
-      let dx = 0, dy = 0;
-      switch (dir) {
-        case 'left': dx = -1; break;
-        case 'right': dx = 1; break;
-        case 'up': dy = -1; break;
-        case 'down': dy = 1; break;
-      }
-      
-      // Calculate new position
+      const [dx, dy] = getMovementDeltas(dir);
       const newPosition: Point = [x + dx, y + dy];
       
-      // Update the position
+      // Update position and base points
       setCurrentPosition(newPosition);
+      setBasePoints(prev => 
+        prev.map(bp => ({
+          ...bp,
+          x: bp.x + dx,
+          y: bp.y + dy
+        }))
+      );
       
-      // Update base points to move them in the opposite direction of player movement
-      // to maintain their position relative to the grid
-      const currentBasePoints = basePoints();
-      const updatedBasePoints = currentBasePoints.map(bp => ({
-        ...bp,
-        // Move base points in the opposite direction to keep them in the same grid position
-        x: bp.x + dx,
-        y: bp.y + dy
-      }));
-      setBasePoints(updatedBasePoints);
-      
-      // Add loading state for better UX
       setIsLoading(true);
       
-      // Convert indices to coordinates for moveSquares
-      const squaresAsCoords = currentSquareIndices.map(index => {
-        const x = index % BOARD_CONFIG.GRID_SIZE;
-        const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-        return [x, y] as [number, number];
-      });
+      // Process square movement
+      const squaresAsCoords = indicesToCoords([...selectedSquares()]);
+      const newSquares = await moveSquares(squaresAsCoords, dir, newPosition);
       
-      // Move the squares with the current squares and new position
-      return moveSquares(squaresAsCoords, dir, newPosition)
-        .then((squares) => {
-          if (Array.isArray(squares)) {
-            // Convert [x, y] coordinates back to indices
-            const newIndices = squares.map(([x, y]) => y * BOARD_CONFIG.GRID_SIZE + x);
-            updateSquares(newIndices);
-            return newIndices; // Return for testing
-          } else {
-            throw new Error('Invalid squares array received from moveSquares');
-          }
-        });
-    } catch (error) {
-      throw error;
+      if (!Array.isArray(newSquares)) {
+        throw new Error('Invalid squares array received from moveSquares');
+      }
+      
+      const newIndices = coordsToIndices(newSquares);
+      updateSquares(newIndices);
+      return newIndices;
+      
     } finally {
       setIsLoading(false);
-      
-      // Reset flags after a small delay to allow UI to update
       setTimeout(() => {
         setIsManualUpdate(false);
         setIsMoving(false);
