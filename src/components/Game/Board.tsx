@@ -92,107 +92,68 @@ const Board: Component = () => {
   // Track the current fetch promise to prevent duplicate requests
   let currentFetch: Promise<void> | null = null;
   
-  // Single effect to handle base points fetching
-  createEffect(() => {
+  // Fetch base points with proper error handling and loading states
+  const fetchBasePoints = async () => {
     const currentUser = user();
-    // Clear state if no user
     if (!currentUser) {
       setBasePoints([]);
       setIsLoading(false);
       return;
     }
-    
-    // Don't fetch if already fetching, recently fetched, or currently moving
+
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchTime();
     const hasData = basePoints().length > 0;
-    const shouldSkipFetch = isFetching() || currentFetch || isMoving() || (timeSinceLastFetch < 30000 && hasData);
     
-    
-    if (shouldSkipFetch) {
+    // Skip if we already have recent data or a request is in progress
+    if (isFetching() || currentFetch || isMoving() || (timeSinceLastFetch < 30000 && hasData)) {
       return;
     }
-    
-    // Only set loading state if we don't have any data yet
+
     if (!hasData) {
       setIsLoading(true);
     }
-    
-    // Fetch base points with deduplication
-    const fetchData = async () => {
-      // If there's already a fetch in progress, wait for it
-      if (currentFetch) {
-            await currentFetch;
-            return;
-          }
-      
-      setIsFetching(true);
-      
+
+    // Create a single fetch promise to prevent duplicates
+    currentFetch = (async () => {
       try {
-        // Create a new promise for this fetch
-        currentFetch = (async () => {
-          try {
-            const response = await fetch('/api/base-points', {
-              credentials: 'include',
-              headers: {
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-              }
-            });
-            
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error('Board - Error response:', errorText);
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.success) {
-              const points = data.data?.basePoints || [];
-              setBasePoints(points);
-              setLastFetchTime(now);
-              
-              // If we have points, we can clear the loading state
-              if (points.length > 0) {
-                setIsLoading(false);
-              }
-            } else {
-              console.warn('Board - API returned success:false', data);
-              setBasePoints([]);
-            }
-          } finally {
-            // Clear the current fetch promise when done
-            currentFetch = null;
-          }
-        })();
+        const response = await fetch('/api/base-points', {
+          credentials: 'include',
+          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const { success, data } = await response.json();
         
-        await currentFetch;
+        if (success) {
+          const points = data?.basePoints || [];
+          setBasePoints(points);
+          setLastFetchTime(now);
+          if (points.length > 0) setIsLoading(false);
+        } else {
+          setBasePoints([]);
+        }
       } catch (error) {
-        console.error('Error in base points fetch:', error);
-        // Clear loading states on error
-        setIsLoading(false);
-        setIsFetching(false);
-        currentFetch = null;
-        
-        // If we don't have any squares yet, ensure we show something
+        console.error('Failed to fetch base points:', error);
         if (selectedSquares().length === 0) {
           updateSquares([24]); // Fallback to center square
         }
+      } finally {
+        setIsLoading(false);
+        setIsFetching(false);
+        currentFetch = null;
       }
-    };
-    
-    // Call fetchData and handle any uncaught errors
-    fetchData().catch(error => {
-      console.error('Unhandled error in fetchData:', error);
-      setIsLoading(false);
-      setIsFetching(false);
-      currentFetch = null;
-      
-      if (selectedSquares().length === 0) {
-        updateSquares([24]); // Fallback to center square
-      }
-    });
+    })();
+
+    await currentFetch;
+  };
+
+  // Effect to trigger base points fetch
+  createEffect(() => {
+    fetchBasePoints().catch(console.error);
   });
   
   // Derived state with explicit return types
