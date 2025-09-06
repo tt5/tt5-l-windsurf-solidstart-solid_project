@@ -1,7 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 import { promises as fs } from 'fs';
-import { dirname, join } from 'path';
+import { dirname } from 'path';
 import { assertServer } from './utils';
 import { BasePointRepository } from './repositories/base-point.repository';
 
@@ -18,14 +18,11 @@ async function getDb(): Promise<SqliteDatabase> {
   assertServer();
   
   if (!db) {
-    console.log('Initializing database...');
+    console.log('Initializing database connection...');
     
     try {
       // Ensure data directory exists
       await fs.mkdir(dirname(dbPath), { recursive: true });
-      
-      // Check if database file exists
-      const dbExists = await fs.access(dbPath).then(() => true).catch(() => false);
       
       // Initialize SQLite database
       db = await open({
@@ -34,46 +31,13 @@ async function getDb(): Promise<SqliteDatabase> {
         mode: sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE
       });
       
-      // Set pragmas using exec
+      // Set pragmas
       await db.exec('PRAGMA journal_mode = WAL;');
       await db.exec('PRAGMA foreign_keys = ON;');
       
-      // Create tables with error handling
-      try {
-        // First create users table if it doesn't exist
-        await db.exec(`
-          CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            username TEXT NOT NULL UNIQUE,
-            created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-          )
-        `);
-        
-        // Create base_points table with foreign key to users
-        await db.exec(`
-          CREATE TABLE IF NOT EXISTS base_points (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            x INTEGER NOT NULL,
-            y INTEGER NOT NULL,
-            created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
-            updated_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-            UNIQUE(user_id, x, y)
-          )
-        `);
-        
-        // Create index for base_points
-        await db.exec('CREATE INDEX IF NOT EXISTS idx_base_points_user_id ON base_points(user_id);');
-        await db.exec('CREATE INDEX IF NOT EXISTS idx_base_points_xy ON base_points(x, y);');
-        
-        console.log('Database tables verified/created');
-      } catch (error) {
-        console.error('Error creating tables:', error);
-        throw error;
-      }
+      console.log('Database connection established');
     } catch (error) {
-      console.error('Error initializing database:', error);
+      console.error('Failed to initialize database:', error);
       throw error;
     }
   }
