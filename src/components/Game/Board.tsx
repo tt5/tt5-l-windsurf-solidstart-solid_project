@@ -84,6 +84,7 @@ const Board: Component = () => {
   const [isLoading, setIsLoading] = createSignal<boolean>(true);
   const [lastFetchTime, setLastFetchTime] = createSignal<number>(0);
   const [isFetching, setIsFetching] = createSignal<boolean>(false);
+  const [isMoving, setIsMoving] = createSignal<boolean>(false);
   
   // Cache key based on user ID
   const cacheKey = () => currentUser?.id ? `basePoints_${currentUser.id}` : '';
@@ -115,11 +116,15 @@ const Board: Component = () => {
       return;
     }
     
-    // Don't fetch if already fetching or recently fetched
+    // Don't fetch if already fetching, recently fetched, or currently moving
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchTime();
     const hasData = basePoints().length > 0;
-    const shouldSkipFetch = isFetching() || currentFetch || (timeSinceLastFetch < 30000 && hasData);
+    const shouldSkipFetch = isFetching() || currentFetch || isMoving() || (timeSinceLastFetch < 30000 && hasData);
+    
+    if (isMoving()) {
+      console.log('Skipping fetch - player is currently moving');
+    }
     
     if (shouldSkipFetch) {
       console.log('Board - Skipping fetch:', { 
@@ -571,7 +576,8 @@ const Board: Component = () => {
   const handleDirection = (dir: Direction) => {
     console.log('handleDirection called with direction:', dir);
     
-    // Set manual update flag
+    // Set movement and manual update flags
+    setIsMoving(true);
     setIsManualUpdate(true);
     
     try {
@@ -597,15 +603,17 @@ const Board: Component = () => {
       // Update the position
       setCurrentPosition(newPosition);
       
-      // Update base points to move them along with the player
+      // Update base points to move them in the opposite direction of player movement
+      // to maintain their position relative to the grid
       const currentBasePoints = basePoints();
       const updatedBasePoints = currentBasePoints.map(bp => ({
         ...bp,
-        // Move base points in the same direction as the player
+        // Move base points in the opposite direction to keep them in the same grid position
         x: bp.x + dx,
         y: bp.y + dy
       }));
       setBasePoints(updatedBasePoints);
+      console.log('Updated base points positions:', updatedBasePoints);
       
       // Add loading state for better UX
       setIsLoading(true);
@@ -644,13 +652,14 @@ const Board: Component = () => {
       console.error('Error in handleDirection:', error);
       throw error;
     } finally {
-      console.log('handleDirection completed, setting loading to false');
+      console.log('handleDirection completed, resetting states');
       setIsLoading(false);
       
-      // Reset manual update flag after a small delay to allow UI to update
+      // Reset flags after a small delay to allow UI to update
       setTimeout(() => {
-        console.log('Resetting manual update flag');
+        console.log('Resetting movement and manual update flags');
         setIsManualUpdate(false);
+        setIsMoving(false);
       }, 100);
     }
   };
