@@ -16,35 +16,26 @@ export const useUserItems = (currentUser: any, options: UseUserItemsOptions = {}
   // Load items when user changes
   createEffect(() => {
     if (!currentUser) {
-      console.log('useUserItems - No current user, clearing state');
       setItems([]);
       setSelectedSquares([]);
       return;
     }
     
-    console.log('useUserItems - User changed, initializing with default selection');
     // Only set default selection if we don't have any squares yet
     if (selectedSquares().length === 0) {
-      console.log('useUserItems - Setting default selection');
       setSelectedSquares([...DEFAULT_SELECTION]);
     }
   });
 
   const updateSquares = (squares: SelectedSquares) => {
-    console.log('useUserItems - updateSquares called with:', squares);
     const prevSquares = selectedSquares();
-    console.log('Previous squares:', prevSquares);
     
     // Only update if the squares have actually changed
     const hasChanged = squares.length !== prevSquares.length || 
       squares.some((sq, i) => sq !== prevSquares[i]);
       
     if (hasChanged) {
-      console.log('Squares have changed, updating state');
       setSelectedSquares([...squares]);
-      console.log('New squares state:', selectedSquares());
-    } else {
-      console.log('No changes in squares, skipping update');
     }
   };
 
