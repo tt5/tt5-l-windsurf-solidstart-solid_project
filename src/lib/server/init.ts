@@ -29,14 +29,10 @@ export async function initializeServer() {
         updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
       );
       
-      CREATE TABLE IF NOT EXISTS user_tables (
-        user_id TEXT PRIMARY KEY,
-        table_name TEXT NOT NULL UNIQUE,
-        created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
-        deleted_at_ms INTEGER,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      );
+      -- Drop the user_tables table if it exists
+      DROP TABLE IF EXISTS user_tables;
       
+      -- Create base_points table with the correct foreign key to users
       CREATE TABLE IF NOT EXISTS base_points (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL,
@@ -48,8 +44,7 @@ export async function initializeServer() {
         UNIQUE(user_id, x, y)
       );
       
-      CREATE INDEX IF NOT EXISTS idx_user_tables_user_id ON user_tables(user_id);
-      CREATE INDEX IF NOT EXISTS idx_user_tables_table_name ON user_tables(table_name);
+      -- Create indexes
       CREATE INDEX IF NOT EXISTS idx_base_points_user_id ON base_points(user_id);
       CREATE INDEX IF NOT EXISTS idx_base_points_xy ON base_points(x, y);
     `);

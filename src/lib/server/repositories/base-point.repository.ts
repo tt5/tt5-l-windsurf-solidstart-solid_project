@@ -27,23 +27,18 @@ export class BasePointRepository {
       await this.db.run('BEGIN TRANSACTION');
       
       try {
-        // Check if user exists in user_tables
-        console.log(`[BasePointRepository] Checking user_tables for userId: ${userId}`);
+        // Check if user exists in users table
+        console.log(`[BasePointRepository] Verifying user exists: ${userId}`);
         const userExists = await this.db.get<{count: number}>(
-          'SELECT COUNT(*) as count FROM user_tables WHERE user_id = ?',
+          'SELECT COUNT(*) as count FROM users WHERE id = ?',
           [userId]
         );
         
-        console.log(`[BasePointRepository] User ${userId} exists: ${userExists?.count > 0}`);
+        if (!userExists || userExists.count === 0) {
+          throw new Error(`User ${userId} not found`);
+        }
         
-        // Insert or ignore into user_tables
-        console.log(`[BasePointRepository] Upserting into user_tables for userId: ${userId}`);
-        await this.db.run(
-          `INSERT INTO user_tables (user_id, table_name, created_at_ms) 
-           VALUES (?, ?, ?) 
-           ON CONFLICT(user_id) DO NOTHING`,
-          [userId, `user_${userId}`, now]
-        );
+        console.log(`[BasePointRepository] User ${userId} verified`);
 
         // First, try to get the existing base point
         console.log(`[BasePointRepository] Checking for existing base point at (${x}, ${y})`);
@@ -89,7 +84,7 @@ export class BasePointRepository {
         y,
         now,
         dbState: {
-          userExists: await this.db.get('SELECT * FROM user_tables WHERE user_id = ?', [userId]),
+          userExists: await this.db.get('SELECT id, username FROM users WHERE id = ?', [userId]),
           basePoints: await this.db.all('SELECT * FROM base_points WHERE user_id = ?', [userId])
         }
       });

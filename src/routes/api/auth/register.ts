@@ -66,12 +66,6 @@ export async function POST({ request }: APIEvent) {
         )
       `);
       
-      // Add user to user_tables
-      await db.run(
-        'INSERT INTO user_tables (user_id, table_name) VALUES (?, ?)',
-        [userId, tableName]
-      );
-      
       // Commit the transaction
       await db.exec('COMMIT');
       

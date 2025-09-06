@@ -5,7 +5,7 @@
     "db": "./scripts/cli.js"
   },
   "scripts": {
-    "dev": "vinxi dev",
+    "dev": "{ (lsof -t -i:3000) && { kill -9 $(lsof -t -i:3000); vinxi dev;} } || { vinxi dev; }",
     "build": "vinxi build",
     "start": "vinxi start",
     

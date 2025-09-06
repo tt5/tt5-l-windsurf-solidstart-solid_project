@@ -17,13 +17,19 @@ async function checkMigrations() {
     console.log('Base points table exists:', basePointsTable);
     
     if (basePointsTable) {
-      const basePoints = await db.all('SELECT * FROM base_points');
-      console.log('Base points:', basePoints);
+        const basePoints = await db.all('SELECT * FROM base_points');
+      console.log('Base points count:', basePoints.length);
+      if (basePoints.length > 0) {
+        console.log('Sample base point:', basePoints[0]);
+      }
     }
     
-    console.log('Checking user tables...');
-    const userTables = await db.all("SELECT * FROM user_tables");
-    console.log('User tables:', userTables);
+    console.log('Checking users table...');
+    const users = await db.all("SELECT id, username, created_at FROM users");
+    console.log('Users count:', users.length);
+    if (users.length > 0) {
+      console.log('Sample user:', users[0]);
+    }
     
   } catch (error) {
     console.error('Error checking migrations:', error);

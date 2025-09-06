@@ -13,7 +13,7 @@ import {
 } from './utils/db-utils';
 import type { Database, MigrationResult, InitResult } from './types/database';
 
-const MIGRATIONS_DIR = join(process.cwd(), 'scripts', 'migrations');
+const MIGRATIONS_DIR = join(process.cwd(), 'migrations');
 
 
 const getMigrationFiles = async (): Promise<string[]> => {

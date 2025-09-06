@@ -49,17 +49,7 @@ async function getDb(): Promise<SqliteDatabase> {
           )
         `);
         
-        // Create user_tables if it doesn't exist
-        await db.exec(`
-          CREATE TABLE IF NOT EXISTS user_tables (
-            user_id TEXT PRIMARY KEY,
-            table_name TEXT NOT NULL UNIQUE,
-            created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
-            deleted_at_ms INTEGER
-          );
-        `);
-
-        // Create base_points table if it doesn't exist
+        // Create base_points table with foreign key to users
         await db.exec(`
           CREATE TABLE IF NOT EXISTS base_points (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,7 +60,7 @@ async function getDb(): Promise<SqliteDatabase> {
             updated_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
             UNIQUE(user_id, x, y)
-          );
+          )
         `);
         
         // Create index for base_points
@@ -94,72 +84,43 @@ async function getDb(): Promise<SqliteDatabase> {
 // Create a function to get or create a user's table
 async function ensureUserTable(userId: string): Promise<string> {
   const db = await getDb();
-  const safeUserId = userId.replace(/[^a-zA-Z0-9_]/g, '_');
-  const tableName = `user_${safeUserId}_items`;
   
   try {
     // Ensure repositories are initialized
     await initializeRepositories();
     
-    // First ensure user_tables exists
+    // Create user's table if it doesn't exist
+    const tableName = `user_${userId}`;
     await db.exec(`
-      CREATE TABLE IF NOT EXISTS user_tables (
-        user_id TEXT PRIMARY KEY,
-        table_name TEXT NOT NULL UNIQUE,
-        created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
-        deleted_at_ms INTEGER
-      );
+      CREATE TABLE IF NOT EXISTS ${tableName} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
+      )
     `);
     
-    // Check if table exists
-    const tableExists = await db.get(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-      [tableName]
-    );
-    
-    let isNewUser = false;
-    
-    if (!tableExists) {
-      isNewUser = true;
-      
-      // Create the user's items table with millisecond precision
-      await db.exec(`
-        CREATE TABLE ${tableName} (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          data TEXT NOT NULL,
-          created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000 + (strftime('%f', 'now') * 1000) % 1000)
-        )
-      `);
-      
-      // Register the user table
-      await db.run(
-        'INSERT OR IGNORE INTO user_tables (user_id, table_name) VALUES (?, ?)',
-        [userId, tableName]
-      );
-      
-      // Add default base point for new users
-      try {
-        const basePointRepo = getBasePointRepository();
-        await basePointRepo.create({
-          user_id: userId,
-          x: 0,
-          y: 0,
-          created_at_ms: Date.now(),
-          updated_at_ms: Date.now()
-        });
-        console.log(`Added default base point for user ${userId}`);
-      } catch (error) {
-        console.error('Error adding default base point:', error);
-        // Don't fail the whole operation if base point creation fails
-      }
+    // Add default base point for new users
+    try {
+      const basePointRepo = getBasePointRepository();
+      await basePointRepo.create({
+        user_id: userId,
+        x: 0,
+        y: 0,
+        created_at_ms: Date.now(),
+        updated_at_ms: Date.now()
+      });
+      console.log(`Added default base point for user ${userId}`);
+    } catch (error) {
+      console.error('Error adding default base point:', error);
+      // Don't fail the whole operation if base point creation fails
     }
-  
+    
+    return tableName;
   } catch (error) {
     console.error('Error in ensureUserTable:', error);
     throw error;
   }
-  
-  return tableName;
 }
 
 /**
@@ -168,18 +129,6 @@ async function ensureUserTable(userId: string): Promise<string> {
 const deleteUser = async (userId: string): Promise<boolean> => {
   try {
     const db = await getDb();
-    const userTableName = `user_${userId}_items`;
-    
-    // Check if user_tables exists
-    const userTablesExists = await db.get(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='user_tables'"
-    );
-    
-    // If no user_tables table exists, nothing to delete
-    if (!userTablesExists) {
-      console.log(`[deleteUser] user_tables doesn't exist, nothing to delete for user: ${userId}`);
-      return true;
-    }
     
     await db.exec('BEGIN TRANSACTION');
     
@@ -189,17 +138,18 @@ const deleteUser = async (userId: string): Promise<boolean> => {
         basePointRepo = new BasePointRepository(db);
       }
       
-      // Remove user from user_tables if it exists
-      await db.run('DELETE FROM user_tables WHERE user_id = ?', [userId]);
+      // Delete all base points for the user
+      await basePointRepo.clearForUser(userId);
       
-      // Check if base_points table exists before trying to delete
-      const basePointsTableExists = await db.get(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='base_points'"
+      // Delete the user's personal table if it exists
+      const userTableName = `user_${userId}`;
+      const userTableExists = await db.get(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+        [userTableName]
       );
       
-      // Delete all base points for the user if the table exists
-      if (basePointsTableExists) {
-        await basePointRepo.clearForUser(userId);
+      if (userTableExists) {
+        await db.exec(`DROP TABLE IF EXISTS ${userTableName}`);
       }
       
       await db.exec('COMMIT');
@@ -231,7 +181,6 @@ async function ensureRepositoriesInitialized() {
   }
 }
 
-
 async function getBasePointRepository(): Promise<BasePointRepository> {
   try {
     await ensureRepositoriesInitialized();
@@ -250,26 +199,7 @@ async function initializeRepositories() {
   if (!db) await getDb();
   
   try {
-    // First ensure the migrations table exists
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS migrations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE,
-        applied_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-      )
-    `);
-    
-    // Ensure user_tables exists (needed for foreign key in base_points)
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS user_tables (
-        user_id TEXT PRIMARY KEY,
-        table_name TEXT NOT NULL UNIQUE,
-        created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
-        deleted_at_ms INTEGER
-      )
-    `);
-    
-    // Ensure base_points table exists (create it directly if it doesn't exist)
+    // Create base_points table with foreign key to users
     await db.exec(`
       CREATE TABLE IF NOT EXISTS base_points (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -278,7 +208,7 @@ async function initializeRepositories() {
         y INTEGER NOT NULL,
         created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
         updated_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
-        FOREIGN KEY (user_id) REFERENCES user_tables(user_id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         UNIQUE(user_id, x, y)
       )
     `);
