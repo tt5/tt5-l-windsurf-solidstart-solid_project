@@ -1,7 +1,9 @@
 import { createSignal, createEffect } from 'solid-js';
-import type { Item, SelectedSquares } from '../types/board';
+import type { Item } from '../types/board';
 
-const DEFAULT_SELECTION = [24]; // Center of 7x7 grid
+export type SelectedSquares = number[]; // Array of flat indices
+
+const DEFAULT_SELECTION = [24]; // Center of 7x7 grid (3,3)
 
 interface UseUserItemsOptions {
   onClear?: () => void;
@@ -29,7 +31,21 @@ export const useUserItems = (currentUser: any, options: UseUserItemsOptions = {}
   });
 
   const updateSquares = (squares: SelectedSquares) => {
-    setSelectedSquares(squares);
+    console.log('useUserItems - updateSquares called with:', squares);
+    const prevSquares = selectedSquares();
+    console.log('Previous squares:', prevSquares);
+    
+    // Only update if the squares have actually changed
+    const hasChanged = squares.length !== prevSquares.length || 
+      squares.some((sq, i) => sq !== prevSquares[i]);
+      
+    if (hasChanged) {
+      console.log('Squares have changed, updating state');
+      setSelectedSquares([...squares]);
+      console.log('New squares state:', selectedSquares());
+    } else {
+      console.log('No changes in squares, skipping update');
+    }
   };
 
   const handleSave = async () => {

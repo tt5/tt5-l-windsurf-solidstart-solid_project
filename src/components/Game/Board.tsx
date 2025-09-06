@@ -236,15 +236,23 @@ const Board: Component = () => {
   
   // Handle keyboard events with proper type safety
   const handleKeyDown: KeyboardHandler = (e) => {
+    console.log('Key pressed:', e.key);
+    
     // Type guard to ensure we only handle arrow keys
     const isArrowKey = (key: string): key is keyof typeof BOARD_CONFIG.DIRECTION_MAP => 
       key in BOARD_CONFIG.DIRECTION_MAP;
     
-    if (!isArrowKey(e.key)) return;
+    if (!isArrowKey(e.key)) {
+      console.log('Not an arrow key, ignoring');
+      return;
+    }
     
+    console.log('Arrow key detected, preventing default');
     e.preventDefault();
     const direction = BOARD_CONFIG.DIRECTION_MAP[e.key];
+    console.log('Setting active direction to:', direction);
     setActiveDirection(direction);
+    console.log('Calling handleDirection with:', direction);
     handleDirection(direction);
   };
   
@@ -335,6 +343,7 @@ const Board: Component = () => {
         return bp.x === relX && bp.y === relY;
       });
     } catch (error) {
+      console.error('Error in isBasePoint:', error);
       return false;
     }
   };
@@ -487,8 +496,17 @@ const Board: Component = () => {
     }
   });
 
+  // Track if we have a manual update in progress
+  const [isManualUpdate, setIsManualUpdate] = createSignal(false);
+  
   // Single effect to handle border data and loading states
   createEffect(() => {
+    // Skip updates during manual operations
+    if (isManualUpdate()) {
+      console.log('Skipping border data update during manual operation');
+      return;
+    }
+    
     const data = borderData();
     const currentState = borderData.state;
     const currentSquares = selectedSquares();
@@ -505,8 +523,13 @@ const Board: Component = () => {
     switch (currentState) {
       case 'ready':
         if (data?.squares) {
-          console.log('Board - Updating squares from border data');
-          updateSquares(data.squares);
+          // Only update if we don't have any squares yet
+          if (currentSquares.length === 0) {
+            console.log('Board - Initializing squares from border data');
+            updateSquares(data.squares);
+          } else {
+            console.log('Board - Skipping border data update - manual changes detected');
+          }
         }
         // Clear loading states
         if (isLoading() || isFetching()) {
@@ -544,30 +567,75 @@ const Board: Component = () => {
   });
 
   const handleDirection = (dir: Direction) => {
-    const [x, y] = currentPosition();
-    const newPosition: Point = [
-      dir === 'left' ? x - 1 : dir === 'right' ? x + 1 : x,
-      dir === 'up' ? y - 1 : dir === 'down' ? y + 1 : y
-    ];
+    console.log('handleDirection called with direction:', dir);
     
-    // Add loading state for better UX
-    setIsLoading(true);
+    // Set manual update flag
+    setIsManualUpdate(true);
     
-    moveSquares(selectedSquares(), dir, [x, y])
-      .then((squares) => {
-        if (Array.isArray(squares)) {
-          updateSquares(squares);
-          setCurrentPosition(newPosition);
-        } else {
-          console.error('Invalid squares array received from moveSquares:', squares);
-        }
-      })
-      .catch((error) => {
-        console.error('Error in handleDirection:', error);
-      })
-      .finally(() => {
-        setIsLoading(false);
+    try {
+      // Get current state
+      const [x, y] = currentPosition();
+      const currentSquareIndices = [...selectedSquares()];
+      
+      console.log('Current position:', [x, y], 'Current squares:', currentSquareIndices);
+      
+      // Calculate new position
+      const newPosition: Point = [
+        dir === 'left' ? x - 1 : dir === 'right' ? x + 1 : x,
+        dir === 'up' ? y - 1 : dir === 'down' ? y + 1 : y
+      ];
+      
+      console.log('New position will be:', newPosition);
+      
+      // Update the position
+      setCurrentPosition(newPosition);
+      
+      // Add loading state for better UX
+      setIsLoading(true);
+      
+      console.log('Calling moveSquares with:', {
+        currentSquareIndices,
+        dir,
+        newPosition
       });
+      
+      // Convert indices to coordinates for moveSquares
+      const squaresAsCoords = currentSquareIndices.map(index => {
+        const x = index % BOARD_CONFIG.GRID_SIZE;
+        const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
+        return [x, y] as [number, number];
+      });
+      
+      console.log('Squares as coordinates before moveSquares:', squaresAsCoords);
+      
+      // Move the squares with the current squares and new position
+      return moveSquares(squaresAsCoords, dir, newPosition)
+        .then((squares) => {
+          console.log('moveSquares returned with squares:', squares);
+          if (Array.isArray(squares)) {
+            // Convert [x, y] coordinates back to indices
+            const newIndices = squares.map(([x, y]) => y * BOARD_CONFIG.GRID_SIZE + x);
+            console.log('Converted new indices:', newIndices);
+            updateSquares(newIndices);
+            console.log('After updateSquares, selectedSquares:', [...selectedSquares()]);
+            return newIndices; // Return for testing
+          } else {
+            throw new Error('Invalid squares array received from moveSquares');
+          }
+        });
+    } catch (error) {
+      console.error('Error in handleDirection:', error);
+      throw error;
+    } finally {
+      console.log('handleDirection completed, setting loading to false');
+      setIsLoading(false);
+      
+      // Reset manual update flag after a small delay to allow UI to update
+      setTimeout(() => {
+        console.log('Resetting manual update flag');
+        setIsManualUpdate(false);
+      }, 100);
+    }
   };
 
 
@@ -637,8 +705,12 @@ const Board: Component = () => {
         {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
           const x = index % BOARD_CONFIG.GRID_SIZE;
           const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-          const isSelected = selectedSquares().includes(index);
-          const isBP = isBasePoint(x, y);
+          const [offsetX, offsetY] = currentPosition();
+          const worldX = x + offsetX;
+          const worldY = y + offsetY;
+          const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
+          const isSelected = selectedSquares().includes(squareIndex);
+          const isBP = isBasePoint(worldX, worldY);
           
           return (
             <button
@@ -649,8 +721,7 @@ const Board: Component = () => {
                 if (isSelected) {
                   return;
                 }
-                const [playerX, playerY] = currentPosition();
-                handleAddBasePoint(x - playerX, y - playerY);
+                handleAddBasePoint(worldX, worldY);
               }}
               onContextMenu={(e) => {
                 e.preventDefault();
