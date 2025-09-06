@@ -597,13 +597,13 @@ const Board: Component = () => {
       // Update the position
       setCurrentPosition(newPosition);
       
-      // Update base points to maintain their relative positions
+      // Update base points to move them along with the player
       const currentBasePoints = basePoints();
       const updatedBasePoints = currentBasePoints.map(bp => ({
         ...bp,
-        // Move base points in the opposite direction to maintain their relative position
-        x: bp.x - dx,
-        y: bp.y - dy
+        // Move base points in the same direction as the player
+        x: bp.x + dx,
+        y: bp.y + dy
       }));
       setBasePoints(updatedBasePoints);
       
