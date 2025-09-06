@@ -634,8 +634,8 @@ const Board: Component = () => {
           const x = index % BOARD_CONFIG.GRID_SIZE;
           const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
           const [offsetX, offsetY] = currentPosition();
-          const worldX = x + offsetX;
-          const worldY = y + offsetY;
+          const worldX = x - offsetX;
+          const worldY = y - offsetY;
           const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
           const isSelected = selectedSquares().includes(squareIndex);
           const isBP = isBasePoint(worldX, worldY);
