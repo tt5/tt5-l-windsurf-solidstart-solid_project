@@ -9,19 +9,15 @@ type BasePointRequest = {
 
 export async function GET({ request }: APIEvent) {
   const requestId = Math.random().toString(36).substring(2, 9);
-  console.log(`[${new Date().toISOString()}] [${requestId}] GET /api/base-points`);
   
   try {
     // Log request headers for debugging
     const headers = Object.fromEntries(request.headers.entries());
-    console.log(`[${requestId}] Request headers:`, JSON.stringify(headers, null, 2));
     
     // Verify authentication
-    console.log(`[${requestId}] Verifying authentication...`);
     const user = await getAuthUser(request);
     
     if (!user) {
-      console.warn(`[${requestId}] Unauthorized access attempt to /api/base-points`);
       return new Response(
         JSON.stringify({ 
           requestId,
@@ -39,16 +35,9 @@ export async function GET({ request }: APIEvent) {
       );
     }
     
-    console.log(`[${requestId}] Authenticated user:`, {
-      userId: user.userId,
-      username: user.username
-    });
-
-    console.log(`Fetching base points for user: ${user.userId}`);
     const repository = await getBasePointRepository();
     const basePoints = await repository.getByUser(user.userId);
     
-    console.log(`Found ${basePoints.length} base points for user ${user.userId}`);
     return new Response(
       JSON.stringify({ 
         success: true,
@@ -84,11 +73,8 @@ export async function POST({ request }: APIEvent) {
   const startTime = Date.now();
   const requestId = Math.random().toString(36).substring(2, 9);
   
-  console.log(`[${new Date().toISOString()}] [${requestId}] POST /api/base-points`);
-  
   try {
     // Verify authentication
-    console.log(`[${requestId}] Verifying authentication`);
     const user = await getAuthUser(request);
     if (!user) {
       const error = 'Authentication required';
@@ -103,13 +89,11 @@ export async function POST({ request }: APIEvent) {
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
-    console.log(`[base-points] Authenticated user: ${user.userId}`);
 
     // Parse and validate request body
     let data: BasePointRequest;
     try {
       const body = await request.json();
-      console.log('[base-points] Request body:', JSON.stringify(body));
       
       data = body as BasePointRequest;
       
@@ -137,8 +121,6 @@ export async function POST({ request }: APIEvent) {
       );
     }
 
-    console.log(`[${requestId}] Adding base point at (${data.x}, ${data.y}) for user ${user.userId}`);
-    
     try {
       const repository = await getBasePointRepository();
       const basePoint = await repository.create({
@@ -148,10 +130,6 @@ export async function POST({ request }: APIEvent) {
       });
 
       const duration = Date.now() - startTime;
-      console.log(`[${requestId}] Successfully added base point in ${duration}ms`, { 
-        basePointId: basePoint.id,
-        duration
-      });
       
       return new Response(
         JSON.stringify({ 
