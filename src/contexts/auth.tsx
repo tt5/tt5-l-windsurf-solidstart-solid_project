@@ -137,10 +137,31 @@ const createAuthStore = (): AuthStore => {
     console.log('[setupDevUser] Using test credentials:', { testUsername });
     
     try {
-      // First, try to log in
+      // First, try to register the user
+      console.log('[setupDevUser] Attempting to register user:', testUsername);
+      const registerUrl = '/api/auth/register';
+      console.log(`[setupDevUser] Making registration request to: ${registerUrl}`);
+      
+      const registerResponse = await fetch(registerUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          username: testUsername,
+          password: testPassword
+        })
+      });
+      
+      const registerData = await registerResponse.json();
+      console.log('[setupDevUser] Register response:', registerData);
+      
+      // Now try to log in
       console.log('[setupDevUser] Attempting to log in with username:', testUsername);
       const loginUrl = '/api/auth/login';
-      console.log(`[setupDevUser] Making request to: ${loginUrl}`);
+      console.log(`[setupDevUser] Making login request to: ${loginUrl}`);
       
       const loginStartTime = Date.now();
       const loginResponse = await fetch(loginUrl, {
@@ -154,9 +175,6 @@ const createAuthStore = (): AuthStore => {
           username: testUsername,
           password: testPassword
         })
-      }).catch(error => {
-        console.error('[setupDevUser] Login request failed:', error);
-        throw error;
       });
       
       console.log(`[setupDevUser] Login response received in ${Date.now() - loginStartTime}ms`);
@@ -172,7 +190,6 @@ const createAuthStore = (): AuthStore => {
           console.log('[setupDevUser] Login successful, response data:', responseData);
           
           // Extract user data from the response
-          // The response might be in format { user: { id, username } } or { id, username }
           const userData = responseData.user || responseData;
           
           if (!userData || !userData.id) {
@@ -193,6 +210,28 @@ const createAuthStore = (): AuthStore => {
           
           // Update the user state
           updateUser(formattedUser);
+          
+          // Add base point for the user
+          try {
+            const basePointResponse = await fetch('/api/base-points', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              credentials: 'include',
+              body: JSON.stringify({ x: 0, y: 0 })
+            });
+            
+            if (basePointResponse.ok) {
+              console.log('[setupDevUser] Successfully added base point for devuser');
+            } else {
+              console.error('[setupDevUser] Failed to add base point:', await basePointResponse.text());
+            }
+          } catch (error) {
+            console.error('[setupDevUser] Error adding base point:', error);
+          }
+          
           setIsInitialized(true);
           return;
         } catch (error) {
