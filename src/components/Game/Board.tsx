@@ -1,5 +1,4 @@
-import { Component, createEffect, createSignal, onMount, createResource, onCleanup } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
+import { Component, createEffect, createSignal, onMount, createResource } from 'solid-js';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
 import { useUserItems } from '../../hooks/useUserItems';
@@ -54,34 +53,23 @@ const BOARD_CONFIG: BoardConfig = {
   ]
 } as const;
 
-// Type for the API response when fetching base points
-interface BasePointsResponse extends ApiResponse<{ basePoints: BasePoint[] }> {}
-
 // Type for the response when adding a base point
 interface AddBasePointResponse extends ApiResponse<BasePoint> {}
 
-// Type for the response when deleting an account
-interface DeleteAccountResponse extends ApiResponse<{ success: boolean }> {}
 
 const Board: Component = () => {
   
   // Hooks
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   
   // State with explicit types
   const currentUser = user();
   const [currentPosition, setCurrentPosition] = createSignal<Point>([...BOARD_CONFIG.DEFAULT_POSITION]);
-  const [activeDirection, setActiveDirection] = createSignal<Direction | null>(null);
   const [basePoints, setBasePoints] = createSignal<BasePoint[]>([]);
-  const [isSaving, setIsSaving] = createSignal<boolean>(false);
   const [isLoading, setIsLoading] = createSignal<boolean>(true);
   const [lastFetchTime, setLastFetchTime] = createSignal<number>(0);
   const [isFetching, setIsFetching] = createSignal<boolean>(false);
   const [isMoving, setIsMoving] = createSignal<boolean>(false);
-  
-  // Cache key based on user ID
-  const cacheKey = () => currentUser?.id ? `basePoints_${currentUser.id}` : '';
   
   // Initialize loading state on mount
   onMount(() => {
@@ -184,14 +172,11 @@ const Board: Component = () => {
     
     e.preventDefault();
     const direction = BOARD_CONFIG.DIRECTION_MAP[e.key];
-    setActiveDirection(direction);
     handleDirection(direction);
   };
   
   const handleKeyUp: KeyboardHandler = (e) => {
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-      setActiveDirection(null);
-    }
+    // Handle key up if needed
   };
   
   // Setup and cleanup event listeners
