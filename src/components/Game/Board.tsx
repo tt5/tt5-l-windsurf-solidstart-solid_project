@@ -87,6 +87,11 @@ const Board: Component = () => {
   onMount(() => {
     setIsLoading(true);
     setBasePoints([]);
+    
+    // Cleanup function
+    return () => {
+      setIsLoading(false);
+    };
   });
   
   // Track the current fetch promise to prevent duplicate requests
@@ -196,10 +201,12 @@ const Board: Component = () => {
       ['keyup', handleKeyUp as EventListener]
     ];
     
+    // Add event listeners
     eventListeners.forEach(([event, handler]) => {
       window.addEventListener(event, handler);
     });
     
+    // Cleanup function to remove event listeners
     return () => {
       eventListeners.forEach(([event, handler]) => {
         window.removeEventListener(event, handler);
