@@ -1,5 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { getBasePointRepository } from '~/lib/server/db';
+import { getDb } from '~/lib/server/db';
+import { BasePointRepository } from '~/lib/server/repositories/base-point.repository';
 import { getAuthUser } from '~/lib/server/auth/jwt';
 
 type CalculateSquaresRequest = {
@@ -17,10 +18,8 @@ const directionMap = {
 
 export async function POST({ request }: APIEvent) {
   try {
-    // Verify authentication
     const user = await getAuthUser(request);
     if (!user) {
-      console.warn('Unauthorized access attempt to /api/calculate-squares');
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -33,70 +32,40 @@ export async function POST({ request }: APIEvent) {
       );
     }
 
-    const requestData = await request.json() as CalculateSquaresRequest;
-    const { borderIndices, currentPosition, direction } = requestData;
+    const { borderIndices, currentPosition, direction } = await request.json() as CalculateSquaresRequest;
     
-    console.log('=== Calculate Squares API Request ===');
-    console.log('Input:', {
-      borderIndices,
-      currentPosition,
-      direction,
-      requestData
-    });
+    // Get database connection and initialize repository
+    const db = await getDb();
+    const basePointRepository = new BasePointRepository(db);
     
-    // Get all base points from the database and remove duplicates
-    const basePointRepository = await getBasePointRepository();
-    let basePoints = await basePointRepository.getAll();
-    console.log('Retrieved base points from DB:', basePoints);
+    // Get base points and remove duplicates
+    const basePoints = await basePointRepository.getAll();
+    const uniqueBasePoints = basePoints && basePoints.length > 0 
+      ? [...new Map(basePoints.map(p => [`${p.x},${p.y}`, p])).values()]
+      : [{ x: 0, y: 0, userId: 'default' }];
     
-    // Remove duplicate base points (same x, y coordinates)
-    const uniqueBasePoints = [
-      ...new Map(
-        basePoints.map(point => [`${point.x},${point.y}`, point])
-      ).values()
-    ];
-    
-    // Fallback to default if no base points exist
-    if (uniqueBasePoints.length === 0) {
-      uniqueBasePoints.push({ x: 0, y: 0, userId: 'default' });
-    }
-
-    const borderCoordinates = borderIndices.map(i => 
-      [(i % 7) - currentPosition[0], Math.floor(i / 7) - currentPosition[1]]
-    );
-    
-    console.log('Calculated border coordinates:', borderCoordinates);
-    
-    // Convert base points to array of [x, y] arrays
-    const basePointCoords = uniqueBasePoints.map(p => [p.x, p.y]);
-    console.log('Base point coordinates:', basePointCoords);
-
     const [dx, dy] = directionMap[direction];
-
-    const result = (x: number, y: number) => 
-      (x + currentPosition[0] + dx) + (y + currentPosition[1] + dy) * 7;
-    
-    const newSquares = borderCoordinates.flatMap(
-      ([x,y]) => basePointCoords.map(([i,j]) => {
-        let xdiff = Math.abs(x - i);
-        let ydiff = Math.abs(y - j);
-        if (xdiff >= ydiff) [xdiff, ydiff] = [ydiff, xdiff];
-        if (xdiff === 0 || ydiff === 0 || xdiff === ydiff) return result(x, y);
-        if (xdiff > 0 && ydiff % xdiff === 0) return result(x, y);
-        return -1;
-      }).filter((n): n is number => n !== -1)
-    );
-
-    const resultSquares = [...new Set(newSquares)];
-    
-    console.log('=== Calculate Squares API Response ===');
-    console.log('Result squares:', resultSquares);
-    console.log('Total squares:', resultSquares.length);
+    const newSquares = borderIndices.flatMap(i => {
+      const x = (i % 7) - currentPosition[0];
+      const y = Math.floor(i / 7) - currentPosition[1];
+      
+      return uniqueBasePoints.flatMap(({ x: bx, y: by }) => {
+        const xdiff = Math.abs(x - bx);
+        const ydiff = Math.abs(y - by);
+        
+        if (xdiff === 0 || ydiff === 0 || xdiff === ydiff) {
+          const nx = x + currentPosition[0] + dx;
+          const ny = y + currentPosition[1] + dy;
+          return nx >= 0 && nx < 7 && ny >= 0 && ny < 7 ? [nx + ny * 7] : [];
+        }
+        return [];
+      });
+    });
     
     return new Response(JSON.stringify({ 
       success: true,
       data: {
-        squares: resultSquares 
+        squares: [...new Set(newSquares)]
       }
     }), {
       headers: { 'Content-Type': 'application/json' },

@@ -47,29 +47,31 @@ export const moveSquares = async (
   currentPosition: [number, number]
 ): Promise<[number, number][]> => {
   try {
-    
-    // Move all existing squares
+    // Move all existing squares and filter out those that move off-grid
     const movedSquares = currentSquares
-      .map(square => {
-        const moved = movePosition(square, direction);
-        return moved;
-      })
-      .filter(([x, y]) => {
-        const isValid = x >= 0 && x < 7 && y >= 0 && y < 7;
-        if (!isValid) {
-        }
-        return isValid;
-      });
+      .map(square => movePosition(square, direction))
+      .filter(([x, y]) => x >= 0 && x < 7 && y >= 0 && y < 7);
+
+    // Calculate border indices for the incoming edge only
+    let borderIndices: number[] = [];
+    const gridSize = 7;
+    
+    switch (direction) {
+      case 'up':    // Bottom edge
+        borderIndices = Array.from({length: gridSize}, (_, i) => (gridSize - 1) * gridSize + i);
+        break;
+      case 'down':  // Top edge
+        borderIndices = Array.from({length: gridSize}, (_, i) => i);
+        break;
+      case 'left':  // Right edge
+        borderIndices = Array.from({length: gridSize}, (_, i) => (i * gridSize) + (gridSize - 1));
+        break;
+      case 'right': // Left edge
+        borderIndices = Array.from({length: gridSize}, (_, i) => i * gridSize);
+        break;
+    }
 
     // Get new squares from the server
-    const borderIndices = [];
-    for (let i = 0; i < 7; i++) {
-      borderIndices.push(i, 42 + i);
-    }
-    for (let i = 1; i < 6; i++) {
-      borderIndices.push(i * 7, i * 7 + 6);
-    }
-
     const response = await fetch('/api/calculate-squares', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -78,36 +80,23 @@ export const moveSquares = async (
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to calculate new squares: ${response.status} ${errorText}`);
+      throw new Error(`Failed to calculate new squares: ${response.status}`);
     }
 
-    const responseData = await response.json();
-    
-    const newSquares = responseData.squares || (responseData.data?.squares || []);
+    const { data } = await response.json();
+    const newSquares = data?.squares || [];
     
     if (!Array.isArray(newSquares)) {
       return movedSquares;
     }
 
-    // Convert new square indices to [x, y] coordinates
-    const newSquaresAsCoords = newSquares.map((index: number) => {
-      const x = index % 7;
-      const y = Math.floor(index / 7);
-      const coord: [number, number] = [x, y];
-      return coord;
-    });
-
-    // Only add new squares that don't conflict with existing ones
-    const newUniqueSquares = newSquaresAsCoords.filter(
-      newSquare => !movedSquares.some(
-        existing => existing[0] === newSquare[0] && existing[1] === newSquare[1]
-      )
-    );
+    // Convert indices to coordinates and filter out existing squares
+    const newSquaresSet = new Set(movedSquares.map(([x, y]) => `${x},${y}`));
+    const newUniqueSquares = newSquares
+      .map(index => [index % 7, Math.floor(index / 7)] as [number, number])
+      .filter(([x, y]) => !newSquaresSet.has(`${x},${y}`));
     
-    const result = [...movedSquares, ...newUniqueSquares];
-    
-    return result;
+    return [...movedSquares, ...newUniqueSquares];
   } catch (error) {
     // Just move the existing squares if there's an error
     const fallback = currentSquares.map(square => movePosition(square, direction));
