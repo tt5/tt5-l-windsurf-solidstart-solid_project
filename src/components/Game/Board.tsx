@@ -320,26 +320,20 @@ const Board: Component = () => {
   };
 
   // Check if a grid cell is a base point
-  const isBasePoint = (x: number, y: number) => {
+  const isBasePoint = (worldX: number, worldY: number) => {
     try {
       const points = basePoints();
       if (!Array.isArray(points)) {
         return false;
       }
       
-      // Check if there's a base point at this exact position
-      // Note: The base points are already stored in relative coordinates
+      // Check if there's a base point at these world coordinates
       return points.some(bp => {
         if (!bp || typeof bp.x !== 'number' || typeof bp.y !== 'number') {
           return false;
         }
-        // The x,y coordinates passed in are already in world coordinates
-        // and the base points are stored in relative coordinates
-        const [playerX, playerY] = currentPosition();
-        const relX = x - playerX;
-        const relY = y - playerY;
-        
-        return Math.abs(bp.x - relX) < 0.001 && Math.abs(bp.y - relY) < 0.001;
+        // Check if this base point matches the world coordinates
+        return bp.x === worldX && bp.y === worldY;
       });
     } catch (error) {
       console.error('Error in isBasePoint:', error);
@@ -562,15 +556,8 @@ const Board: Component = () => {
       const [dx, dy] = getMovementDeltas(dir);
       const newPosition: Point = [x + dx, y + dy];
       
-      // Update position and base points
+      // Only update player position
       setCurrentPosition(newPosition);
-      setBasePoints(prev => 
-        prev.map(bp => ({
-          ...bp,
-          x: bp.x + dx,
-          y: bp.y + dy
-        }))
-      );
       
       setIsLoading(true);
       
