@@ -9,8 +9,7 @@
     "build": "vinxi build",
     "start": "vinxi start",
     
-    "db:init": "tsx scripts/migrate.ts init",
-    "db:migrate": "tsx scripts/migrate.ts migrate",
+    "db:migrate": "tsx scripts/run-migrations.ts",
     "db:check": "tsx scripts/check-db.ts",
     "db:verify": "tsx scripts/check-db.ts verify",
     
