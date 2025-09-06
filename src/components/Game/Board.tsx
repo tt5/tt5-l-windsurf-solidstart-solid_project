@@ -2,7 +2,8 @@ import { Component, createEffect, createSignal, onMount, createResource } from '
 import { useNavigate } from '@solidjs/router';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
-import { useUserItems } from '~/hooks/useUserItems';
+// Local state for selected squares
+type SelectedSquares = number[];
 import type { 
   Direction, 
   Point, 
@@ -207,10 +208,20 @@ const Board: Component = () => {
     };
   });
 
-  const {
-    selectedSquares,
-    updateSquares,
-  } = useUserItems(currentUser, { onClear: resetPosition });
+  // Local state for selected squares
+  const [selectedSquares, setSelectedSquares] = createSignal<SelectedSquares>([]);
+  
+  // Reset selected squares when user changes
+  createEffect(() => {
+    if (currentUser) {
+      setSelectedSquares([]);
+    }
+  });
+  
+  // Update squares function
+  const updateSquares = (squares: SelectedSquares) => {
+    setSelectedSquares([...squares]);
+  };
 
   // Enhanced return type for better error handling
   type SaveResult = {
