@@ -2,7 +2,7 @@ import { Component, createEffect, createSignal, onMount, createResource } from '
 import { useNavigate } from '@solidjs/router';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
-import { useUserItems } from '../../hooks/useUserItems';
+import { useUserItems } from '~/hooks/useUserItems';
 import type { 
   Direction, 
   Point, 
