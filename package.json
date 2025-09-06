@@ -1,11 +1,11 @@
 {
-  "name": "example-bare",
+  "name": "superstar",
   "type": "module",
   "bin": {
-    "db": "./scripts/cli.js"
+    "db": "./scripts/cli.ts"
   },
   "scripts": {
-    "dev": "{ (lsof -t -i:3000) && { kill -9 $(lsof -t -i:3000); vinxi dev;} } || { vinxi dev; }",
+    "dev": "{ (lsof -t -i:3000) && { kill -9 $(lsof -t -i:3000); vinxi dev; } } || { vinxi dev; }",
     "build": "vinxi build",
     "start": "vinxi start",
     
@@ -18,7 +18,7 @@
     "test:integration": "tsx scripts/test-runner.ts --integration",
     "test:e2e": "tsx scripts/test-runner.ts --e2e",
     
-    "db": "echo 'Use specific db commands: db:init, db:migrate, db:check, db:verify'"
+    "db": "echo 'Use specific db commands: db:migrate, db:check, db:verify'"
   },
   "dependencies": {
     "@solidjs/meta": "^0.29.4",
