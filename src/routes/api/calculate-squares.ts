@@ -45,7 +45,7 @@ export async function POST({ request }: APIEvent) {
     });
     
     // Get all base points from the database and remove duplicates
-    const basePointRepository = getBasePointRepository();
+    const basePointRepository = await getBasePointRepository();
     let basePoints = await basePointRepository.getAll();
     console.log('Retrieved base points from DB:', basePoints);
     
