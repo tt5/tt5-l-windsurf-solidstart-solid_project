@@ -45,9 +45,10 @@ const handleApiError = (error: unknown, requestId: string, endpoint: string) => 
 export async function GET({ request }: APIEvent) {
   const requestId = generateRequestId();
   try {
-    const user = await withAuth(request, requestId);
+    // Require authentication but show all base points to all authenticated users
+    await withAuth(request, requestId);
     const repository = await getBasePointRepository();
-    const basePoints = await repository.getByUser(user.userId);
+    const basePoints = await repository.getAll();
     
     return createApiResponse(
       { success: true, data: { basePoints } },
