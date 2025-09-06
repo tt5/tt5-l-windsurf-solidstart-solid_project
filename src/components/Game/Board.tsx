@@ -70,6 +70,7 @@ const Board: Component = () => {
   const [lastFetchTime, setLastFetchTime] = createSignal<number>(0);
   const [isFetching, setIsFetching] = createSignal<boolean>(false);
   const [isMoving, setIsMoving] = createSignal<boolean>(false);
+  const [isSaving, setIsSaving] = createSignal<boolean>(false);
   
   // Initialize loading state on mount
   onMount(() => {
@@ -204,39 +205,109 @@ const Board: Component = () => {
     updateSquares,
   } = useUserItems(currentUser, { onClear: resetPosition });
 
+  // Enhanced return type for better error handling
+  type SaveResult = {
+    success: boolean;
+    error?: string;
+    data?: BasePoint;
+  };
+
+  // Helper function to create a timeout promise
+  const withTimeout = <T,>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> => {
+    const timeout = new Promise<never>((_, reject) => {
+      const timer = setTimeout(() => {
+        clearTimeout(timer);
+        reject(new Error(errorMessage));
+      }, ms);
+    });
+    return Promise.race([promise, timeout]);
+  };
+
+  // Validate grid coordinates
+  const isValidCoordinate = (value: number): boolean => {
+    return Number.isInteger(value) && value >= 0 && value < BOARD_CONFIG.GRID_SIZE;
+  };
+
+  // Check if a base point already exists at the given coordinates
+  const isDuplicateBasePoint = (x: number, y: number): boolean => {
+    const points = basePoints();
+    return Array.isArray(points) && 
+           points.some(point => point.x === x && point.y === y);
+  };
+
   // Handle adding a new base point with proper typing and error handling
-  const handleAddBasePoint = async (x: number, y: number): Promise<boolean> => {
-    if (!currentUser || isSaving()) return false;
+  const handleAddBasePoint = async (x: number, y: number): Promise<SaveResult> => {
+    if (!currentUser) return { success: false, error: 'User not authenticated' };
+    if (isSaving()) return { success: false, error: 'Operation already in progress' };
+    
+    // Validate input coordinates
+    if (!isValidCoordinate(x) || !isValidCoordinate(y)) {
+      return { 
+        success: false, 
+        error: `Coordinates must be integers between 0 and ${BOARD_CONFIG.GRID_SIZE - 1} (inclusive)` 
+      };
+    }
+    
+    // Check for duplicate base point
+    if (isDuplicateBasePoint(x, y)) {
+      return {
+        success: false,
+        error: `A base point already exists at position (${x}, ${y})`
+      };
+    }
     
     setIsSaving(true);
+    let controller: AbortController | null = new AbortController();
     
     try {
-      const response = await fetch('/api/base-points', {
+      const fetchPromise = fetch('/api/base-points', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ x, y })
+        body: JSON.stringify({ x, y }),
+        signal: controller?.signal
       });
+      
+      // Set a 10 second timeout for the request
+      const response = await withTimeout(
+        fetchPromise,
+        10000, // 10 seconds
+        'Request timed out. Please try again.'
+      );
+      
+      // Clear the controller reference since we don't need it anymore
+      controller = null;
       
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Failed to save base point: ${response.status} ${errorText}`);
+        const errorMessage = `Failed to save base point: ${response.status} ${errorText}`;
+        console.error(errorMessage);
+        return { success: false, error: errorMessage };
       }
       
-      const responseData: AddBasePointResponse = await response.json();
+      const responseData = await response.json() as AddBasePointResponse;
       
       if (responseData.success && responseData.data) {
-        setBasePoints(prev => [...prev, responseData.data as BasePoint]);
-        return true;
+        const newBasePoint = responseData.data as BasePoint;
+        setBasePoints(prev => [...prev, newBasePoint]);
+        return { success: true, data: newBasePoint };
       } else {
-        throw new Error(responseData.error || 'Unknown error saving base point');
+        const errorMessage = responseData.error || 'Unknown error saving base point';
+        console.error('Error saving base point:', errorMessage);
+        return { success: false, error: errorMessage };
       }
     } catch (error) {
-      return false;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Unexpected error in handleAddBasePoint:', error);
+      return { success: false, error: errorMessage };
     } finally {
+      // Abort the request if it's still pending
+      if (controller) {
+        controller.abort();
+      }
       setIsSaving(false);
     }
   };
