@@ -131,6 +131,64 @@ const Board: Component = () => {
         if (Array.isArray(res)) {
           console.log('Setting base points:', res);
           setBasePoints(res);
+
+          // Update selection of squares
+          /*
+          updateSquares([...new Set(
+            [...selectedSquares(),
+              ...res.flatMap((p) => [
+              ...Array(BOARD_CONFIG.GRID_SIZE-p.x-1).fill(0).map((_, i) => p.x+i+1+p.y*BOARD_CONFIG.GRID_SIZE),
+              ...Array(p.x-1).fill(0).map((_, i) => p.x-i-1+res[1]*BOARD_CONFIG.GRID_SIZE),
+              ...Array(BOARD_CONFIG.GRID_SIZE-p.y-1).fill(0).map((_, i) => p.x+(p.y+i+1)*BOARD_CONFIG.GRID_SIZE),
+              ...Array(p.y-1).fill(0).map((_, i) => res[0]+(p.y-i-1)*BOARD_CONFIG.GRID_SIZE),
+              ])
+            ])]);
+         updateSquares([...new Set([
+            ...selectedSquares(),
+            ...res.flatMap((p)=>{
+              console.log(p, BOARD_CONFIG.GRID_SIZE)
+              return [
+              ...Array(BOARD_CONFIG.GRID_SIZE-p.x-1).fill(0).map((_, i) => p.x+i+1+p.y*BOARD_CONFIG.GRID_SIZE),
+              ...Array(p.x).fill(0).map((_, i) => i+p.y*BOARD_CONFIG.GRID_SIZE),
+              ...Array(BOARD_CONFIG.GRID_SIZE-p.y-1).fill(0).map((_, i) => p.x+(p.y+i+1)*BOARD_CONFIG.GRID_SIZE),
+              ...Array(p.y).fill(0).map((_, i) => p.x+i*BOARD_CONFIG.GRID_SIZE),
+            ]})
+         ])])
+          */
+         updateSquares([...new Set([
+          ...selectedSquares(),
+          ...res.flatMap((p) => {
+            console.log(p, BOARD_CONFIG.GRID_SIZE);
+            return [
+              // Existing horizontal and vertical lines
+              ...Array(BOARD_CONFIG.GRID_SIZE - p.x - 1).fill(0).map((_, i) => p.x + i + 1 + p.y * BOARD_CONFIG.GRID_SIZE), // Right
+              ...Array(p.x).fill(0).map((_, i) => i + p.y * BOARD_CONFIG.GRID_SIZE), // Left
+              ...Array(BOARD_CONFIG.GRID_SIZE - p.y - 1).fill(0).map((_, i) => p.x + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE), // Down
+              ...Array(p.y).fill(0).map((_, i) => p.x + i * BOARD_CONFIG.GRID_SIZE), // Up
+              
+              // New diagonal lines
+              // Top-right diagonal
+              ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, p.y)).fill(0).map((_, i) => 
+                (p.x + i + 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+              ),
+              // Top-left diagonal
+              ...Array(Math.min(p.x, p.y)).fill(0).map((_, i) => 
+                (p.x - i - 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+              ),
+              // Bottom-right diagonal
+              ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
+                (p.x + i + 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+              ),
+              // Bottom-left diagonal
+              ...Array(Math.min(p.x, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
+                (p.x - i - 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+              )
+            ];
+          })
+        ])]);
+
+
+
           setLastFetchTime(now);
           if (res.length > 0) setIsLoading(false);
         } else {
@@ -299,26 +357,27 @@ const Board: Component = () => {
       // Clear the controller reference since we don't need it anymore
       controller = null;
       
-      const responseData = await response.json() as ApiResponse<BasePoint>;
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
       
-      if (!response.ok || !responseData.success) {
-        const errorMessage = responseData.error || 'Failed to save base point';
+      if (!response.ok) {
+        const errorMessage = responseData?.error || 'Failed to save base point';
         console.error('Error saving base point:', errorMessage);
         return { success: false, error: errorMessage };
       }
       
       // Success case - update the base points
-      if (!responseData.data) {
+      if (!responseData) {
         console.error('No data in successful response');
         return { success: false, error: 'No data in response' };
       }
       
       const newBasePoint: BasePoint = {
-        id: responseData.data.id,
-        x: responseData.data.x,
-        y: responseData.data.y,
-        userId: responseData.data.userId,
-        createdAtMs: responseData.data.createdAtMs
+        id: responseData.id,
+        x: responseData.x,
+        y: responseData.y,
+        userId: responseData.userId,
+        createdAtMs: responseData.createdAtMs
       };
       setBasePoints(prev => [...prev, newBasePoint]);
       return { success: true, data: newBasePoint };
