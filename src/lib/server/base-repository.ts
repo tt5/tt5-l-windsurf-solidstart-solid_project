@@ -40,7 +40,7 @@ export abstract class BaseRepository<T extends { id?: number | string }> {
   }
 
   async create(entity: Omit<T, 'id' | 'created_at_ms'>): Promise<T> {
-    this.validate(entity);
+    this.validate(entity as Partial<T>);
     
     const columns = Object.keys(entity).join(', ');
     const placeholders = Object.keys(entity).map(() => '?').join(', ');
@@ -50,6 +50,10 @@ export abstract class BaseRepository<T extends { id?: number | string }> {
       `INSERT INTO ${this.tableName} (${columns}, created_at_ms) VALUES (${placeholders}, ?)`,
       [...values, Date.now()]
     );
+    
+    if (lastID === undefined) {
+      throw new Error('Failed to get last insert ID from database');
+    }
     
     return this.findOne(lastID) as Promise<T>;
   }

@@ -720,7 +720,6 @@ const Board: Component = () => {
           
           return (
             <button
-              key={index}
               class={`${styles.square} ${isSelected ? styles.selected : ''} ${isBP ? styles.basePoint : ''}`}
               onClick={() => {
                 // Don't add a base point if this square is already selected

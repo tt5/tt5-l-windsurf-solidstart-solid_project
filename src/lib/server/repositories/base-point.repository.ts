@@ -5,17 +5,18 @@ export class BasePointRepository {
   constructor(private db: Database) {}
 
   async getAll(): Promise<BasePoint[]> {
-    const results = await this.db.all<BasePoint>(
+    const results = await this.db.all<BasePoint[]>(
       'SELECT id, user_id as userId, x, y, created_at_ms as createdAtMs FROM base_points'
     );
     return results || [];
   }
 
   async getByUser(userId: string): Promise<BasePoint[]> {
-    return this.db.all<BasePoint>(
-      'SELECT id, x, y, created_at_ms as createdAtMs FROM base_points WHERE user_id = ?',
+    const results = await this.db.all<BasePoint[]>(
+      'SELECT id, user_id as userId, x, y, created_at_ms as createdAtMs FROM base_points WHERE user_id = ?',
       [userId]
     );
+    return results || [];
   }
 
   async add(userId: string, x: number, y: number): Promise<BasePoint> {
@@ -99,7 +100,7 @@ export class BasePointRepository {
       [userId, x, y]
     );
     
-    return result.changes > 0;
+    return result?.changes ? result.changes > 0 : false;
   }
 
   async clearForUser(userId: string): Promise<void> {
