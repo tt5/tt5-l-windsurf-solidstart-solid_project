@@ -295,36 +295,33 @@ const Board: Component = () => {
         10000, // 10 seconds
         'Request timed out. Please try again.'
       );
-      console.log("response: ", response)
       
       // Clear the controller reference since we don't need it anymore
       controller = null;
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        const errorMessage = `Failed to save base point: ${response.status} ${errorText}`;
-        console.error(errorMessage);
-        return { success: false, error: errorMessage };
-      }
+      const responseData = await response.json() as ApiResponse<BasePoint>;
       
-      const responseData = await response.json() as BasePoint;
-      
-      if (response.ok) {
-        const newBasePoint: BasePoint = {
-          id: responseData.id,
-          x: responseData.x,
-          y: responseData.y,
-          userId: responseData.userId,
-          createdAtMs: responseData.createdAtMs
-        };
-        setBasePoints(prev => [...prev, newBasePoint]);
-        return { success: true, data: newBasePoint };
-      } else {
-        console.log(responseData)
-        const errorMessage = responseData.error || 'Unknown error saving base point';
+      if (!response.ok || !responseData.success) {
+        const errorMessage = responseData.error || 'Failed to save base point';
         console.error('Error saving base point:', errorMessage);
         return { success: false, error: errorMessage };
       }
+      
+      // Success case - update the base points
+      if (!responseData.data) {
+        console.error('No data in successful response');
+        return { success: false, error: 'No data in response' };
+      }
+      
+      const newBasePoint: BasePoint = {
+        id: responseData.data.id,
+        x: responseData.data.x,
+        y: responseData.data.y,
+        userId: responseData.data.userId,
+        createdAtMs: responseData.data.createdAtMs
+      };
+      setBasePoints(prev => [...prev, newBasePoint]);
+      return { success: true, data: newBasePoint };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Unexpected error in handleAddBasePoint:', error);
