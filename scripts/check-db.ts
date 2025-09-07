@@ -1,12 +1,11 @@
-import { createDatabaseConnection } from './core/db';
 import {
-  ensureDataDirectory,
   getAppliedMigrations,
   getAllTables,
   tableExists,
   getTableRowCount,
   getTableSchema
 } from './utils/db-utils';
+import { createDatabaseConnection } from './core/db';
 import type { Database, DbMigration, CheckResult } from './types/database';
 
 const checkDatabase = async (): Promise<CheckResult> => {
@@ -23,9 +22,13 @@ const checkDatabase = async (): Promise<CheckResult> => {
   
   try {
     // Check if database exists and is accessible
-    result.dbExists = await ensureDataDirectory();
-    if (!result.dbExists) {
-      result.error = 'Database file does not exist';
+    try {
+      const db = await createDatabaseConnection();
+      await db.close();
+      result.dbExists = true;
+    } catch (error) {
+      result.dbExists = false;
+      result.error = 'Database file does not exist or is not accessible';
       return result;
     }
 

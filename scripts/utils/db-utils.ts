@@ -1,9 +1,8 @@
-import { Database, DbMigration, TableInfo } from '../types/database';
-import { createDatabaseConnection } from '../core/db';
+import { Database, DbMigration } from '../types/database';
 import { readdir } from 'fs/promises';
 import { join } from 'path';
 
-export type { Database, DbMigration, TableInfo };
+export type { Database, DbMigration };
 
 const MIGRATIONS_DIR = join(process.cwd(), 'migrations');
 
@@ -18,17 +17,6 @@ export const getAppliedMigrations = async (db: Database): Promise<DbMigration[]>
   } catch (error) {
     console.error('Error getting applied migrations:', error);
     return [];
-  }
-};
-
-export const ensureDataDirectory = async (): Promise<boolean> => {
-  try {
-    const db = await createDatabaseConnection();
-    await db.close();
-    return true;
-  } catch (error: unknown) {
-    console.error('Failed to ensure data directory:', error);
-    return false;
   }
 };
 

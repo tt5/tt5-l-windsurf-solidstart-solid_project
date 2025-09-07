@@ -2,10 +2,10 @@ import { join } from 'path';
 import { readdir, mkdir } from 'fs/promises';
 import { createDatabaseConnection } from './core/db';
 import type { MigrationFile } from './types/database';
+import { ensureDbDirectory } from './core/db';
+import { getAllTables } from './utils/db-utils';
 import { 
-  ensureDataDirectory, 
   getAppliedMigrations, 
-  getAllTables,
   ensureMigrationsTable
 } from './utils/db-utils';
 import type { Database, MigrationResult, InitResult } from './types/database';
@@ -47,7 +47,7 @@ const runMigrations = async (): Promise<MigrationResult> => {
   const startTime = Date.now();
   
   try {
-    if (!(await ensureDataDirectory())) {
+    if (!(await ensureDbDirectory())) {
       throw new Error('Failed to ensure data directory');
     }
     
@@ -138,7 +138,7 @@ const initializeDatabase = async (): Promise<InitResult> => {
   const tablesCreated: string[] = [];
   
   try {
-    if (!(await ensureDataDirectory())) {
+    if (!(await ensureDbDirectory())) {
       throw new Error('Failed to ensure data directory');
     }
     
