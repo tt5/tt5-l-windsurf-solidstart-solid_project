@@ -4,6 +4,15 @@ import { BasePoint } from '../../types/board';
 export class BasePointRepository {
   constructor(private db: Database) {}
 
+  async deleteAllByUser(userId: string): Promise<void> {
+    console.log(`[BasePointRepository] Deleting all base points for user: ${userId}`);
+    await this.db.run(
+      'DELETE FROM base_points WHERE user_id = ?',
+      [userId]
+    );
+    console.log(`[BasePointRepository] Successfully deleted all base points for user: ${userId}`);
+  }
+
   async getAll(): Promise<BasePoint[]> {
     return this.db.all<BasePoint>(
       'SELECT id, user_id as userId, x, y, created_at_ms as createdAtMs FROM base_points'

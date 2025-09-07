@@ -1,5 +1,6 @@
 import { createSignal, Show } from 'solid-js';
 import { useAuth } from '~/contexts/auth';
+import { createNotification } from '~/components/Notification/Notification';
 
 export function DevTools() {
   const [isOpen, setIsOpen] = createSignal(false);
@@ -28,7 +29,7 @@ export function DevTools() {
           <div style={{ marginBottom: '8px' }}>
             <strong>User ID:</strong> {auth.user()?.id || 'Not logged in'}
           </div>
-          <div>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
             <button 
               onClick={() => auth.logout().catch(console.error)}
               style={{
@@ -38,9 +39,43 @@ export function DevTools() {
                 padding: '4px 8px',
                 borderRadius: '3px',
                 cursor: 'pointer',
+                flex: 1
               }}
             >
               Logout
+            </button>
+            <button 
+              onClick={async () => {
+                if (!confirm('Are you sure you want to reset your game progress? This cannot be undone.')) return;
+                try {
+                  const response = await fetch('/api/reset-game-progress', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                  });
+                  const result = await response.json();
+                  if (response.ok) {
+                    window.location.reload();
+                  } else {
+                    throw new Error(result.error || 'Failed to reset game progress');
+                  }
+                } catch (error) {
+                  console.error('Error resetting game progress:', error);
+                  alert(`Error: ${error.message}`);
+                }
+              }}
+              style={{
+                background: '#ff9800',
+                color: 'white',
+                border: 'none',
+                padding: '4px 8px',
+                borderRadius: '3px',
+                cursor: 'pointer',
+                flex: 1
+              }}
+              title="Reset all your game progress"
+            >
+              Reset Game
             </button>
           </div>
         </div>
