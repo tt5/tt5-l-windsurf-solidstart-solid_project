@@ -29,9 +29,8 @@ async function handleDeleteAccount(userId: string) {
   let db;
   try {
     db = await getDb();
-    // Delete user data from all related tables
+    // Delete user data from related tables
     await db.run('BEGIN');
-    await db.run('DELETE FROM user_items WHERE user_id = ?', [userId]);
     await db.run('DELETE FROM base_points WHERE user_id = ?', [userId]);
     await db.run('DELETE FROM users WHERE id = ?', [userId]);
     await db.run('COMMIT');

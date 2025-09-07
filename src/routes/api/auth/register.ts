@@ -45,26 +45,16 @@ export async function POST({ request }: APIEvent) {
 
     // In a real app, hash the password
     const userId = `user_${randomBytes(16).toString('hex')}`;
-    const tableName = `user_${userId.replace(/[^a-zA-Z0-9_]/g, '_')}_items`;
     
     // Start a transaction to ensure both operations succeed or fail together
     await db.exec('BEGIN TRANSACTION');
     
     try {
-      // Insert the new user
+      // Create the user
       await db.run(
-        'INSERT INTO users (id, username) VALUES (?, ?)',
-        [userId, username]
+        'INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)',
+        [userId, username, password]
       );
-      
-      // Create the user's items table
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS ${tableName} (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          data TEXT NOT NULL,
-          created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
-        )
-      `);
       
       // Commit the transaction
       await db.exec('COMMIT');
@@ -72,8 +62,7 @@ export async function POST({ request }: APIEvent) {
       return json({ 
         user: { 
           id: userId, 
-          username,
-          tableName
+          username
         } 
       }, { status: 201 });
       
