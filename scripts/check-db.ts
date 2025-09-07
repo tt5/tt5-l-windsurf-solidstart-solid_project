@@ -1,12 +1,6 @@
-import {
-  getAppliedMigrations,
-  getAllTables,
-  tableExists,
-  getTableRowCount,
-  getTableSchema
-} from './utils/db-utils';
-import { createDatabaseConnection } from './core/db';
-import type { Database, DbMigration, CheckResult } from './types/database';
+import { getAppliedMigrations, getAllTables, tableExists, getTableRowCount, getTableSchema } from './utils/db-utils';
+import { createDatabaseConnection, type Database } from './core/db';
+import type { DbMigration, CheckResult } from './types/database';
 
 const checkDatabase = async (): Promise<CheckResult> => {
   const requiredTables = ['users', 'base_points'];
@@ -20,11 +14,12 @@ const checkDatabase = async (): Promise<CheckResult> => {
     error: undefined
   };
   
+  let db: Database | null = null;
+  
   try {
     // Check if database exists and is accessible
     try {
-      const db = await createDatabaseConnection();
-      await db.close();
+      db = await createDatabaseConnection();
       result.dbExists = true;
     } catch (error) {
       result.dbExists = false;
@@ -32,9 +27,11 @@ const checkDatabase = async (): Promise<CheckResult> => {
       return result;
     }
 
-    // Connect to the database
-    const db = await createDatabaseConnection();
-    
+    if (!db) {
+      result.error = 'Failed to establish database connection';
+      return result;
+    }
+
     try {
       // Get all tables and their details
       const tables = await getAllTables(db);
@@ -42,10 +39,10 @@ const checkDatabase = async (): Promise<CheckResult> => {
       // Get detailed info for each table in parallel
       result.tables = await Promise.all(
         tables.map(async (table) => {
-          const schema = await getTableSchema(db, table.name);
+          const schema = await getTableSchema(db!, table.name);
           return {
             name: table.name,
-            rowCount: await getTableRowCount(db, table.name),
+            rowCount: await getTableRowCount(db!, table.name),
             schema: schema || 'N/A'
           };
         })
@@ -65,7 +62,7 @@ const checkDatabase = async (): Promise<CheckResult> => {
       
       result.success = result.missingTables.length === 0;
     } finally {
-      await db.close();
+      if (db) await db.close();
     }
   } catch (error: any) {
     result.error = error.message;

@@ -1,8 +1,9 @@
-import { Database, DbMigration } from '../types/database';
 import { readdir } from 'fs/promises';
 import { join } from 'path';
+import type { Database } from '../core/db';
+import type { DbMigration } from '../types/database';
 
-export type { Database, DbMigration };
+export type { DbMigration, Database };
 
 const MIGRATIONS_DIR = join(process.cwd(), 'migrations');
 
@@ -11,9 +12,10 @@ const MIGRATIONS_DIR = join(process.cwd(), 'migrations');
  */
 export const getAppliedMigrations = async (db: Database): Promise<DbMigration[]> => {
   try {
-    return await db.all<DbMigration>(
-      'SELECT id, name, applied_at FROM migrations ORDER BY applied_at ASC'
+    const result = await db.all<DbMigration>(
+      'SELECT id, name, applied_at as applied_at FROM migrations ORDER BY applied_at ASC'
     );
+    return Array.isArray(result) ? result : [];
   } catch (error) {
     console.error('Error getting applied migrations:', error);
     return [];
@@ -36,10 +38,22 @@ export const ensureMigrationsTable = (db: Database) =>
     return Promise.resolve();
   });
 
-export const getAllTables = (db: Database) => 
-  db.all<{name: string; type: string}>(
-    "SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'"
-  ).catch(() => []);
+export interface TableInfo {
+  name: string;
+  type: string;
+}
+
+export const getAllTables = async (db: Database): Promise<TableInfo[]> => {
+  try {
+    const result = await db.all<TableInfo>(
+      "SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'"
+    );
+    return Array.isArray(result) ? result : [];
+  } catch (error) {
+    console.error('Error getting all tables:', error);
+    return [];
+  }
+};
 
 export const tableExists = (db: Database, tableName: string) =>
   db.get<{ name: string }>(

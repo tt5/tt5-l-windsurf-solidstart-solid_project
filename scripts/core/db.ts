@@ -1,15 +1,18 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import * as sqlite3 from 'sqlite3';
+import { open, type Database as SqliteDatabase } from 'sqlite';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdir, access, constants, readdir, unlink } from 'node:fs/promises';
 import { MIGRATIONS_DIR, DB_PATH } from '../config';
 import { existsSync } from 'node:fs';
 import type { 
-  Database, 
   DbMigration, 
   MigrationFile 
 } from '../types/database';
+
+export interface Database extends SqliteDatabase {
+  // Add any custom methods or properties here if needed
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BACKUP_DIR = join(process.cwd(), 'data', 'backups');
@@ -88,9 +91,9 @@ export const backupDatabase = async (options: BackupOptions = {}): Promise<strin
   const db = await createDatabaseConnection();
   
   try {
-    console.log(`🔧 Creating database backup at: ${backupPath}`);
-    await db.backup(backupPath);
-    console.log('✅ Backup completed successfully');
+    console.log(`🔧 Creating backup at: ${backupPath}`);
+    await db.run(`VACUUM main INTO '${backupPath}'`);
+    console.log('✅ Backup created successfully');
     
     // Clean up old backups if needed
     await cleanupOldBackups(backupDir, maxBackups);

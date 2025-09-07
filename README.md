@@ -100,7 +100,7 @@ This project uses SQLite for data storage. Follow these steps to set up the data
 
 ## Development
 
-`rm -rf data` `npm run db:migrate -- init`
+`rm -rf data` `npm run db:init` `npm run db:migrate`
 
 Start the development server:
 
@@ -110,9 +110,7 @@ npm run dev
 
 The application will be available at http://localhost:3000
 
-Logout and then go to /game
-
-Now restarting the server and refreshing /game will always auto-logged in.
+auto login is enabled by default
 
 ## Deployment
 

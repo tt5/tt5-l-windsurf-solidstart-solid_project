@@ -1,16 +1,15 @@
-import { Database as SqliteDatabase } from 'sqlite';
-import sqlite3 from 'sqlite3';
+// Import the base Database type from sqlite
+import type { Database as SqliteDatabase } from 'sqlite';
 
-export type Database = SqliteDatabase<sqlite3.Database, sqlite3.Statement>;
+// Export our enhanced Database type
+export interface Database extends SqliteDatabase {
+  // Add any custom methods or overrides here if needed
+}
 
 // Augment the sqlite module with our custom methods
 declare module 'sqlite' {
-  interface Database<Driver, Stmt> {
-    run(sql: string, ...params: any[]): Promise<{ lastID?: number | bigint; changes?: number }>;
-    all<T = any>(sql: string, ...params: any[]): Promise<T[]>;
-    get<T = any>(sql: string, ...params: any[]): Promise<T | undefined>;
-    exec(sql: string): Promise<void>;
-    backup(destination: string): Promise<sqlite3.Database>;
+  interface Database {
+    // Add any custom methods or overrides here if needed
   }
 
   interface BackupOptions {
