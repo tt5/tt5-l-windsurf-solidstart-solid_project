@@ -1,6 +1,6 @@
 import { APIEvent } from '@solidjs/start/server';
 import { getBasePointRepository } from '~/lib/server/db';
-import { getAuthUser } from '~/lib/server/auth/jwt';
+import { withAuth } from '~/middleware/auth';
 import { createApiResponse, createErrorResponse, generateRequestId } from '~/utils/api';
 
 type BasePointRequest = { x: number; y: number };
@@ -12,14 +12,6 @@ const validateCoordinates = (x: number, y: number) => {
   if (x < 0 || x >= 7 || y < 0 || y >= 7) {
     throw new Error('Coordinates out of bounds. Must be between 0 and 6');
   }
-};
-
-const withAuth = async (request: Request, requestId: string) => {
-  const user = await getAuthUser(request);
-  if (!user) {
-    throw new Error('Unauthorized');
-  }
-  return user;
 };
 
 const handleApiError = (error: unknown, requestId: string, endpoint: string) => {
@@ -42,64 +34,54 @@ const handleApiError = (error: unknown, requestId: string, endpoint: string) => 
   );
 };
 
-export async function GET({ request }: APIEvent) {
+export const GET = withAuth(async () => {
   const requestId = generateRequestId();
   try {
-    // Require authentication but show all base points to all authenticated users
-    await withAuth(request, requestId);
     const repository = await getBasePointRepository();
     const basePoints = await repository.getAll();
     
-    return createApiResponse(
-      { success: true, data: { basePoints } },
-      { requestId, headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' } }
-    );
+    return createApiResponse(basePoints, { requestId });
   } catch (error) {
     return handleApiError(error, requestId, 'GET /api/base-points');
   }
-}
+});
 
-export async function POST({ request }: APIEvent) {
-  const startTime = Date.now();
+export const POST = withAuth(async ({ request, user }) => {
   const requestId = generateRequestId();
   
   try {
-    const user = await withAuth(request, requestId);
     const data = await request.json() as BasePointRequest;
     validateCoordinates(data.x, data.y);
     
     const repository = await getBasePointRepository();
-    const basePoint = await repository.add(user.userId, data.x, data.y);
-    
-    return createApiResponse(
-      { success: true, data: { basePoint } },
-      { status: 201, requestId, duration: Date.now() - startTime }
+    const basePoint = await repository.add(
+      user.userId,
+      data.x,
+      data.y
     );
+    
+    return createApiResponse(basePoint, { status: 201, requestId });
   } catch (error) {
     return handleApiError(error, requestId, 'POST /api/base-points');
   }
-}
+});
 
-export async function DELETE({ request }: APIEvent) {
+export const DELETE = withAuth(async ({ request, user }) => {
   const requestId = generateRequestId();
   
   try {
-    const user = await withAuth(request, requestId);
     const { x, y } = await request.json() as BasePointRequest;
     validateCoordinates(x, y);
     
     const repository = await getBasePointRepository();
-    const success = await repository.remove(user.userId, x, y);
+    const deleted = await repository.remove(user.userId, x, y);
     
-    if (!success) {
-      return createErrorResponse('Base point not found', 404, undefined, { requestId });
+    if (!deleted) {
+      return createErrorResponse('Not Found', 404, 'Base point not found', { requestId });
     }
     
-    return createApiResponse(
-      { success: true },
-      { status: 204, requestId }
-    );
+    return createApiResponse({ success: true }, { requestId });
   } catch (error) {
     return handleApiError(error, requestId, 'DELETE /api/base-points');
   }
-}
+});
