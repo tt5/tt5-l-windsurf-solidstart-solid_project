@@ -11,7 +11,7 @@ import {
 import type { Database, DbMigration, TableInfo, CheckResult, TableDetails } from './types/database';
 
 const checkDatabase = async (): Promise<CheckResult> => {
-  const requiredTables = ['users', 'items', 'base_points'];
+  const requiredTables = ['users', 'base_points'];
   const result: CheckResult = {
     success: false,
     dbExists: false,
