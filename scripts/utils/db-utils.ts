@@ -17,7 +17,7 @@ export const ensureDataDirectory = async (): Promise<boolean> => {
     const db = await createDatabaseConnection();
     await db.close();
     return true;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Failed to ensure data directory:', error);
     return false;
   }
@@ -29,13 +29,17 @@ export const checkMigrationsTable = (db: Database) =>
   db.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'").then(Boolean).catch(() => false);
 
 export const ensureMigrationsTable = (db: Database) => 
-  checkMigrationsTable(db).then(exists => !exists && db.exec(`
-    CREATE TABLE IF NOT EXISTS migrations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      applied_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-    )`
-  ));
+  checkMigrationsTable(db).then(exists => {
+    if (!exists) {
+      return db.exec(`
+        CREATE TABLE IF NOT EXISTS migrations (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          applied_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        )`);
+    }
+    return Promise.resolve();
+  });
 
 export const getAppliedMigrations = (db: Database) => 
   db.all<DbMigration>('SELECT * FROM migrations ORDER BY id ASC');
@@ -66,7 +70,7 @@ export const getTableSchema = async (db: Database, tableName: string): Promise<s
       [tableName]
     );
     return result?.sql || null;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`Error getting schema for table ${tableName}:`, error);
     return null;
   }
@@ -86,8 +90,8 @@ export const getMigrationFiles = async (): Promise<string[]> => {
     return files
       .filter(file => /^\d+_.+\.(js|ts)$/.test(file))
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  } catch (error: any) {
-    if (error.code === 'ENOENT') return [];
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return [];
     throw error;
   }
 };
@@ -119,9 +123,10 @@ export const executeQuery = async <T = any>(
 ): Promise<T[]> => {
   try {
     return await db.all<T>(query, ...params);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error executing query:', error);
-    throw new Error(`Query failed: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Query failed: ${errorMessage}`);
   }
 };
 
@@ -135,9 +140,10 @@ export const queryOne = async <T = any>(
 ): Promise<T | null> => {
   try {
     return (await db.get<T>(query, ...params)) || null;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error executing query:', error);
-    throw new Error(`Query failed: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Query failed: ${errorMessage}`);
   }
 };
 
@@ -151,9 +157,10 @@ export const execute = async (
 ): Promise<{ lastID?: number | bigint; changes?: number }> => {
   try {
     return await db.run(query, ...params);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error executing query:', error);
-    throw new Error(`Execute failed: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Execute failed: ${errorMessage}`);
   }
 };
 
@@ -174,7 +181,7 @@ export const columnExists = async (
   try {
     const columns = await getTableInfo(db, tableName);
     return columns.some(col => col.name === columnName);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`Error checking if column ${columnName} exists:`, error);
     return false;
   }

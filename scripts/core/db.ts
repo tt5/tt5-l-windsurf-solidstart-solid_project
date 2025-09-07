@@ -52,8 +52,6 @@ export const backupDatabase = async (): Promise<string> => {
   }
 };
 
-export const getBackupPath = (): string => BACKUP_DIR;
-
 export const applyMigration = async (db: Database, migration: MigrationFile) => {
   console.log(`🔄 Applying migration: ${migration.name}`);
   
@@ -69,21 +67,4 @@ export const applyMigration = async (db: Database, migration: MigrationFile) => 
     await db.exec('ROLLBACK');
     throw error;
   }
-};
-
-// Path-related utilities
-export const PATHS = {
-  DB: DB_PATH,
-  BACKUP_DIR,
-  getBackupPath,
-};
-
-export default {
-  ensureDbDirectory,
-  createDatabaseConnection,
-  databaseExists,
-  backupDatabase,
-  getBackupPath,
-  applyMigration,
-  PATHS
 };

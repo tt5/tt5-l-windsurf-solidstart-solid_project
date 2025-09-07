@@ -8,7 +8,7 @@ import {
   getTableSchema,
   QueryResult
 } from './utils/db-utils';
-import type { Database, DbMigration, TableInfo, CheckResult, TableDetails } from './types/database';
+import type { Database, DbMigration, TableInfo, CheckResult } from './types/database';
 
 const checkDatabase = async (): Promise<CheckResult> => {
   const requiredTables = ['users', 'base_points'];

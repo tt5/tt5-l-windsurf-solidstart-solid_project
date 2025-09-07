@@ -2,6 +2,7 @@ import { join, dirname } from 'path';
 import { readdir, mkdir } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { createDatabaseConnection } from './core/db';
+import type { MigrationFile } from './types/database';
 import { 
   ensureDataDirectory, 
   getAppliedMigrations, 
@@ -285,6 +286,7 @@ export {
   getMigrationFiles,
   loadMigration,
   type MigrationResult,
-  type MigrationFile,
-  type MigrationFunction
+  type MigrationFile
 };
+
+export type { MigrationFunction } from './types/database';

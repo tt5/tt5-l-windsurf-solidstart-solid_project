@@ -3,12 +3,23 @@ import sqlite3 from 'sqlite3';
 
 export type Database = SqliteDatabase<sqlite3.Database, sqlite3.Statement>;
 
+// Define the BackupMetadata interface since it's not included in sqlite3 types
+export interface BackupMetadata {
+  failed: number;
+  remaining: number;
+  pageCount: number;
+  retryErrors: number;
+  totalPages: number;
+  totalErrors: number;
+}
+
 declare module 'sqlite' {
   interface Database<Driver, Stmt> {
     run(sql: string, ...params: any[]): Promise<{ lastID?: number | bigint; changes?: number }>;
     all<T = any>(sql: string, ...params: any[]): Promise<T[]>;
     get<T = any>(sql: string, ...params: any[]): Promise<T | undefined>;
     exec(sql: string): Promise<void>;
+    backup(destination: string): Promise<BackupMetadata>;
   }
 }
 
