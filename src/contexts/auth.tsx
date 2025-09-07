@@ -4,23 +4,27 @@ type User = { id: string; username: string } | null;
 
 interface AuthStore {
   user: () => User;
-  login: (username: string) => User;
+  login: (username: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   isInitialized: () => boolean;
 }
 
 const AuthContext = createContext<AuthStore>();
-// This is a temporary function - in a real app, we should get the user ID from the server
-const createUserId = (username: string): string => {
-  // Generate a consistent hash-based ID for all usernames
-  const str = username.toLowerCase();
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
+// Generate a secure random user ID using crypto.getRandomValues
+// This matches the server-side implementation in the registration endpoint
+const createUserId = (): string => {
+  // Generate 16 random bytes (32 hex characters)
+  const randomBytes = new Uint8Array(16);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(randomBytes);
+  } else {
+    // Fallback for environments without crypto.getRandomValues (shouldn't happen in modern browsers)
+    console.warn('crypto.getRandomValues not available, using Math.random() fallback');
+    for (let i = 0; i < 16; i++) {
+      randomBytes[i] = Math.floor(Math.random() * 256);
+    }
   }
-  return 'user_' + Math.abs(hash).toString(16);
+  return 'user_' + Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
 const createAuthStore = (): AuthStore => {
@@ -53,13 +57,8 @@ const createAuthStore = (): AuthStore => {
         if (userData && typeof userData === 'object' && userData.id) {
           updateUser(userData);
           
-          // In development, verify the session is still valid
-          if (isDev) {
-            verifySession(userData);
-          } else {
-            setIsInitialized(true);
-          }
-          return;
+          // Verify the session is still valid
+          verifySession(userData);
         } else {
           // Clear invalid user data
           localStorage.removeItem('user');
@@ -100,50 +99,23 @@ const createAuthStore = (): AuthStore => {
     const testPassword = 'devpassword'; // In a real app, use environment variables
     
     try {
-      // First, try to register the user
-      const registerUrl = '/api/auth/register';
-      
-      const registerResponse = await fetch(registerUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          username: testUsername,
-          password: testPassword
-        })
-      });
-      
-      const registerData = await registerResponse.json();
-      
-      // Now try to log in
-      const loginUrl = '/api/auth/login';
-      
-      const loginStartTime = Date.now();
-      const loginResponse = await fetch(loginUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          username: testUsername,
-          password: testPassword
-        })
-      });
-      
-      // Process the response
-      const responseText = await loginResponse.text();
-      
-      if (loginResponse.ok) {
-        try {
-          const responseData = JSON.parse(responseText);
-          
-          // Extract user data from the response
-          const userData = responseData.user || responseData;
+      // Try to log in first (in case the user already exists)
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'include',
+          body: JSON.stringify({ 
+            username: testUsername,
+            password: testPassword
+          })
+        });
+        
+        if (response.ok) {
+          const { user: userData } = await response.json();
           
           if (!userData || !userData.id) {
             throw new Error('Invalid user data in response');
@@ -155,15 +127,49 @@ const createAuthStore = (): AuthStore => {
             username: userData.username || testUsername
           };
           
-          // Save the user data directly (not nested under 'user')
-          localStorage.setItem('user', JSON.stringify(formattedUser));
+          // Update the user state and storage
+          updateUser(formattedUser);
+          setIsInitialized(true);
+          return;
+        }
+      } catch (error) {
+        console.error('Dev user login failed, trying to register:', error);
+      }
+      
+      // If login failed, try to register
+      try {
+        const registerResponse = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'include',
+          body: JSON.stringify({ 
+            username: testUsername,
+            password: testPassword
+          })
+        });
+        
+        if (registerResponse.ok) {
+          const { user: userData } = await registerResponse.json();
           
-          // Update the user state
+          if (!userData || !userData.id) {
+            throw new Error('Invalid user data in registration response');
+          }
+          
+          // Ensure required fields
+          const formattedUser = {
+            id: userData.id,
+            username: userData.username || testUsername
+          };
+          
+          // Update the user state and storage
           updateUser(formattedUser);
           
           // Add base point for the user
           try {
-            const basePointResponse = await fetch('/api/base-points', {
+            await fetch('/api/base-points', {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
@@ -172,57 +178,15 @@ const createAuthStore = (): AuthStore => {
               credentials: 'include',
               body: JSON.stringify({ x: 0, y: 0 })
             });
-            
           } catch (error) {
             console.error('[setupDevUser] Error adding base point:', error);
           }
-          
-          setIsInitialized(true);
-          return;
-        } catch (error) {
-          console.error('[setupDevUser] Error processing login response:', error);
-          throw error;
-        }
-      } else {
-        // If login fails with 401 (Unauthorized), try to register
-        if (loginResponse.status === 401) {
-          const createResponse = await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              username: testUsername,
-              password: testPassword
-            })
-          });
-          
-          if (!createResponse.ok) {
-            const error = await createResponse.json().catch(() => ({}));
-            throw new Error('Failed to register dev user');
-          }
-          
-          // Try to log in again after registration
-          const loginAfterRegister = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ 
-              username: testUsername,
-              password: testPassword
-            })
-          });
-          
-          if (loginAfterRegister.ok) {
-            const userData = await loginAfterRegister.json();
-            updateUser(userData);
-            localStorage.setItem('user', JSON.stringify(userData));
-          } else {
-            const errorText = await loginAfterRegister.text();
-            throw new Error(`Login after registration failed: ${errorText}`);
-          }
         } else {
-          // For other error statuses, throw the original error
-          throw new Error(`Login failed with status ${loginResponse.status}`);
+          const error = await registerResponse.json().catch(() => ({}));
+          console.error('Failed to register dev user:', error);
         }
+      } catch (error) {
+        console.error('Error during dev user registration:', error);
       }
     } catch (error) {
       setIsInitialized(true); // Ensure we don't get stuck in loading state
@@ -241,11 +205,27 @@ const createAuthStore = (): AuthStore => {
     }
   };
 
-  const login = (username: string) => {
-    const userId = createUserId(username);
-    const userData = { id: userId, username };
-    updateUser(userData);
-    return userData;
+  const login = async (username: string, password: string) => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password })
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || 'Login failed');
+      }
+
+      const { user: userData } = await response.json();
+      updateUser(userData);
+      return userData;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {
