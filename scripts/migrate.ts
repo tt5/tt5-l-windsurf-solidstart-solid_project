@@ -1,16 +1,12 @@
-import { join, dirname } from 'path';
+import { join } from 'path';
 import { readdir, mkdir } from 'fs/promises';
-import { fileURLToPath } from 'url';
 import { createDatabaseConnection } from './core/db';
 import type { MigrationFile } from './types/database';
 import { 
   ensureDataDirectory, 
   getAppliedMigrations, 
-  getAllTables, 
-  tableExists,
-  ensureMigrationsTable,
-  getTableRowCount,
-  getTableSchema
+  getAllTables,
+  ensureMigrationsTable
 } from './utils/db-utils';
 import type { Database, MigrationResult, InitResult } from './types/database';
 
@@ -39,12 +35,12 @@ const loadMigration = async (file: string) => {
     throw new Error(`Invalid migration: ${file}`);
   }
   return {
-    id: file.split('_')[0],
     name: file.replace(/\.(js|ts)$/, ''),
     up: migration.up,
     down: migration.down,
   };
 };
+
 
 const runMigrations = async (): Promise<MigrationResult> => {
   console.log('\n=== Database Migration ===');
@@ -116,8 +112,7 @@ const runMigrations = async (): Promise<MigrationResult> => {
       console.log(`\n✅ Successfully applied ${appliedCount} migrations`);
       return {
         success: true,
-        applied: appliedCount,
-        totalMigrations: migrationFiles.length
+        applied: appliedCount
       };
       
     } finally {
@@ -285,8 +280,9 @@ export {
   initializeDatabase,
   getMigrationFiles,
   loadMigration,
-  type MigrationResult,
   type MigrationFile
 };
+
+export type { MigrationResult };
 
 export type { MigrationFunction } from './types/database';

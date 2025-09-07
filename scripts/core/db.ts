@@ -6,8 +6,6 @@ import { mkdir, access, constants } from 'node:fs/promises';
 import type { 
   Database, 
   DbMigration, 
-  TableInfo, 
-  MigrationFunction, 
   MigrationFile 
 } from '../types/database';
 

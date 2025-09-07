@@ -5,10 +5,9 @@ import {
   getAllTables,
   tableExists,
   getTableRowCount,
-  getTableSchema,
-  QueryResult
+  getTableSchema
 } from './utils/db-utils';
-import type { Database, DbMigration, TableInfo, CheckResult } from './types/database';
+import type { Database, DbMigration, CheckResult } from './types/database';
 
 const checkDatabase = async (): Promise<CheckResult> => {
   const requiredTables = ['users', 'base_points'];
@@ -141,19 +140,13 @@ Usage:
   npx tsx scripts/check-db.ts [command]
 
 Commands:
-  verify    Check database connection, tables and migrations (default)
-  check     Check database connection only
-  tables    List all tables with row counts
-  schema    Show schema for all tables
-  migrations List all applied migrations
+  check     Check database connection, tables and migrations (default)
+  verify    Alias for 'check'
   help      Show this help message
 
 Examples:
-  npx tsx scripts/check-db.ts verify
   npx tsx scripts/check-db.ts check
-  npx tsx scripts/check-db.ts tables
-  npx tsx scripts/check-db.ts schema
-  npx tsx scripts/check-db.ts migrations
+  npx tsx scripts/check-db.ts verify
 `);
 };
 

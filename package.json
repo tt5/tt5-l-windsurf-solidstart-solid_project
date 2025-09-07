@@ -8,25 +8,25 @@
     "dev": "{ (lsof -t -i:3000) && { kill -9 $(lsof -t -i:3000); vinxi dev; } } || { vinxi dev; }",
     "build": "vinxi build",
     "start": "vinxi start",
-    
     "db:migrate": "tsx scripts/migration.ts",
     "db:check": "tsx scripts/check-db.ts",
     "db:verify": "tsx scripts/check-db.ts verify",
-    
     "test": "tsx scripts/test-runner.ts",
     "test:unit": "tsx scripts/test-runner.ts --unit",
     "test:integration": "tsx scripts/test-runner.ts --integration",
     "test:e2e": "tsx scripts/test-runner.ts --e2e",
-    
     "db": "echo 'Use specific db commands: db:migrate, db:check, db:verify'"
   },
   "dependencies": {
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.3",
     "@solidjs/start": "^1.1.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/sqlite3": "^3.1.11",
+    "better-sqlite3": "^12.2.0",
     "jsonwebtoken": "^9.0.2",
+    "kysely": "^0.28.5",
     "solid-js": "^1.9.5",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
