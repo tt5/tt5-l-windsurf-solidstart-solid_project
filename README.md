@@ -45,6 +45,8 @@ This project uses SQLite for data storage. Follow these steps to set up the data
 
 ## Development
 
+`rm -rf data` `npm run db:migrate`
+
 Start the development server:
 
 ```bash
