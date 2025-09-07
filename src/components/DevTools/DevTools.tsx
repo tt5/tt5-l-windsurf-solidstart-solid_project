@@ -1,6 +1,6 @@
 import { createSignal, Show } from 'solid-js';
 import { useAuth } from '~/contexts/auth';
-import { createNotification } from '~/components/Notification/Notification';
+import styles from './DevTools.module.css';
 
 export function DevTools() {
   const [isOpen, setIsOpen] = createSignal(false);
@@ -9,38 +9,16 @@ export function DevTools() {
   if (import.meta.env.PROD) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: '10px',
-      right: '10px',
-      zIndex: 9999,
-      fontFamily: 'monospace',
-      fontSize: '12px',
-    }}>
+    <div class={styles.devToolsContainer}>
       <Show when={isOpen()}>
-        <div style={{
-          background: 'rgba(0, 0, 0, 0.8)',
-          color: '#fff',
-          padding: '10px',
-          borderRadius: '4px',
-          marginBottom: '10px',
-          maxWidth: '300px',
-        }}>
-          <div style={{ marginBottom: '8px' }}>
+        <div class={styles.devToolsPanel}>
+          <div class={styles.userInfo}>
             <strong>User ID:</strong> {auth.user()?.id || 'Not logged in'}
           </div>
-          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+          <div class={styles.buttonGroup}>
             <button 
               onClick={() => auth.logout().catch(console.error)}
-              style={{
-                background: '#ff4444',
-                color: 'white',
-                border: 'none',
-                padding: '4px 8px',
-                borderRadius: '3px',
-                cursor: 'pointer',
-                flex: 1
-              }}
+              class={styles.logoutButton}
             >
               Logout
             </button>
@@ -61,18 +39,11 @@ export function DevTools() {
                   }
                 } catch (error) {
                   console.error('Error resetting game progress:', error);
-                  alert(`Error: ${error.message}`);
+                  const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+                  alert(`Error: ${errorMessage}`);
                 }
               }}
-              style={{
-                background: '#ff9800',
-                color: 'white',
-                border: 'none',
-                padding: '4px 8px',
-                borderRadius: '3px',
-                cursor: 'pointer',
-                flex: 1
-              }}
+              class={styles.resetButton}
               title="Reset all your game progress"
             >
               Reset Game
@@ -83,19 +54,7 @@ export function DevTools() {
       
       <button
         onClick={() => setIsOpen(!isOpen())}
-        style={{
-          background: '#4CAF50',
-          color: 'white',
-          border: 'none',
-          borderRadius: '50%',
-          width: '40px',
-          height: '40px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-        }}
+        class={styles.toggleButton}
         title="Development Tools"
       >
         🛠️

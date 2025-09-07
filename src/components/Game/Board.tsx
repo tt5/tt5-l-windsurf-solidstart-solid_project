@@ -683,7 +683,7 @@ const Board: Component = () => {
       <div class={styles.loadingContainer}>
         <div class={styles.loadingSpinner}></div>
         <p>Loading game data...</p>
-        <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#666' }}>
+        <div class={styles.loadingMessage}>
           {!user() ? 'Waiting for user authentication...' : 'Fetching game data...'}
         </div>
       </div>

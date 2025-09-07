@@ -1,0 +1,61 @@
+.devToolsContainer {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  z-index: 9999;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.devToolsPanel {
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  max-width: 300px;
+}
+
+.userInfo {
+  margin-bottom: 8px;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.button {
+  border: none;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  flex: 1;
+}
+
+.logoutButton {
+  composes: button;
+  background: #ff4444;
+  color: white;
+}
+
+.resetButton {
+  composes: button;
+  background: #ff9800;
+  color: white;
+}
+
+.toggleButton {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}

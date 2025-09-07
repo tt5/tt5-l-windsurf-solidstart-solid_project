@@ -66,14 +66,8 @@ async function ensureUserTable(userId: string): Promise<string> {
     
     // Add default base point for new users
     try {
-      const basePointRepo = getBasePointRepository();
-      await basePointRepo.create({
-        user_id: userId,
-        x: 0,
-        y: 0,
-        created_at_ms: Date.now(),
-        updated_at_ms: Date.now()
-      });
+      const basePointRepo = await getBasePointRepository();
+      await basePointRepo.add(userId, 0, 0);
       console.log(`Added default base point for user ${userId}`);
     } catch (error) {
       console.error('Error adding default base point:', error);
@@ -183,9 +177,9 @@ async function runMigrations() {
     console.log(`Found ${migrationFiles.length} migration files`);
     
     // Get applied migrations - use a transaction to ensure consistency
-    let appliedMigrations: {name: string}[] = [];
+    let appliedMigrations: Array<{ name: string }> = [];
     try {
-      appliedMigrations = await db.all<{name: string}>(
+      appliedMigrations = await db.all<Array<{ name: string }>>(
         'SELECT name FROM migrations ORDER BY name'
       );
     } catch (error) {
@@ -212,7 +206,7 @@ async function runMigrations() {
         
         if (!appliedSet.has(migrationName)) {
           console.log(`\n=== Running migration: ${migrationName} ===`);
-          const migrationPath = path.join(migrationsDir, file);
+          const migrationPath = path.join(MIGRATIONS_DIR, file);
           console.log(`Importing migration from: ${migrationPath}`);
           
           try {

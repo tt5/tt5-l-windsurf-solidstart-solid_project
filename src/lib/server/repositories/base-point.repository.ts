@@ -1,22 +1,14 @@
 import { Database } from 'sqlite';
-import { BasePoint } from '../../types/board';
+import { BasePoint } from '../../../types/board';
 
 export class BasePointRepository {
   constructor(private db: Database) {}
 
-  async deleteAllByUser(userId: string): Promise<void> {
-    console.log(`[BasePointRepository] Deleting all base points for user: ${userId}`);
-    await this.db.run(
-      'DELETE FROM base_points WHERE user_id = ?',
-      [userId]
-    );
-    console.log(`[BasePointRepository] Successfully deleted all base points for user: ${userId}`);
-  }
-
   async getAll(): Promise<BasePoint[]> {
-    return this.db.all<BasePoint>(
+    const results = await this.db.all<BasePoint>(
       'SELECT id, user_id as userId, x, y, created_at_ms as createdAtMs FROM base_points'
     );
+    return results || [];
   }
 
   async getByUser(userId: string): Promise<BasePoint[]> {
@@ -101,4 +93,20 @@ export class BasePointRepository {
     }
   }
 
+  async remove(userId: string, x: number, y: number): Promise<boolean> {
+    const result = await this.db.run(
+      'DELETE FROM base_points WHERE user_id = ? AND x = ? AND y = ?',
+      [userId, x, y]
+    );
+    
+    return result.changes > 0;
+  }
+
+  async clearForUser(userId: string): Promise<void> {
+    await this.db.run('DELETE FROM base_points WHERE user_id = ?', [userId]);
+  }
+
+  async clearAll(): Promise<void> {
+    await this.db.run('DELETE FROM base_points');
+  }
 }
