@@ -3,6 +3,7 @@ import { open } from 'sqlite';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdir, access, constants, readdir, unlink } from 'node:fs/promises';
+import { MIGRATIONS_DIR, DB_PATH } from '../config';
 import { existsSync } from 'node:fs';
 import type { 
   Database, 
@@ -11,14 +12,14 @@ import type {
 } from '../types/database';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-export const DB_PATH = join(process.cwd(), 'data', 'app.db');
 const BACKUP_DIR = join(process.cwd(), 'data', 'backups');
 
 export const ensureDbDirectory = async (): Promise<boolean> => {
   try {
     await Promise.all([
       mkdir(dirname(DB_PATH), { recursive: true }),
-      mkdir(BACKUP_DIR, { recursive: true })
+      mkdir(BACKUP_DIR, { recursive: true }),
+      mkdir(MIGRATIONS_DIR, { recursive: true })
     ]);
     return true;
   } catch (error) {
@@ -28,13 +29,29 @@ export const ensureDbDirectory = async (): Promise<boolean> => {
 };
 
 export const createDatabaseConnection = async (): Promise<Database> => {
-  await ensureDbDirectory();
-  const db = await open({
-    filename: DB_PATH,
-    driver: sqlite3.Database,
-  });
-  await db.exec('PRAGMA foreign_keys = ON');
-  return db;
+  try {
+    console.log('Ensuring database directory exists...');
+    const dirResult = await ensureDbDirectory();
+    if (!dirResult) {
+      throw new Error('Failed to ensure database directory exists');
+    }
+    
+    console.log(`Connecting to database at: ${DB_PATH}`);
+    const db = await open({
+      filename: DB_PATH,
+      driver: sqlite3.Database,
+    });
+    
+    console.log('Configuring database settings...');
+    await db.exec('PRAGMA foreign_keys = ON');
+    await db.exec('PRAGMA journal_mode = WAL');
+    
+    console.log('Database connection successful');
+    return db;
+  } catch (error) {
+    console.error('Failed to create database connection:', error);
+    throw error;
+  }
 };
 
 export const databaseExists = async (): Promise<boolean> => {

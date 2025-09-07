@@ -1,4 +1,3 @@
-import { join } from 'path';
 import { readdir, mkdir } from 'fs/promises';
 import { createDatabaseConnection } from './core/db';
 import type { MigrationFile } from './types/database';
@@ -9,35 +8,40 @@ import {
   ensureMigrationsTable
 } from './utils/db-utils';
 import type { Database, MigrationResult, InitResult } from './types/database';
-
-const MIGRATIONS_DIR = join(process.cwd(), 'migrations');
+import { MIGRATIONS_DIR } from './config';
 
 
 const getMigrationFiles = async (): Promise<string[]> => {
   try {
+    // Ensure migrations directory exists
+    await mkdir(MIGRATIONS_DIR, { recursive: true });
+    
     const files = await readdir(MIGRATIONS_DIR);
     return files
-      .filter(file => /^\d+_.+\.(js|ts)$/.test(file))
+      .filter(file => /^\d+_.+\.(js|ts)$/.test(file) && !file.endsWith('.d.ts'))
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      console.log('Migrations directory not found, creating...');
-      await mkdir(MIGRATIONS_DIR, { recursive: true });
-      return [];
-    }
+    console.error('Error reading migration files:', error);
     throw error;
   }
 };
 
 const loadMigration = async (file: string) => {
-  const { default: migration } = await import(`../migrations/${file}`);
-  if (!migration?.up) {
-    throw new Error(`Invalid migration: ${file}`);
+  const migration = await import(`../migrations/${file}`);
+  
+  // Handle both default and named exports
+  const migrationObj = migration.default || migration;
+  
+  if (!migrationObj?.up) {
+    throw new Error(`Invalid migration: ${file} - missing 'up' function`);
   }
+  
   return {
-    name: file.replace(/\.(js|ts)$/, ''),
-    up: migration.up,
-    down: migration.down,
+    name: migrationObj.name || file.replace(/\.(js|ts)$/, ''),
+    up: migrationObj.up,
+    down: migrationObj.down || (async () => {
+      console.warn(`⚠️  No down migration for: ${file}`);
+    }),
   };
 };
 
@@ -47,16 +51,21 @@ const runMigrations = async (): Promise<MigrationResult> => {
   const startTime = Date.now();
   
   try {
+    console.log('\n1. Validating migrations...');
+    const { validateMigrations } = await import('./validate-migrations');
+    if (!await validateMigrations()) {
+      throw new Error('Migration validation failed');
+    }
+    
     if (!(await ensureDbDirectory())) {
       throw new Error('Failed to ensure data directory');
     }
     
-    console.log('\n1. Connecting to database...');
+    console.log('\n2. Connecting to database...');
     const db = await createDatabaseConnection();
     
     try {
-      console.log('\n2. Checking for migration files...');
-      await mkdir(MIGRATIONS_DIR, { recursive: true });
+      console.log('\n3. Checking for migration files...');
       const migrationFiles = await getMigrationFiles();
       console.log(`   Found ${migrationFiles.length} migration files`);
       
@@ -173,12 +182,11 @@ const initializeDatabase = async (): Promise<InitResult> => {
           name: 'users',
           sql: `
             CREATE TABLE IF NOT EXISTS users (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              id TEXT PRIMARY KEY,
               username TEXT NOT NULL UNIQUE,
-              email TEXT NOT NULL UNIQUE,
               password_hash TEXT NOT NULL,
-              created_at INTEGER DEFAULT (strftime('%s', 'now')),
-              updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+              created_at_ms INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+              updated_at_ms INTEGER DEFAULT (strftime('%s', 'now') * 1000)
             )
           `
         },
@@ -187,11 +195,13 @@ const initializeDatabase = async (): Promise<InitResult> => {
           sql: `
             CREATE TABLE IF NOT EXISTS base_points (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
-              user_id INTEGER NOT NULL,
-              points INTEGER NOT NULL DEFAULT 0,
-              created_at INTEGER DEFAULT (strftime('%s', 'now')),
-              updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+              user_id TEXT NOT NULL,
+              x INTEGER NOT NULL,
+              y INTEGER NOT NULL,
+              created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+              updated_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+              UNIQUE(user_id, x, y)
             )
           `
         }

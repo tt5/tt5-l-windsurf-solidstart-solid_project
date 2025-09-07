@@ -17,6 +17,61 @@ A SolidStart application with SQLite database integration.
    npm install
    ```
 
+## Database Management
+
+### Initial Setup
+
+1. Create the database and tables:
+   ```bash
+   npm run db:init
+   ```
+
+### Migrations
+
+Migrations are stored in the `/migrations` directory and are used to manage database schema changes.
+
+#### Creating a New Migration
+
+```bash
+# Create a new migration file
+npm run db:create-migration "Your migration description"
+```
+
+This will create a new timestamped migration file in the `/migrations` directory.
+
+#### Running Migrations
+
+```bash
+# Run all pending migrations
+npm run db:migrate
+```
+
+#### Checking Database Status
+
+```bash
+# Check database status and applied migrations
+npm run db:check
+```
+
+### Development Workflow
+
+1. Create a new migration for your changes:
+   ```bash
+   npm run db:create-migration "Add new feature table"
+   ```
+
+2. Edit the generated migration file in `/migrations`
+
+3. Test your migration:
+   ```bash
+   # Reset the database (warning: deletes all data)
+   rm -rf data/
+   
+   # Reinitialize and run migrations
+   npm run db:init
+   npm run db:migrate
+   ```
+
 ## Database Setup
 
 This project uses SQLite for data storage. Follow these steps to set up the database:
@@ -45,7 +100,7 @@ This project uses SQLite for data storage. Follow these steps to set up the data
 
 ## Development
 
-`rm -rf data` `npm run db:migrate`
+`rm -rf data` `npm run db:migrate -- init`
 
 Start the development server:
 
@@ -54,6 +109,10 @@ npm run dev
 ```
 
 The application will be available at http://localhost:3000
+
+Logout and then go to /game
+
+Now restarting the server and refreshing /game will always auto-logged in.
 
 ## Deployment
 

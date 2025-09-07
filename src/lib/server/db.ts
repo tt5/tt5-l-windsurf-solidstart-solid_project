@@ -211,13 +211,20 @@ async function runMigrations() {
       );
     `);
 
-    // Get all migration files
+    // Get all migration files from the standard migrations directory
     const fs = await import('fs/promises');
     const path = await import('path');
-    const migrationsDir = path.join(process.cwd(), 'scripts/migrations');
-    const migrationFiles = (await fs.readdir(migrationsDir))
-      .filter(f => f.endsWith('.ts') && f !== 'index.ts' && f !== 'template.ts')
-      .sort();
+    
+    // Use absolute path for migrations directory
+    const MIGRATIONS_DIR = path.join(process.cwd(), 'migrations');
+    
+    // Ensure migrations directory exists
+    await fs.mkdir(MIGRATIONS_DIR, { recursive: true });
+    
+    // Read and sort migration files
+    const migrationFiles = (await fs.readdir(MIGRATIONS_DIR))
+      .filter(f => f.endsWith('.ts') && !f.endsWith('.d.ts'))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     
     console.log(`Found ${migrationFiles.length} migration files`);
     
