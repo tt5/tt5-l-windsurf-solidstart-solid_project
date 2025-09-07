@@ -119,20 +119,25 @@ const Board: Component = () => {
           headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
         });
 
+        console.log('Response status:', response.status, response.statusText);
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const { success, data } = await response.json();
         
-        if (success) {
-          const points = data?.basePoints || [];
-          setBasePoints(points);
+        const res = await response.json();
+
+        if (Array.isArray(res)) {
+          console.log('Setting base points:', res);
+          setBasePoints(res);
           setLastFetchTime(now);
-          if (points.length > 0) setIsLoading(false);
+          if (res.length > 0) setIsLoading(false);
         } else {
+          console.error('Expected array but got:', res);
           setBasePoints([]);
         }
+
       } catch (error) {
         console.error('Failed to fetch base points:', error);
         if (selectedSquares().length === 0) {
@@ -290,6 +295,7 @@ const Board: Component = () => {
         10000, // 10 seconds
         'Request timed out. Please try again.'
       );
+      console.log("response: ", response)
       
       // Clear the controller reference since we don't need it anymore
       controller = null;
@@ -301,13 +307,20 @@ const Board: Component = () => {
         return { success: false, error: errorMessage };
       }
       
-      const responseData = await response.json() as AddBasePointResponse;
+      const responseData = await response.json() as BasePoint;
       
-      if (responseData.success && responseData.data) {
-        const newBasePoint = responseData.data as BasePoint;
+      if (response.ok) {
+        const newBasePoint: BasePoint = {
+          id: responseData.id,
+          x: responseData.x,
+          y: responseData.y,
+          userId: responseData.userId,
+          createdAtMs: responseData.createdAtMs
+        };
         setBasePoints(prev => [...prev, newBasePoint]);
         return { success: true, data: newBasePoint };
       } else {
+        console.log(responseData)
         const errorMessage = responseData.error || 'Unknown error saving base point';
         console.error('Error saving base point:', errorMessage);
         return { success: false, error: errorMessage };
@@ -586,6 +599,8 @@ const Board: Component = () => {
     );
   }
   
+  console.log('Rendering base points:', basePoints());
+
   return (
     <div class={styles.board}>
       <div class={styles.userBar}>

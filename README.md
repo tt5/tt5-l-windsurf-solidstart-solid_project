@@ -112,6 +112,10 @@ The application will be available at http://localhost:3000
 
 auto login is enabled by default
 
+### Create a new migration
+
+npm run db:create-migration "Initial schema"
+
 ## Deployment
 
 For production deployment, make sure to:
