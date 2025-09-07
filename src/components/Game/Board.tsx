@@ -627,33 +627,37 @@ const Board: Component = () => {
     coords.map(([x, y]) => y * BOARD_CONFIG.GRID_SIZE + x);
 
   const handleDirection = async (dir: Direction) => {
+    if (isMoving()) {
+      return; // Prevent multiple movements at once
+    }
+    
     setIsMoving(true);
     setIsManualUpdate(true);
+    setIsLoading(true);
     
     try {
       const [x, y] = currentPosition();
       const [dx, dy] = getMovementDeltas(dir);
       const newPosition: Point = [x + dx, y + dy];
       
-      // Only update player position
-      setCurrentPosition(newPosition);
-      
-      setIsLoading(true);
-      
-      // Process square movement
+      // Process square movement before updating position
       const squaresAsCoords = indicesToCoords([...selectedSquares()]);
       const newSquares = await moveSquares(squaresAsCoords, dir, newPosition);
       
-      if (!Array.isArray(newSquares)) {
-        throw new Error('Invalid squares array received from moveSquares');
-      }
+      // Only update position if moveSquares succeeds
+      setCurrentPosition(newPosition);
       
       const newIndices = coordsToIndices(newSquares);
       updateSquares(newIndices);
       return newIndices;
       
+    } catch (error) {
+      console.error('Movement failed:', error);
+      // Re-throw to be handled by the caller if needed
+      throw error;
     } finally {
       setIsLoading(false);
+      // Small delay to prevent rapid successive movements
       setTimeout(() => {
         setIsManualUpdate(false);
         setIsMoving(false);
