@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
-import { PATHS, MIGRATION_TEMPLATE } from './config';
+import { PATHS, MIGRATION_TEMPLATE } from './config.js';
 
 async function createMigration(name: string) {
   // Ensure migrations directory exists

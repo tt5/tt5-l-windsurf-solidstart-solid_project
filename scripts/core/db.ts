@@ -3,12 +3,12 @@ import { open, type Database as SqliteDatabase } from 'sqlite';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdir, access, constants, readdir, unlink } from 'node:fs/promises';
-import { MIGRATIONS_DIR, DB_PATH } from '../config';
+import { MIGRATIONS_DIR, DB_PATH } from '../config.js';
 import { existsSync } from 'node:fs';
 import type { 
   DbMigration, 
   MigrationFile 
-} from '../types/database';
+} from '../types/database.js';
 
 export interface Database extends SqliteDatabase {
   // Add any custom methods or properties here if needed

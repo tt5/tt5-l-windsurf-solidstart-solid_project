@@ -1,6 +1,6 @@
-import { getAppliedMigrations, getAllTables, tableExists, getTableRowCount, getTableSchema } from './utils/db-utils';
-import { createDatabaseConnection, type Database } from './core/db';
-import type { DbMigration, CheckResult } from './types/database';
+import { getAppliedMigrations, getAllTables, tableExists, getTableRowCount, getTableSchema } from './utils/db-utils.js';
+import { createDatabaseConnection, type Database } from './core/db.js';
+import type { DbMigration, CheckResult } from './types/database.js';
 
 const checkDatabase = async (): Promise<CheckResult> => {
   const requiredTables = ['users', 'base_points'];

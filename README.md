@@ -119,6 +119,10 @@ For production deployment, make sure to:
 2. Configure environment variables for production
 3. Run migrations as part of your deployment process
 
+## TODO
+
+- [ ] user can delete account
+
 ## License
 
 MIT

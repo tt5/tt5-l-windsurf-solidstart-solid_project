@@ -1,6 +1,6 @@
 import { readdir, readFile } from 'fs/promises';
 import { join } from 'path';
-import { PATHS } from './config';
+import { PATHS } from './config.js';
 
 interface Migration {
   name: string;

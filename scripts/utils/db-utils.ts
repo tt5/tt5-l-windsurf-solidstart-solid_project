@@ -1,7 +1,7 @@
 import { readdir } from 'fs/promises';
 import { join } from 'path';
-import type { Database } from '../core/db';
-import type { DbMigration } from '../types/database';
+import type { Database } from '../core/db.js';
+import type { DbMigration } from '../types/database.js';
 
 export type { DbMigration, Database };
 

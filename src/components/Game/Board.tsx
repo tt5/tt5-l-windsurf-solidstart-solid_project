@@ -58,11 +58,6 @@ const BOARD_CONFIG: BoardConfig = {
 // Type for the response when adding a base point
 interface AddBasePointResponse extends ApiResponse<BasePoint> {}
 
-type DeleteAccountResponse = {
-  success: boolean;
-  error?: string;
-};
-
 const Board: Component = () => {
   const navigate = useNavigate();
   const [board, setBoard] = createSignal<BoardConfig>(BOARD_CONFIG);
@@ -352,37 +347,6 @@ const Board: Component = () => {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    const userId = currentUser && 'id' in currentUser ? currentUser.id : currentUser;
-    if (!userId) return;
-    
-    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) return;
-    
-    try {
-      const response = await fetch('/api/delete-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ userId })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete account');
-      }
-      
-      const responseData: DeleteAccountResponse = await response.json();
-      
-      if (responseData.success) {
-        await logout();
-        navigate('/');
-      } else {
-        throw new Error(responseData.error || 'Failed to delete account');
-      }
-    } catch (error) {
-      alert('Failed to delete account. Please try again.');
-    }
-  };
-
   const handleSquareClick = async (index: number) => {
     if (!currentUser) {
       console.warn('No user logged in');
@@ -627,15 +591,12 @@ const Board: Component = () => {
       <div class={styles.userBar}>
         <span>Welcome, {user()?.username || 'User'}!</span>
         <div style={{ 'display': 'flex', 'gap': '1rem', 'margin-top': '1rem' }}>
-          <button onClick={logout} class={styles.button}>
-            Logout
-          </button>
           <button 
-            onClick={handleDeleteAccount} 
+            onClick={logout} 
             class={styles.button}
-            style={{ 'background-color': '#dc3545' }}
+            style={{ 'background-color': '#6c757d' }}
           >
-            Delete Account
+            Logout
           </button>
         </div>
       </div>

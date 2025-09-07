@@ -1,14 +1,14 @@
 import { readdir, mkdir } from 'fs/promises';
-import { createDatabaseConnection } from './core/db';
-import type { MigrationFile } from './types/database';
-import { ensureDbDirectory } from './core/db';
-import { getAllTables } from './utils/db-utils';
+import { createDatabaseConnection } from './core/db.js';
+import type { MigrationFile } from './types/database.js';
+import { ensureDbDirectory } from './core/db.js';
+import { getAllTables } from './utils/db-utils.js';
 import { 
   getAppliedMigrations, 
   ensureMigrationsTable
-} from './utils/db-utils';
-import type { Database, MigrationResult, InitResult } from './types/database';
-import { MIGRATIONS_DIR } from './config';
+} from './utils/db-utils.js';
+import type { Database, MigrationResult, InitResult } from './types/database.js';
+import { MIGRATIONS_DIR } from './config.js';
 
 
 const getMigrationFiles = async (): Promise<string[]> => {
@@ -52,7 +52,7 @@ const runMigrations = async (): Promise<MigrationResult> => {
   
   try {
     console.log('\n1. Validating migrations...');
-    const { validateMigrations } = await import('./validate-migrations');
+    const { validateMigrations } = await import('./validate-migrations.js');
     if (!await validateMigrations()) {
       throw new Error('Migration validation failed');
     }
@@ -295,4 +295,4 @@ export {
 
 export type { MigrationResult };
 
-export type { MigrationFunction } from './types/database';
+export type { MigrationFunction } from './types/database.js';

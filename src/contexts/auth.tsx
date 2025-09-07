@@ -6,7 +6,6 @@ interface AuthStore {
   user: () => User;
   login: (username: string) => User;
   logout: () => Promise<void>;
-  deleteAccount: () => Promise<boolean>;
   isInitialized: () => boolean;
 }
 
@@ -26,17 +25,7 @@ const createUserId = (username: string): string => {
 
 const createAuthStore = (): AuthStore => {
   const [user, setUser] = createSignal<User>(null);
-  const [isInitialized, _setIsInitialized] = createSignal(false);
-  
-  // Wrapper to log isInitialized state changes
-  const setIsInitialized = (value: boolean) => {
-    _setIsInitialized(value);
-    
-    // Verify the state was actually updated
-    setTimeout(() => {
-      console.log('[Auth] isInitialized after set:', isInitialized());
-    }, 0);
-  };
+  const [isInitialized, setIsInitialized] = createSignal(false);
   
   const updateUser = (userData: User) => {
     setUser(userData);
@@ -195,69 +184,45 @@ const createAuthStore = (): AuthStore => {
           throw error;
         }
       } else {
-        console.error(`[setupDevUser] Login failed with status ${loginResponse.status}:`, responseText);
-        throw new Error(`Login failed with status ${loginResponse.status}`);
-      }
-      
-      // Log response headers for debugging
-      const headers: Record<string, string> = {};
-      loginResponse.headers.forEach((value, key) => {
-        headers[key] = value;
-      });
-      
-      // Try to read response body for debugging
-      try {
-        const responseText = await loginResponse.text();
-        // Re-create response for further processing
-        response = new Response(responseText, {
-          status: loginResponse.status,
-          statusText: loginResponse.statusText,
-          headers: loginResponse.headers
-        });
-      } catch (error) {
-        throw error;
-      }
-      
-      // If login fails with 401 (Unauthorized), try to register
-      if (loginResponse.status === 401) {
-        const createResponse = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: testUsername,
-            password: testPassword
-          })
-        });
-        
-        if (!createResponse.ok) {
-          const error = await createResponse.json().catch(() => ({}));
-          throw new Error('Failed to register dev user');
+        // If login fails with 401 (Unauthorized), try to register
+        if (loginResponse.status === 401) {
+          const createResponse = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: testUsername,
+              password: testPassword
+            })
+          });
+          
+          if (!createResponse.ok) {
+            const error = await createResponse.json().catch(() => ({}));
+            throw new Error('Failed to register dev user');
+          }
+          
+          // Try to log in again after registration
+          const loginAfterRegister = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ 
+              username: testUsername,
+              password: testPassword
+            })
+          });
+          
+          if (loginAfterRegister.ok) {
+            const userData = await loginAfterRegister.json();
+            updateUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
+          } else {
+            const errorText = await loginAfterRegister.text();
+            throw new Error(`Login after registration failed: ${errorText}`);
+          }
+        } else {
+          // For other error statuses, throw the original error
+          throw new Error(`Login failed with status ${loginResponse.status}`);
         }
-        
-        // Try to log in again after registration
-        response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ 
-            username: testUsername,
-            password: testPassword
-          })
-        });
-      } else {
-        response = loginResponse;
-      }
-      
-      if (response.ok) {
-        const userData = await response.json();
-        updateUser(userData);
-        // Save user to localStorage for persistence
-        localStorage.setItem('user', JSON.stringify(userData));
-        // Set initialized to true after successful login
-        setIsInitialized(true);
-      } else {
-        const errorText = await response.text();
-        setIsInitialized(true); // Still set initialized to true to unblock the UI
       }
     } catch (error) {
       setIsInitialized(true); // Ensure we don't get stuck in loading state
@@ -307,34 +272,10 @@ const createAuthStore = (): AuthStore => {
     }
   };
 
-  const deleteAccount = async () => {
-    try {
-      const response = await fetch('/api/auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ action: 'delete-account' })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete account');
-      }
-      
-      return true;
-    } catch (error) {
-      return false;
-    } finally {
-      updateUser(null);
-    }
-  };
-
   return {
     user,
     login,
     logout,
-    deleteAccount,
     isInitialized,
   };
 };
