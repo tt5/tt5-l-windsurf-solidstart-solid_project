@@ -1,4 +1,5 @@
 import { createContext, createEffect, createSignal, useContext, type ParentComponent } from 'solid-js';
+import { setupDevUser } from '~/lib/utils/devUser';
 
 type User = { id: string; username: string } | null;
 
@@ -76,7 +77,8 @@ const createAuthStore = (): AuthStore => {
     
     // In development, try to auto-login if no user is set
     if (isDev) {
-      setupDevUser().catch(error => {
+      initializeDevUser().catch(error => {
+        console.error('Failed to initialize dev user:', error);
         setIsInitialized(true);
       });
     } else {
@@ -85,111 +87,13 @@ const createAuthStore = (): AuthStore => {
   });
   
   // Development-only function to set up a test user
-  const setupDevUser = async () => {
-    
-    const isProd = (typeof import.meta.env.PROD !== 'undefined' && import.meta.env.PROD) || 
-                  (typeof process.env.NODE_ENV !== 'undefined' && process.env.NODE_ENV === 'production');
-    
-    if (isProd) {
-      return;
-    }
-    
-    // Use devuser for development
-    const testUsername = 'devuser';
-    const testPassword = 'devpassword'; // In a real app, use environment variables
-    
+  const initializeDevUser = async () => {
     try {
-      // Try to log in first (in case the user already exists)
-      try {
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          credentials: 'include',
-          body: JSON.stringify({ 
-            username: testUsername,
-            password: testPassword
-          })
-        });
-        
-        if (response.ok) {
-          const { user: userData } = await response.json();
-          
-          if (!userData || !userData.id) {
-            throw new Error('Invalid user data in response');
-          }
-          
-          // Ensure required fields
-          const formattedUser = {
-            id: userData.id,
-            username: userData.username || testUsername
-          };
-          
-          // Update the user state and storage
-          updateUser(formattedUser);
-          setIsInitialized(true);
-          return;
-        }
-      } catch (error) {
-        console.error('Dev user login failed, trying to register:', error);
-      }
-      
-      // If login failed, try to register
-      try {
-        const registerResponse = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          credentials: 'include',
-          body: JSON.stringify({ 
-            username: testUsername,
-            password: testPassword
-          })
-        });
-        
-        if (registerResponse.ok) {
-          const { user: userData } = await registerResponse.json();
-          
-          if (!userData || !userData.id) {
-            throw new Error('Invalid user data in registration response');
-          }
-          
-          // Ensure required fields
-          const formattedUser = {
-            id: userData.id,
-            username: userData.username || testUsername
-          };
-          
-          // Update the user state and storage
-          updateUser(formattedUser);
-          
-          // Add base point for the user
-          try {
-            await fetch('/api/base-points', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-              },
-              credentials: 'include',
-              body: JSON.stringify({ x: 0, y: 0 })
-            });
-          } catch (error) {
-            console.error('[setupDevUser] Error adding base point:', error);
-          }
-        } else {
-          const error = await registerResponse.json().catch(() => ({}));
-          console.error('Failed to register dev user:', error);
-        }
-      } catch (error) {
-        console.error('Error during dev user registration:', error);
-      }
+      await setupDevUser(updateUser);
     } catch (error) {
-      setIsInitialized(true); // Ensure we don't get stuck in loading state
+      console.error('Error in dev user setup:', error);
+    } finally {
+      setIsInitialized(true);
     }
   };
 
