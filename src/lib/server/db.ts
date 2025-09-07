@@ -87,52 +87,6 @@ async function ensureUserTable(userId: string): Promise<string> {
   }
 }
 
-/**
- * Delete a user and all their data
- */
-const deleteUser = async (userId: string): Promise<boolean> => {
-  try {
-    const db = await getDb();
-    
-    await db.exec('BEGIN TRANSACTION');
-    
-    try {
-      // Initialize base point repository if not already done
-      if (!basePointRepo) {
-        basePointRepo = new BasePointRepository(db);
-      }
-      
-      // Delete all base points for the user
-      await basePointRepo.clearForUser(userId);
-      
-      // Delete the user's personal table if it exists
-      const userTableName = `user_${userId}`;
-      const userTableExists = await db.get(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-        [userTableName]
-      );
-      
-      if (userTableExists) {
-        await db.exec(`DROP TABLE IF EXISTS ${userTableName}`);
-      }
-      
-      await db.exec('COMMIT');
-      console.log(`[deleteUser] Successfully deleted all data for user: ${userId}`);
-      return true;
-      
-    } catch (error) {
-      // Rollback in case of any error
-      await db.exec('ROLLBACK');
-      console.error('Error in user deletion transaction:', error);
-      return false;
-    }
-    
-  } catch (error) {
-    console.error('Error during user deletion:', error);
-    return false;
-  }
-};
-
 async function ensureRepositoriesInitialized() {
   if (!basePointRepo) {
     console.log('Initializing repositories...');
@@ -321,7 +275,6 @@ async function runMigrations() {
 export {
   getDb,
   ensureUserTable,
-  deleteUser,
   getBasePointRepository,
   initializeRepositories,
   runMigrations

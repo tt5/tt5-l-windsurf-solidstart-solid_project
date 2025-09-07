@@ -92,16 +92,4 @@ export class BasePointRepository {
     }
   }
 
-  async remove(userId: string, x: number, y: number): Promise<boolean> {
-    const result = await this.db.run(
-      'DELETE FROM base_points WHERE user_id = ? AND x = ? AND y = ?',
-      [userId, x, y]
-    );
-    
-    return result.changes > 0;
-  }
-
-  async clearForUser(userId: string): Promise<void> {
-    await this.db.run('DELETE FROM base_points WHERE user_id = ?', [userId]);
-  }
 }

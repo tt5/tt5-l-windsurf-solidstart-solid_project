@@ -66,22 +66,3 @@ export const POST = withAuth(async ({ request, user }) => {
   }
 });
 
-export const DELETE = withAuth(async ({ request, user }) => {
-  const requestId = generateRequestId();
-  
-  try {
-    const { x, y } = await request.json() as BasePointRequest;
-    validateCoordinates(x, y);
-    
-    const repository = await getBasePointRepository();
-    const deleted = await repository.remove(user.userId, x, y);
-    
-    if (!deleted) {
-      return createErrorResponse('Not Found', 404, 'Base point not found', { requestId });
-    }
-    
-    return createApiResponse({ success: true }, { requestId });
-  } catch (error) {
-    return handleApiError(error, requestId, 'DELETE /api/base-points');
-  }
-});

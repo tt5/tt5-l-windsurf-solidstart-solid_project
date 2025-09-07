@@ -78,15 +78,6 @@ export abstract class BaseRepository<T extends { id?: number | string }> {
     return this.findOne(id);
   }
 
-  async delete(id: string | number): Promise<boolean> {
-    const result = await this.db.run(
-      `DELETE FROM ${this.tableName} WHERE id = ?`,
-      [id]
-    );
-    
-    return result.changes > 0;
-  }
-
   async count(where?: Partial<T>): Promise<number> {
     let query = `SELECT COUNT(*) as count FROM ${this.tableName}`;
     const params: any[] = [];
