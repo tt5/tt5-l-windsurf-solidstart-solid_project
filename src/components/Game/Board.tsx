@@ -359,6 +359,41 @@ const Board: Component = () => {
       
       const responseData = await response.json();
       console.log('Response data:', responseData);
+         updateSquares([...new Set([
+          ...selectedSquares(),
+          ...[responseData].flatMap((p) => {
+            console.log(p, BOARD_CONFIG.GRID_SIZE);
+            return [
+              // Existing horizontal and vertical lines
+              ...Array(BOARD_CONFIG.GRID_SIZE - p.x - 1).fill(0).map((_, i) => p.x + i + 1 + p.y * BOARD_CONFIG.GRID_SIZE), // Right
+              ...Array(p.x).fill(0).map((_, i) => i + p.y * BOARD_CONFIG.GRID_SIZE), // Left
+              ...Array(BOARD_CONFIG.GRID_SIZE - p.y - 1).fill(0).map((_, i) => p.x + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE), // Down
+              ...Array(p.y).fill(0).map((_, i) => p.x + i * BOARD_CONFIG.GRID_SIZE), // Up
+              
+              // New diagonal lines
+              // Top-right diagonal
+              ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, p.y)).fill(0).map((_, i) => 
+                (p.x + i + 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+              ),
+              // Top-left diagonal
+              ...Array(Math.min(p.x, p.y)).fill(0).map((_, i) => 
+                (p.x - i - 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+              ),
+              // Bottom-right diagonal
+              ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
+                (p.x + i + 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+              ),
+              // Bottom-left diagonal
+              ...Array(Math.min(p.x, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
+                (p.x - i - 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+              )
+            ];
+          })
+        ])]);
+
+
+
+
       
       if (!response.ok) {
         const errorMessage = responseData?.error || 'Failed to save base point';
