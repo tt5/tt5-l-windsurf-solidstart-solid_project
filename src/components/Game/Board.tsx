@@ -133,11 +133,16 @@ const Board: Component = () => {
           console.log('Setting base points:', res);
           setBasePoints(res);
 
+       res.map(p => {
+        if (p.x - currentPosition()[0] < 7 && p.y - currentPosition()[1] < 7) {
+          
+
+        // TODO: res.flatMap(e => [p.x, p.y])
+        //  only coordinates that fall into the initial grid
+        // [0,0] x [6,6]
+
          setSelectedSquares([...new Set([
           ...selectedSquares(),
-          ...res.flatMap((p) => {
-            console.log(p, BOARD_CONFIG.GRID_SIZE);
-            return [
               // Existing horizontal and vertical lines
               ...Array(BOARD_CONFIG.GRID_SIZE - p.x - 1).fill(0).map((_, i) => p.x + i + 1 + p.y * BOARD_CONFIG.GRID_SIZE), // Right
               ...Array(p.x).fill(0).map((_, i) => i + p.y * BOARD_CONFIG.GRID_SIZE), // Left
@@ -161,9 +166,10 @@ const Board: Component = () => {
               ...Array(Math.min(p.x, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
                 (p.x - i - 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
               )
-            ];
-          })
         ])]);
+
+      }
+        })
 
           setLastFetchTime(now);
           if (res.length > 0) setIsLoading(false);
@@ -497,24 +503,16 @@ const Board: Component = () => {
         body: JSON.stringify(requestData)
       });
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Board - Error response from border API:', errorText);
-        throw new Error(`Failed to calculate border: ${response.status} - ${errorText}`);
-      }
+      const responseData = await response.json();
       
-      const res = await response.json();
-      
-      // Handle the new response format with success and data wrapper
-      if (res?.success && res.data?.squares) {
-        return { squares: res.data.squares };
-      } else if (res?.squares) {
-        // Fallback for old response format
-        return { squares: res.squares };
+      if (!response.ok || !responseData?.success) {
+        const errorMessage = responseData?.error || 'Unknown error';
+        console.error('Board - Error response from border API:', errorMessage);
+        throw new Error(`Failed to calculate border: ${response.status} - ${errorMessage}`);
       }
       
       // If response doesn't have squares, use fallback
-      return { squares: fallbackSquares };
+      return responseData.data?.squares || fallbackSquares;
       
     } catch (error) {
       console.error('Board - Error calculating border:', error);

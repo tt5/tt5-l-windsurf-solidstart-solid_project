@@ -87,19 +87,12 @@ export async function POST({ request }: APIEvent) {
   } catch (error) {
     console.error('Error in calculate-squares:', error);
     
-    // Fallback to default squares in case of error
-    const defaultSquares = [24]; // Center of 7x7 grid
-    console.warn('Using default squares due to error');
-    
     return new Response(JSON.stringify({ 
-      success: true, // Still return success: true to prevent UI from breaking
-      data: {
-        squares: defaultSquares
-      },
+      success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     }), { 
-      status: 200, // Still return 200 to prevent UI from breaking
+      status: 500,
       headers: { 'Content-Type': 'application/json' } 
     });
   }

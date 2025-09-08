@@ -78,16 +78,16 @@ export const moveSquares = async (
     body: JSON.stringify({ borderIndices, currentPosition, direction })
   });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+  const responseData = await response.json();
+  
+  if (!response.ok || !responseData.success) {
     throw new Error(
       `Failed to calculate new squares: ${response.status} ${response.statusText}\n` +
-      (errorData.message ? `Message: ${errorData.message}` : '')
+      (responseData.error ? `Error: ${responseData.error}` : 'Unknown error')
     );
   }
 
-  const { data } = await response.json();
-  const newSquares = data?.squares;
+  const newSquares = responseData.data?.squares;
   
   if (!Array.isArray(newSquares)) {
     throw new Error('Invalid response format: expected array of squares');
