@@ -703,10 +703,12 @@ const Board: Component = () => {
           const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
           const isSelected = selectedSquares().includes(squareIndex);
           const isBP = isBasePoint(worldX, worldY);
+          const isPlayerPosition = worldX === 0 && worldY === 0;
+
           
           return (
             <button
-              class={`${styles.square} ${isSelected ? styles.selected : ''} ${isBP ? styles.basePoint : ''}`}
+              class={`${styles.square} ${isSelected ? styles.selected : ''} ${isBP ? styles.basePoint : ''} ${isPlayerPosition ? styles.playerPosition : ''}`}
               onClick={() => {
                 if (isSelected) return;
                 handleSquareClick(squareIndex);

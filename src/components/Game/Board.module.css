@@ -197,3 +197,20 @@
   border-radius: 50%;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
 }
+
+.playerPosition {
+  position: relative;
+  background-color: #3498db !important;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #3498db;
+}
+
+.playerPosition::after {
+  content: 'P';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-weight: bold;
+  font-size: 1.2em;
+}
