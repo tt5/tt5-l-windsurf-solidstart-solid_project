@@ -127,13 +127,14 @@ const Board: Component = () => {
         }
 
         
-        const res = await response.json();
+        const { data } = await response.json();
+        const basePoints = data?.basePoints || [];
 
-        if (Array.isArray(res)) {
-          console.log('Setting base points:', res);
-          setBasePoints(res);
+        if (Array.isArray(basePoints)) {
+          console.log('Setting base points:', basePoints);
+          setBasePoints(basePoints);
 
-       res.map(p => {
+          basePoints.forEach(p => {
         if (p.x - currentPosition()[0] < 7 && p.y - currentPosition()[1] < 7) {
           
 
@@ -172,9 +173,9 @@ const Board: Component = () => {
         })
 
           setLastFetchTime(now);
-          if (res.length > 0) setIsLoading(false);
+          if (basePoints.length > 0) setIsLoading(false);
         } else {
-          console.error('Expected array but got:', res);
+          console.error('Invalid response format - expected basePoints array');
           setBasePoints([]);
         }
 
