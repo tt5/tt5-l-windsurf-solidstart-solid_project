@@ -6,6 +6,7 @@
   },
   "scripts": {
     "dev": "{ (lsof -t -i:3000) && { kill -9 $(lsof -t -i:3000); vinxi dev; } } || { vinxi dev; }",
+    "dev:no-devuser": "DISABLE_DEV_USER=true vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
     "db:create-migration": "tsx scripts/create-migration.ts",

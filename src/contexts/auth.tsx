@@ -76,7 +76,7 @@ const createAuthStore = (): AuthStore => {
     setIsInitialized(true);
     
     // In development, try to auto-login if no user is set
-    if (isDev) {
+    if (isDev && !process.env.DISABLE_DEV_USER) {
       initializeDevUser().catch(error => {
         console.error('Failed to initialize dev user:', error);
         setIsInitialized(true);
