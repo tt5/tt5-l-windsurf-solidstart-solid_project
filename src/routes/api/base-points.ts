@@ -1,7 +1,15 @@
 import { APIEvent } from '@solidjs/start/server';
 import { getBasePointRepository } from '~/lib/server/db';
 import { withAuth } from '~/middleware/auth';
-import { createApiResponse, createErrorResponse, generateRequestId } from '~/utils/api';
+import { createApiResponse, createErrorResponse, generateRequestId, type ApiResponse } from '~/utils/api';
+
+type BasePointResponse = ApiResponse<{
+  id: number;
+  x: number;
+  y: number;
+  userId: string;
+  createdAtMs: number;
+}>;
 
 type BasePointRequest = { x: number; y: number };
 
@@ -50,7 +58,7 @@ export const GET = withAuth(async () => {
     const repository = await getBasePointRepository();
     const basePoints = await repository.getAll();
     
-    return createApiResponse(basePoints, { requestId });
+    return createApiResponse({ basePoints }, { requestId });
   } catch (error) {
     return handleApiError(error, requestId, 'GET /api/base-points');
   }
@@ -70,7 +78,7 @@ export const POST = withAuth(async ({ request, user }) => {
       data.y
     );
     
-    return createApiResponse(basePoint, { status: 201, requestId });
+    return createApiResponse({ basePoint }, { status: 201, requestId });
   } catch (error) {
     return handleApiError(error, requestId, 'POST /api/base-points');
   }

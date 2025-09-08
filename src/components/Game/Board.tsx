@@ -439,12 +439,14 @@ const Board: Component = () => {
     const [offsetX, offsetY] = currentPosition();
     const worldX = gridX - offsetX;
     const worldY = gridY - offsetY;
+
+    console.log(`--click, ${index}, ${gridX}, ${gridY}, ${worldX}, ${worldY} currentPosition: ${currentPosition()}`)
     
     // Don't proceed if the click is on the player's position
     if (worldX === 0 && worldY === 0) return;
     
     try {
-      
+      console.log('Sending request to /api/base-points with:', { x: worldX, y: worldY });
       const response = await fetch('/api/base-points', {
         method: 'POST',
         headers: { 
@@ -459,20 +461,30 @@ const Board: Component = () => {
         })
       });
       
+      console.log('Response status:', response.status, response.statusText);
+      
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to save base point: ${response.status} ${response.statusText}`);
+        const errorData = await response.json();
+        console.error('Error response:', errorData);
+        throw new Error(errorData.error || `Failed to save base point: ${response.status} ${response.statusText}`);
       }
       
-      const responseData: AddBasePointResponse = await response.json();
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
       
-      if (responseData.success && responseData.data) {
-        setBasePoints(prev => [...prev, responseData.data as BasePoint]);
+      if (responseData.success && responseData.data?.basePoint) {
+        console.log('Successfully added base point:', responseData.data.basePoint);
+        setBasePoints(prev => [...prev, responseData.data.basePoint]);
       } else {
-        throw new Error(responseData.error || 'Unknown error saving base point');
+        console.error('Unexpected response format:', responseData);
+        throw new Error(responseData.error || 'Invalid response format from server');
       }
       
     } catch (error) {
+      console.error('Error in handleSquareClick:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack);
+      }
     }
   };
 
@@ -494,6 +506,7 @@ const Board: Component = () => {
         direction: 'right' // Default direction for initial selection
       };
       
+      console.log("--set fallbackSquares")
       setSelectedSquares(fallbackSquares);
       
       const response = await fetch('/api/calculate-squares', {
