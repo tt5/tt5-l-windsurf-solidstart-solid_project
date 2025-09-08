@@ -14,6 +14,7 @@ type BasePointResponse = ApiResponse<{
 type BasePointRequest = { x: number; y: number };
 
 const MAX_COORDINATE = 1000; // Reasonable limit to prevent abuse
+const VIEW_RADIUS = 10; // Fetch points within this radius of the current position
 
 const validateCoordinates = (x: number, y: number) => {
   // Type checking
@@ -52,11 +53,24 @@ const handleApiError = (error: unknown, requestId: string, endpoint: string) => 
   );
 };
 
-export const GET = withAuth(async () => {
+export const GET = withAuth(async ({ request }) => {
   const requestId = generateRequestId();
+  const url = new URL(request.url);
+  const x = parseInt(url.searchParams.get('x') || '0');
+  const y = parseInt(url.searchParams.get('y') || '0');
+
   try {
     const repository = await getBasePointRepository();
-    const basePoints = await repository.getAll();
+    let basePoints = await repository.getAll();
+    
+    // Filter base points to only those within the view radius
+    if (!isNaN(x) && !isNaN(y)) {
+      basePoints = basePoints.filter(point => {
+        const dx = point.x - x;
+        const dy = point.y - y;
+        return Math.abs(dx) <= VIEW_RADIUS && Math.abs(dy) <= VIEW_RADIUS;
+      });
+    }
     
     return createApiResponse({ basePoints }, { requestId });
   } catch (error) {
@@ -83,4 +97,3 @@ export const POST = withAuth(async ({ request, user }) => {
     return handleApiError(error, requestId, 'POST /api/base-points');
   }
 });
-

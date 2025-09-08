@@ -115,7 +115,8 @@ const Board: Component = () => {
     // Create a single fetch promise to prevent duplicates
     currentFetch = (async () => {
       try {
-        const response = await fetch('/api/base-points', {
+        const [x, y] = currentPosition();
+        const response = await fetch(`/api/base-points?x=${x}&y=${y}`, {
           credentials: 'include',
           headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
         });
