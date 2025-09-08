@@ -429,13 +429,13 @@ const Board: Component = () => {
     const gridX = index % BOARD_CONFIG.GRID_SIZE;
     const gridY = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
     
-    // Calculate relative position from player
-    const [playerX, playerY] = currentPosition();
-    const relativeX = gridX - playerX;
-    const relativeY = gridY - playerY;
+    // Calculate world coordinates (matching the grid rendering logic)
+    const [offsetX, offsetY] = currentPosition();
+    const worldX = gridX - offsetX;
+    const worldY = gridY - offsetY;
     
     // Don't proceed if the click is on the player's position
-    if (relativeX === 0 && relativeY === 0) return;
+    if (worldX === 0 && worldY === 0) return;
     
     try {
       
@@ -447,8 +447,8 @@ const Board: Component = () => {
         },
         credentials: 'include',
         body: JSON.stringify({
-          x: relativeX,
-          y: relativeY,
+          x: worldX,
+          y: worldY,
           userId: currentUser.id
         })
       });
@@ -688,11 +688,8 @@ const Board: Component = () => {
             <button
               class={`${styles.square} ${isSelected ? styles.selected : ''} ${isBP ? styles.basePoint : ''}`}
               onClick={() => {
-                // Don't add a base point if this square is already selected
-                if (isSelected) {
-                  return;
-                }
-                handleAddBasePoint(worldX, worldY);
+                if (isSelected) return;
+                handleSquareClick(squareIndex);
               }}
               onContextMenu={(e) => {
                 e.preventDefault();

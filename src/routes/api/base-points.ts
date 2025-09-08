@@ -5,12 +5,22 @@ import { createApiResponse, createErrorResponse, generateRequestId } from '~/uti
 
 type BasePointRequest = { x: number; y: number };
 
+const MAX_COORDINATE = 1000; // Reasonable limit to prevent abuse
+
 const validateCoordinates = (x: number, y: number) => {
+  // Type checking
   if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
-    throw new Error('Invalid coordinates provided');
+    throw new Error('Coordinates must be valid numbers');
   }
-  if (x < 0 || x >= 7 || y < 0 || y >= 7) {
-    throw new Error('Coordinates out of bounds. Must be between 0 and 6');
+  
+  // Check if coordinates are integers
+  if (!Number.isInteger(x) || !Number.isInteger(y)) {
+    throw new Error('Coordinates must be whole numbers');
+  }
+  
+  // Check for reasonable bounds to prevent abuse
+  if (Math.abs(x) > MAX_COORDINATE || Math.abs(y) > MAX_COORDINATE) {
+    throw new Error(`Coordinates must be between -${MAX_COORDINATE} and ${MAX_COORDINATE}`);
   }
 };
 
