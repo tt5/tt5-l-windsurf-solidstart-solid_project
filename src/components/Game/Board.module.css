@@ -177,13 +177,12 @@
 
 .square.selected {
   background-color: #e3f2fd;
-  border-color: #2196F3;
+  border-color: #1265a8;
 }
 
 /* Base Point Styles */
 .square.basePoint {
   background-color: #e8f5e9;
-  border-color: #4CAF50;
 }
 
 .square.basePoint:hover {
@@ -196,6 +195,12 @@
   background-color: #4CAF50;
   border-radius: 50%;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.square.selected.basePoint {
+  background-color: #b2dfdb;
+  border-color: #00897b;
+  box-shadow: 0 0 0 2px #00897b;
 }
 
 .playerPosition {

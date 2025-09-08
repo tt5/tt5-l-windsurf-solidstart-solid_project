@@ -134,7 +134,8 @@ const Board: Component = () => {
           console.log('Setting base points:', basePoints);
           setBasePoints(basePoints);
 
-          basePoints.forEach(p => {
+          basePoints.forEach(pB => {
+        const p = {x: pB.x + currentPosition()[0], y: pB.y + currentPosition()[1]}
         if (p.x - currentPosition()[0] < 7 && p.y - currentPosition()[1] < 7) {
           
 
@@ -194,6 +195,7 @@ const Board: Component = () => {
 
   // Effect to trigger base points fetch
   createEffect(() => {
+    user();
     fetchBasePoints().catch(console.error);
   });
   
@@ -454,7 +456,8 @@ const Board: Component = () => {
       if (responseData.success && responseData.data?.basePoint) {
         console.log('Successfully added base point:', responseData.data.basePoint);
 
-        const p: BasePoint = responseData.data.basePoint;
+        const pB: BasePoint = responseData.data.basePoint;
+        const p = {x: pB.x + currentPosition()[0], y: pB.y + currentPosition()[1]}
 
         setSelectedSquares([...new Set([
           ...selectedSquares(),

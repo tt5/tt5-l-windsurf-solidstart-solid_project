@@ -61,6 +61,7 @@ export async function POST({ request }: APIEvent) {
       const y = Math.floor(i / 7) - currentPosition[1];
       
       return uniqueBasePoints.flatMap(({ x: bx, y: by }) => {
+        if (bx === x && by === y) return [];
         const xdiff = Math.abs(x - bx);
         const ydiff = Math.abs(y - by);
         
