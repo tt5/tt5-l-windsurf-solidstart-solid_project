@@ -412,8 +412,17 @@ const Board: Component = () => {
 
     console.log(`--click, ${index}, ${gridX}, ${gridY}, ${worldX}, ${worldY} currentPosition: ${currentPosition()}`)
     
-    // Don't proceed if the click is on the player's position
+    // Don't proceed if the click is on the player's position or if a base point already exists
     if (worldX === 0 && worldY === 0) return;
+    
+    // Check if a base point already exists at these coordinates
+    const existingPoint = basePoints().find(
+      point => point.x === worldX && point.y === worldY
+    );
+    if (existingPoint) {
+      console.log('Base point already exists at these coordinates');
+      return;
+    }
     
     try {
       console.log('Sending request to /api/base-points with:', { x: worldX, y: worldY });
