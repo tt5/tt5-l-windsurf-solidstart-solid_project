@@ -74,6 +74,7 @@ const Board: Component = () => {
   const [isFetching, setIsFetching] = createSignal<boolean>(false);
   const [isMoving, setIsMoving] = createSignal<boolean>(false);
   const [isSaving, setIsSaving] = createSignal<boolean>(false);
+  const [selectedSquares, setSelectedSquares] = createSignal<SelectedSquares>([]);
   
   // Initialize loading state on mount
   onMount(() => {
@@ -132,30 +133,8 @@ const Board: Component = () => {
           console.log('Setting base points:', res);
           setBasePoints(res);
 
-          // Update selection of squares
           /*
-          updateSquares([...new Set(
-            [...selectedSquares(),
-              ...res.flatMap((p) => [
-              ...Array(BOARD_CONFIG.GRID_SIZE-p.x-1).fill(0).map((_, i) => p.x+i+1+p.y*BOARD_CONFIG.GRID_SIZE),
-              ...Array(p.x-1).fill(0).map((_, i) => p.x-i-1+res[1]*BOARD_CONFIG.GRID_SIZE),
-              ...Array(BOARD_CONFIG.GRID_SIZE-p.y-1).fill(0).map((_, i) => p.x+(p.y+i+1)*BOARD_CONFIG.GRID_SIZE),
-              ...Array(p.y-1).fill(0).map((_, i) => res[0]+(p.y-i-1)*BOARD_CONFIG.GRID_SIZE),
-              ])
-            ])]);
-         updateSquares([...new Set([
-            ...selectedSquares(),
-            ...res.flatMap((p)=>{
-              console.log(p, BOARD_CONFIG.GRID_SIZE)
-              return [
-              ...Array(BOARD_CONFIG.GRID_SIZE-p.x-1).fill(0).map((_, i) => p.x+i+1+p.y*BOARD_CONFIG.GRID_SIZE),
-              ...Array(p.x).fill(0).map((_, i) => i+p.y*BOARD_CONFIG.GRID_SIZE),
-              ...Array(BOARD_CONFIG.GRID_SIZE-p.y-1).fill(0).map((_, i) => p.x+(p.y+i+1)*BOARD_CONFIG.GRID_SIZE),
-              ...Array(p.y).fill(0).map((_, i) => p.x+i*BOARD_CONFIG.GRID_SIZE),
-            ]})
-         ])])
-          */
-         updateSquares([...new Set([
+         setSelectedSquares([...new Set([
           ...selectedSquares(),
           ...res.flatMap((p) => {
             console.log(p, BOARD_CONFIG.GRID_SIZE);
@@ -186,6 +165,7 @@ const Board: Component = () => {
             ];
           })
         ])]);
+        */
 
 
 
@@ -198,9 +178,7 @@ const Board: Component = () => {
 
       } catch (error) {
         console.error('Failed to fetch base points:', error);
-        if (selectedSquares().length === 0) {
-          updateSquares([24]); // Fallback to center square
-        }
+        // Allow empty selection state
       } finally {
         setIsLoading(false);
         setIsFetching(false);
@@ -266,21 +244,21 @@ const Board: Component = () => {
     };
   });
 
-  // Local state for selected squares
-  const [selectedSquares, setSelectedSquares] = createSignal<SelectedSquares>([]);
+  
+  // Log selected squares changes
+  createEffect(() => {
+    console.log('Selected squares changed:', selectedSquares());
+  });
   
   // Reset selected squares when user changes
+  /*
   createEffect(() => {
     if (currentUser) {
       setSelectedSquares([]);
     }
   });
+  */
   
-  // Update squares function
-  const updateSquares = (squares: SelectedSquares) => {
-    setSelectedSquares([...squares]);
-  };
-
   // Enhanced return type for better error handling
   type SaveResult = {
     success: boolean;
@@ -359,7 +337,8 @@ const Board: Component = () => {
       
       const responseData = await response.json();
       console.log('Response data:', responseData);
-         updateSquares([...new Set([
+          /*
+         setSelectedSquares([...new Set([
           ...selectedSquares(),
           ...[responseData].flatMap((p) => {
             console.log(p, BOARD_CONFIG.GRID_SIZE);
@@ -390,6 +369,7 @@ const Board: Component = () => {
             ];
           })
         ])]);
+        */
 
 
 
@@ -511,7 +491,7 @@ const Board: Component = () => {
   const [borderData] = createResource<BorderCalculationResponse, void>(async () => {
     
     // Fallback squares (center of the board)
-    const fallbackSquares = [24]; // Center of 7x7 grid (3,3)
+    const fallbackSquares: number[] = [-1]; // Center of 7x7 grid (3,3)
     
     try {
       const requestData = {
@@ -520,8 +500,7 @@ const Board: Component = () => {
         direction: 'right' // Default direction for initial selection
       };
       
-      // First try to update with fallback squares
-      updateSquares(fallbackSquares);
+      setSelectedSquares(fallbackSquares);
       
       const response = await fetch('/api/calculate-squares', {
         method: 'POST',
@@ -551,8 +530,7 @@ const Board: Component = () => {
       
     } catch (error) {
       console.error('Board - Error calculating border:', error);
-      console.warn('Board - Using fallback squares due to error');
-      return { squares: fallbackSquares };
+      throw new Error('Failed to calculate border: ' + (error instanceof Error ? error.message : String(error)));
     }
   });
 
@@ -572,11 +550,9 @@ const Board: Component = () => {
     
     switch (currentState) {
       case 'ready':
-        if (data?.squares) {
-          // Only update if we don't have any squares yet
-          if (currentSquares.length === 0) {
-            updateSquares(data.squares);
-          } 
+        // Only update if this is the initial load and we don't have any squares
+        if (data?.squares && currentSquares.length === 0 && borderData.loading) {
+          setSelectedSquares(data.squares);
         }
         // Clear loading states
         if (isLoading() || isFetching()) {
@@ -586,11 +562,8 @@ const Board: Component = () => {
         break;
         
       case 'errored':
-        console.warn('Board - Border data error, using fallback');
-        // Ensure we have some squares to display
-        if (currentSquares.length === 0) {
-          updateSquares([24]); // Fallback to center square
-        }
+        console.warn('Board - Border data error');
+        // Allow empty selection state
         // Clear loading states
         setIsLoading(false);
         setIsFetching(false);
@@ -648,7 +621,8 @@ const Board: Component = () => {
       setCurrentPosition(newPosition);
       
       const newIndices = coordsToIndices(newSquares);
-      updateSquares(newIndices);
+      console.log("--- newIndices", newIndices);
+      setSelectedSquares(newIndices);
       return newIndices;
       
     } catch (error) {
