@@ -26,3 +26,8 @@ setInterval(async () => {
   }
 }, 30000);
 ```
+
+npm run dev
+refload
+logout
+/game
