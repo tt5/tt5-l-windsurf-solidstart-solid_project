@@ -29,10 +29,10 @@ const createUserId = (): string => {
 };
 
 const createAuthStore = (): AuthStore => {
-  const [user, setUser] = createSignal<User>(null);
+  const [user, setUser] = createSignal<User | null>(null);
   const [isInitialized, setIsInitialized] = createSignal(false);
   
-  const updateUser = (userData: User) => {
+  const updateUser = (userData: User | null) => {
     setUser(userData);
     userData ? localStorage.setItem('user', JSON.stringify(userData)) : localStorage.removeItem('user');
   };
@@ -106,7 +106,7 @@ const createAuthStore = (): AuthStore => {
   };
 
 // Function to verify the current session
-  const verifySession = async (savedUser: User) => {
+  const verifySession = async (savedUser: NullableUser) => {
     try {
       
       // Skip verification in development to prevent hanging
