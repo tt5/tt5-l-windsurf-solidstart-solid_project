@@ -112,7 +112,7 @@ const Board: Component = () => {
     const hasData = basePoints().length > 0;
     
     // Skip if we already have recent data or a request is in progress
-    if (isFetching() || currentFetch || isMoving() || (timeSinceLastFetch < 5000 && hasData)) {
+    if (isFetching() || currentFetch || isMoving() || (timeSinceLastFetch < 100 && hasData)) {
       return;
     }
 
@@ -138,7 +138,45 @@ const Board: Component = () => {
         const newBasePoints = data?.basePoints || [];
 
         if (Array.isArray(newBasePoints)) {
+          console.log("newBasePoints", JSON.stringify(newBasePoints))
           setBasePoints(newBasePoints);
+          basePoints().forEach(pB => {
+            const p = {x: pB.x + currentPosition()[0], y: pB.y + currentPosition()[1]}
+              console.log(`before p: ${p.x}, ${p.y}`)
+            if (p.x < 7 &&  p.x >= 0 && p.y < 7 && p.y >= 0) {
+              console.log(`p: ${p.x}, ${p.y}`)
+              
+            // TODO: res.flatMap(e => [p.x, p.y])
+            //  only coordinates that fall into the initial grid
+            // [0,0] x [6,6]
+              setSelectedSquares([...new Set([
+              ...selectedSquares(),
+                  // Existing horizontal and vertical lines
+                  ...Array(BOARD_CONFIG.GRID_SIZE - p.x - 1).fill(0).map((_, i) => p.x + i + 1 + p.y * BOARD_CONFIG.GRID_SIZE), // Right
+                  ...Array(p.x).fill(0).map((_, i) => i + p.y * BOARD_CONFIG.GRID_SIZE), // Left
+                  ...Array(BOARD_CONFIG.GRID_SIZE - p.y - 1).fill(0).map((_, i) => p.x + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE), // Down
+                  ...Array(p.y).fill(0).map((_, i) => p.x + i * BOARD_CONFIG.GRID_SIZE), // Up
+                  
+                  // New diagonal lines
+                  // Top-right diagonal
+                  ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, p.y)).fill(0).map((_, i) => 
+                    (p.x + i + 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+                  ),
+                  // Top-left diagonal
+                  ...Array(Math.min(p.x, p.y)).fill(0).map((_, i) => 
+                    (p.x - i - 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+                  ),
+                  // Bottom-right diagonal
+                  ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
+                    (p.x + i + 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+                  ),
+                  // Bottom-left diagonal
+                  ...Array(Math.min(p.x, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
+                    (p.x - i - 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+                  )
+            ])]);
+          }
+            })
           setLastFetchTime(now);
         }
       } catch (error) {
@@ -215,11 +253,6 @@ const Board: Component = () => {
     };
   });
 
-  
-  // Log selected squares changes
-  createEffect(() => {
-    console.log('Selected squares changed:', selectedSquares());
-  });
   
   // Reset selected squares when user changes
   createEffect(() => {
@@ -424,7 +457,6 @@ const Board: Component = () => {
 
         const pB: BasePoint = responseData.data.basePoint;
         const p = {x: pB.x + currentPosition()[0], y: pB.y + currentPosition()[1]}
-/*
         setSelectedSquares([...new Set([
           ...selectedSquares(),
               // Existing horizontal and vertical lines
@@ -451,7 +483,7 @@ const Board: Component = () => {
                 (p.x - i - 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
               )
         ])]);
-*/
+
         setBasePoints(prev => [...prev, responseData.data.basePoint]);
       } else {
         console.error('Unexpected response format:', responseData);
@@ -598,7 +630,6 @@ const Board: Component = () => {
       setCurrentPosition(newPosition);
       
       const newIndices = coordsToIndices(newSquares);
-      console.log("--- newIndices", newIndices);
       setSelectedSquares(newIndices);
       return newIndices;
       
