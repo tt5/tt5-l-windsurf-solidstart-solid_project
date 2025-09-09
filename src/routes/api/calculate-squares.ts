@@ -1,6 +1,7 @@
 import { getDb } from '~/lib/server/db';
 import { BasePointRepository } from '~/lib/server/repositories/base-point.repository';
 import { withAuth } from '~/middleware/auth';
+import { createErrorResponse, generateRequestId } from '~/utils/api';
 
 type CalculateSquaresRequest = {
   borderIndices: number[];
@@ -16,6 +17,8 @@ const directionMap = {
 } as const;
 
 export const POST = withAuth(async ({ request, user }) => {
+  const requestId = generateRequestId();
+  
   try {
     const { borderIndices, currentPosition, direction } = await request.json() as CalculateSquaresRequest;
     
@@ -71,15 +74,8 @@ export const POST = withAuth(async ({ request, user }) => {
       status: 200
     });
   } catch (error) {
-    console.error('Error in calculate-squares:', error);
-    
-    return new Response(JSON.stringify({ 
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' } 
-    });
+    console.error(`[${requestId}] Error in calculate-squares:`, error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return createErrorResponse('Failed to calculate squares', 500, errorMessage, { requestId });
   }
 });
