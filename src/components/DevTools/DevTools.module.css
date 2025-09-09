@@ -1,54 +1,87 @@
+@import '../../styles/variables.css';
+
 .devToolsContainer {
   position: fixed;
-  bottom: 10px;
-  right: 10px;
-  z-index: 9999;
-  font-family: monospace;
-  font-size: 12px;
+  bottom: var(--spacing-md);
+  right: var(--spacing-md);
+  z-index: var(--z-index-dev-tools);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  transition: var(--transition-default);
 }
 
 .devToolsPanel {
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  padding: 10px;
-  border-radius: 4px;
-  margin-bottom: 10px;
-  max-width: 300px;
+  background: var(--color-background-devtools);
+  color: var(--color-text-inverse);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-sm);
+  margin-bottom: var(--spacing-sm);
+  max-width: 320px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border-dark);
 }
 
 .userInfo {
-  margin-bottom: 8px;
+  margin: 0 0 var(--spacing-sm) 0;
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid var(--color-border-light);
+  color: var(--color-text-muted);
+}
+
+.userInfo strong {
+  color: var(--color-text-inverse);
+  font-weight: 500;
 }
 
 .buttonGroup {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
 }
 
 .button {
   border: none;
-  padding: 4px 8px;
-  border-radius: 3px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
   flex: 1;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  transition: var(--transition-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xxs);
+}
+
+.button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
 .logoutButton {
   composes: button;
-  background: #ff4444;
-  color: white;
+  background: var(--color-error);
+  color: var(--color-text-inverse);
+}
+
+.logoutButton:hover {
+  background: var(--color-error-dark);
 }
 
 .resetButton {
   composes: button;
-  background: #ff9800;
-  color: white;
+  background: var(--color-warning);
+  color: var(--color-text-inverse);
+}
+
+.resetButton:hover {
+  background: var(--color-warning-dark);
 }
 
 .toggleButton {
-  background: #4CAF50;
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
   border: none;
   border-radius: 50%;
   width: 40px;
@@ -57,5 +90,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-default);
+  margin-left: auto;
+}
+
+.toggleButton:hover {
+  background: var(--color-primary-dark);
+  transform: scale(1.05);
+}
+
+.toggleButton:active {
+  transform: scale(0.95);
 }

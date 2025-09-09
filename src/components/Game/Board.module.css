@@ -1,202 +1,164 @@
-/* Loading container */
+@import '../../styles/variables.css';
+
+/* Layout */
+.board {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+}
+
+/* Loading States */
 .loadingContainer {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 300px;
-  gap: 1rem;
+  gap: var(--spacing-md);
 }
 
-/* Loading message */
 .loadingMessage {
-  margin-top: 1rem;
+  margin-top: var(--spacing-md);
   font-size: 0.9rem;
-  color: #666;
+  color: var(--color-text-light);
 }
 
-/* Loading spinner */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
+@keyframes spin { to { transform: rotate(360deg); } }
 .loadingSpinner {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
-  border-radius: 50%;
   width: 40px;
   height: 40px;
+  border: 4px solid var(--color-bg);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
   animation: spin 1s linear infinite;
 }
 
-.board {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.userBar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 10px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
-}
-
-.userBarActions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.logoutButton {
-  padding: 5px 10px;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.logoutButton:hover {
-  background-color: #d32f2f;
-}
-
-.controls {
-  margin-top: 10px;
-}
-
-.button {
-  padding: 8px 16px;
-  cursor: pointer;
-  border: none;
-  border-radius: 4px;
-  margin-right: 10px;
-}
-
-.directionButton {
-  composes: button;
-  min-width: 80px;
-  text-align: center;
-  background-color: #2196F3;
-  color: white;
-  font-weight: bold;
-  transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s;
-  grid-column: span 1;
-}
-
-.directionButton:hover {
-  background-color: #1976D2;
-}
-
-.directionButton:active,
-.directionButton.active {
-  background-color: #0D47A1;
-  transform: scale(0.95);
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3) inset;
-}
-
-.directionButton:focus-visible {
-  outline: 3px solid #64B5F6;
-  outline-offset: 2px;
-}
-
-.directionGroup {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 4px;
-  margin-top: 10px;
-}
-
-.directionButton:first-child,
-.directionButton:last-child {
-  grid-column: 1 / -1;
-}
-
+/* Game Elements */
 .grid {
+  --grid-cell-size: 45px;
   display: grid;
-  grid-template-columns: repeat(7, 45px);
-  grid-template-rows: repeat(7, 45px);
-  gap: 4px;
+  grid-template-columns: repeat(7, var(--grid-cell-size));
+  grid-template-rows: repeat(7, var(--grid-cell-size));
+  gap: var(--spacing-xs);
   width: fit-content;
-  margin: 20px auto;
-  background-color: #f0f0f0;
-  padding: 10px;
-  border-radius: 8px;
+  margin: var(--spacing-lg) auto;
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border-radius: var(--border-radius-md);
 }
 
 .square {
   aspect-ratio: 1;
-  background-color: white;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
-  border-radius: 4px;
-  transition: 
-    background-color 0.2s ease,
-    transform 0.1s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-  border: 1px solid #e0e0e0;
-  position: relative;
-  padding: 0;
+  transition: all var(--transition-normal);
   will-change: transform, box-shadow;
 }
 
-.square:hover {
-  background-color: #f5f5f5;
-}
-
-.square:active {
-  transform: scale(0.98);
-}
-
-.square.selected {
+.square:hover { background-color: color-mix(in srgb, var(--color-bg) 50%, white); }
+.square:active { transform: scale(0.98); }
+.square.selected { 
   background-color: #e3f2fd;
   border-color: #1265a8;
 }
 
-/* Base Point Styles */
-.square.basePoint {
-  background-color: #e8f5e9;
-}
-
-.square.basePoint:hover {
-  background-color: #c8e6c9;
-}
-
-.basePointMarker {
-  width: 70%;
-  height: 70%;
-  background-color: #4CAF50;
-  border-radius: 50%;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-}
-
+/* Base Points */
+.square.basePoint { background-color: #e8f5e9; }
+.square.basePoint:hover { background-color: #c8e6c9; }
 .square.selected.basePoint {
   background-color: #b2dfdb;
   border-color: #00897b;
   box-shadow: 0 0 0 2px #00897b;
 }
 
+.basePointMarker {
+  width: 70%;
+  height: 70%;
+  background: var(--color-success);
+  border-radius: 50%;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Player Position */
 .playerPosition {
   position: relative;
-  background-color: #3498db !important;
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #3498db;
+  background: var(--color-primary) !important;
+  box-shadow: 0 0 0 2px white, 0 0 0 4px var(--color-primary);
 }
 
 .playerPosition::after {
   content: 'P';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  display: grid;
+  place-content: center;
   color: white;
   font-weight: bold;
   font-size: 1.2em;
+}
+
+/* Controls */
+.userBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border-radius: var(--border-radius-sm);
+}
+
+.userBarActions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.button {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: none;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-normal);
+}
+
+.logoutButton {
+  composes: button;
+  background: var(--color-error);
+  color: white;
+}
+
+.logoutButton:hover { background: var(--color-error-dark); }
+
+.directionGroup {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-md);
+}
+
+.directionButton {
+  composes: button;
+  min-width: 80px;
+  background: var(--color-primary);
+  color: white;
+  font-weight: bold;
+  transition: all var(--transition-normal);
+}
+
+.directionButton:hover { background: var(--color-primary-dark); }
+.directionButton:active { transform: scale(0.95); }
+.directionButton:focus-visible {
+  outline: 3px solid #64B5F6;
+  outline-offset: 2px;
+}
+
+.directionButton:first-child,
+.directionButton:last-child {
+  grid-column: 1 / -1;
 }
