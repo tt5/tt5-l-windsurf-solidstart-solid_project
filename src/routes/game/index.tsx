@@ -2,21 +2,11 @@ import { Title } from "@solidjs/meta";
 import { createEffect, Show } from 'solid-js';
 import { useAuth } from '~/contexts/auth';
 import Board from '~/components/Game/Board';
-import { logger } from '~/utils/logger';
 import styles from './game.module.css';
 
 export default function GamePage() {
   const { user, isInitialized } = useAuth();
   
-  createEffect(() => {
-    const currentUser = user();
-    logger.debug('game', 'Auth state updated', {
-      isInitialized: isInitialized(),
-      hasUser: !!currentUser,
-      userId: currentUser?.id
-    });
-  });
-
   return (
     <div class={styles.container}>
       <Title>Game</Title>

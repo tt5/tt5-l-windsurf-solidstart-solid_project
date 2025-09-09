@@ -1,108 +1,99 @@
-// Border indices for the 7x7 grid
-const BORDERS = {
-  TOP: [0, 1, 2, 3, 4, 5, 6],
-  BOTTOM: [42, 43, 44, 45, 46, 47, 48],
-  LEFT: [0, 7, 14, 21, 28, 35, 42],
-  RIGHT: [6, 13, 20, 27, 34, 41, 48]
-} as const;
-
+/**
+ * Represents a direction of movement on the game board
+ */
 type Direction = 'up' | 'down' | 'left' | 'right';
 
-const getBorderIndices = (direction: Direction): number[] => {
-  switch (direction) {
-    case 'up': return BORDERS.BOTTOM;
-    case 'down': return BORDERS.TOP;
-    case 'left': return BORDERS.RIGHT;
-    case 'right': return BORDERS.LEFT;
+/**
+ * Represents a coordinate point [x, y] on the game board
+ */
+type Point = [number, number];
+
+/**
+ * Size of the game grid (7x7)
+ */
+const GRID_SIZE = 7 as const;
+
+/**
+ * Generates border indices for a specific edge of the grid
+ * @param edge Which edge to generate indices for
+ * @returns Array of indices for the specified edge
+ */
+const getBorderIndices = (edge: 'top' | 'bottom' | 'left' | 'right'): readonly number[] => {
+  const last = GRID_SIZE - 1;
+  
+  switch (edge) {
+    case 'top':    return Array.from({ length: GRID_SIZE }, (_, i) => i);
+    case 'bottom': return Array.from({ length: GRID_SIZE }, (_, i) => last * GRID_SIZE + i);
+    case 'left':   return Array.from({ length: GRID_SIZE }, (_, i) => i * GRID_SIZE);
+    case 'right':  return Array.from({ length: GRID_SIZE }, (_, i) => i * GRID_SIZE + last);
   }
 };
 
-const movePosition = ([x, y]: [number, number], direction: Direction): [number, number] => {
-  switch (direction) {
-    case 'up': return [x, y - 1];
-    case 'down': return [x, y + 1];
-    case 'left': return [x - 1, y];
-    case 'right': return [x + 1, y];
+/**
+ * Contains movement and border information for a direction
+ */
+interface DirectionVectors {
+  /**
+   * The delta [dx, dy] to move in this direction
+   */
+  delta: Point;
+  
+  /**
+   * Indices of the border squares for this direction
+   */
+  borderIndices: readonly number[];
+}
+
+/**
+ * Maps each direction to its movement and border information
+ */
+const DIRECTION_MAP: Record<Direction, DirectionVectors> = {
+  up: {
+    delta: [0, -1],
+    borderIndices: getBorderIndices('bottom')
+  },
+  down: {
+    delta: [0, 1],
+    borderIndices: getBorderIndices('top')
+  },
+  left: {
+    delta: [-1, 0],
+    borderIndices: getBorderIndices('right')
+  },
+  right: {
+    delta: [1, 0],
+    borderIndices: getBorderIndices('left')
   }
 };
 
-const isVisible = (index: number, direction: Direction): boolean => {
-  // Always allow movement, even if it would take the square off the board
-  // The square will be filtered out in the next frame if it's off the board
-  return true;
+/**
+ * Moves a point in the specified direction
+ */
+/**
+ * Calculates the new position after moving in the specified direction
+ * @param position Current position [x, y]
+ * @param direction Direction to move
+ * @returns New position after movement
+ */
+const movePosition = ([x, y]: Point, direction: Direction): Point => {
+  const [dx, dy] = DIRECTION_MAP[direction].delta;
+  return [x + dx, y + dy];
 };
 
-const moveIndex = (index: number, direction: Direction): number => {
-  switch (direction) {
-    case 'up': return index - 7;
-    case 'down': return index + 7;
-    case 'left': return index - 1;
-    case 'right': return index + 1;
-  }
-};
-
-export const moveSquares = async (
-  currentSquares: [number, number][],
+/**
+ * Moves all squares in the specified direction and returns their new positions
+ * @param currentSquares Array of current square positions
+ * @param direction Direction to move the squares
+ * @param currentPosition Current position (unused in this simplified version)
+ * @returns Array of new square positions after movement
+ */
+export const moveSquares = (
+  currentSquares: readonly Point[],
   direction: Direction,
-  currentPosition: [number, number]
-): Promise<[number, number][]> => {
+  currentPosition: Point
+): Point[] => {
   // Move all existing squares and filter out those that move off-grid
-  const movedSquares = currentSquares
+  return currentSquares
     .map(square => movePosition(square, direction))
-    .filter(([x, y]) => x >= 0 && x < 7 && y >= 0 && y < 7);
-
-  // Calculate border indices for the incoming edge only
-  let borderIndices: number[] = [];
-  const gridSize = 7;
-  
-  switch (direction) {
-    case 'up':    // Bottom edge
-      borderIndices = Array.from({length: gridSize}, (_, i) => (gridSize - 1) * gridSize + i);
-      break;
-    case 'down':  // Top edge
-      borderIndices = Array.from({length: gridSize}, (_, i) => i);
-      break;
-    case 'left':  // Right edge
-      borderIndices = Array.from({length: gridSize}, (_, i) => (i * gridSize) + (gridSize - 1));
-      break;
-    case 'right': // Left edge
-      borderIndices = Array.from({length: gridSize}, (_, i) => i * gridSize);
-      break;
-  }
-
-  // Get new squares from the server
-  const response = await fetch('/api/calculate-squares', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ borderIndices, currentPosition, direction })
-  });
-
-  const responseData = await response.json();
-  
-  if (!response.ok || !responseData.success) {
-    throw new Error(
-      `Failed to calculate new squares: ${response.status} ${response.statusText}\n` +
-      (responseData.error ? `Error: ${responseData.error}` : 'Unknown error')
-    );
-  }
-
-  const newSquares = responseData.data?.squares;
-  
-  if (!Array.isArray(newSquares)) {
-    throw new Error('Invalid response format: expected array of squares');
-  }
-
-  // Convert indices to coordinates and filter out existing squares
-  const newSquaresSet = new Set(movedSquares.map(([x, y]) => `${x},${y}`));
-  const newUniqueSquares = newSquares
-    .map(index => {
-      if (typeof index !== 'number' || index < 0 || index >= gridSize * gridSize) {
-        throw new Error(`Invalid square index: ${index}`);
-      }
-      return [index % 7, Math.floor(index / 7)] as [number, number];
-    })
-    .filter(([x, y]) => !newSquaresSet.has(`${x},${y}`));
-  
-  return [...movedSquares, ...newUniqueSquares];
+    .filter(([x, y]) => x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE);
 };
