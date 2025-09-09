@@ -1,5 +1,6 @@
 import { createHandler, StartServer } from "@solidjs/start/server";
 import { runDatabaseMigrations } from './lib/server/migrate';
+import { getDb } from './lib/server/db';
 
 // Run migrations before starting the server
 const startServer = async () => {
@@ -13,6 +14,32 @@ const startServer = async () => {
 };
 
 startServer();
+
+/*
+// Schedule line cleanup every 30 seconds
+setInterval(async () => {
+  try {
+    const db = getDb();
+    await db.execute(`
+      DELETE FROM base_points
+      WHERE id NOT IN (
+        SELECT MIN(id)
+        FROM base_points
+        GROUP BY x, y
+      )
+      AND (
+        x = y OR
+        x IN (SELECT x FROM base_points GROUP BY x HAVING COUNT(*) > 1) OR
+        y IN (SELECT y FROM base_points GROUP BY y HAVING COUNT(*) > 1)
+      )
+      AND NOT (x = 0 AND y = 0) -- Always keep [0,0] base point
+    `);
+    console.log('Scheduled line cleanup completed');
+  } catch (error) {
+    console.error('Error in scheduled line cleanup:', error);
+  }
+}, 30000);
+*/
 
 export default createHandler(() => (
   <StartServer
