@@ -104,7 +104,7 @@ const Board: Component = () => {
     const hasData = basePoints().length > 0;
     
     // Skip if we already have recent data or a request is in progress
-    if (isFetching() || currentFetch || isMoving() || (timeSinceLastFetch < 30000 && hasData)) {
+    if (isFetching() || currentFetch || isMoving() || (timeSinceLastFetch < 5000 && hasData)) {
       return;
     }
 
