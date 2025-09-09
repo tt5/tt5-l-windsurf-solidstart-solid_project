@@ -15,10 +15,9 @@
     "db:check": "tsx scripts/check-db.ts",
     "db:verify": "tsx scripts/check-db.ts verify",
     "db:validate": "tsx scripts/validate-migrations.ts",
-    "test": "tsx scripts/test-runner.ts",
-    "test:unit": "tsx scripts/test-runner.ts --unit",
-    "test:integration": "tsx scripts/test-runner.ts --integration",
-    "test:e2e": "tsx scripts/test-runner.ts --e2e",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest watch",
     "db": "echo 'Use specific db commands: db:migrate, db:check, db:verify'"
   },
   "dependencies": {
@@ -37,7 +36,10 @@
     "node": ">=22"
   },
   "devDependencies": {
+    "@solidjs/testing-library": "^0.8.4",
+    "jsdom": "^23.0.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^1.2.2"
   }
 }
