@@ -18,7 +18,9 @@ export async function requireAuth(event: APIEvent): Promise<AuthResponse> {
 export function withAuth(handler: (event: APIEvent & { user: TokenPayload }) => Promise<Response>) {
   return async (event: APIEvent): Promise<Response> => {
     const auth = await requireAuth(event);
-    if ('error' in auth) return auth;
-    return handler({ ...event, user: auth.user });
+    if ('user' in auth) {
+      return handler({ ...event, user: auth.user });
+    }
+    return auth; // This is already a Response
   };
 }

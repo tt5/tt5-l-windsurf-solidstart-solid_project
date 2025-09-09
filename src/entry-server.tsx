@@ -1,6 +1,7 @@
 import { createHandler, StartServer } from "@solidjs/start/server";
 import { runDatabaseMigrations } from '~/lib/server/migrate';
 import { getDb } from '~/lib/server/db';
+import { MetaProvider } from '@solidjs/meta';
 
 // Run migrations before starting the server
 const initServer = async () => {
@@ -35,28 +36,24 @@ const initServer = async () => {
 // Initialize the server
 initServer();
 
-export default createHandler(() => (
-  <StartServer
-    document={({ assets, children, scripts }) => (
-      <html lang="en">
-        <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <link rel="icon" href="/favicon.ico" />
-          {assets}
-        </head>
-        <body>
-          <div id="app">{children}</div>
-          {scripts}
-        </body>
-      </html>
-    )}
-  >
-    {({ manifest, assets, nonce, scripts }) => (
-      <>
-        {assets}
-        {scripts}
-      </>
-    )}
-  </StartServer>
-));
+// Root component that wraps the application
+export default createHandler(({ request, manifest }) => {
+  return (
+    <StartServer
+      document={({ assets, children, scripts }) => (
+        <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <link rel="icon" href="/favicon.ico" />
+            {assets}
+          </head>
+          <body>
+            <div id="app">{children}</div>
+            {scripts}
+          </body>
+        </html>
+      )}
+    />
+  );
+});

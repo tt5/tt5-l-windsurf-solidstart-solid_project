@@ -10,9 +10,9 @@ import { useAuth } from '../../contexts/auth';
 import type { 
   Direction, 
   Point, 
-  BasePoint, 
-  ApiResponse 
+  BasePoint 
 } from '../../types/board';
+import type { ApiResponse } from '../../utils/api';
 
 // Local state for selected squares
 type SelectedSquares = number[];

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 export interface TokenPayload {
   userId: string;
   username: string;
+  role?: 'admin' | 'user';
 }
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -11,13 +12,21 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is not defined in environment variables');
 }
 
+// After the check, we know JWT_SECRET is a string
+const secret: string = JWT_SECRET;
+
 export function generateToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign(payload, secret, { expiresIn: '7d' });
 }
 
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const decoded = jwt.verify(token, secret);
+    // Ensure the decoded token matches our TokenPayload
+    if (typeof decoded === 'object' && decoded !== null && 'userId' in decoded && 'username' in decoded) {
+      return decoded as TokenPayload;
+    }
+    return null;
   } catch (error) {
     console.error('Token verification failed:', error);
     return null;

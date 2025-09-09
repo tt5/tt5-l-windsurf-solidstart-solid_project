@@ -1,4 +1,4 @@
-import { User } from '~/contexts/auth';
+import { User } from '~/types/user';
 
 type DevUserConfig = {
   username: string;
