@@ -1,4 +1,4 @@
-import { APIEvent } from '@solidjs/start/server';
+import type { APIEvent } from '@solidjs/start/server';
 import { getDb } from '~/lib/server/db';
 import { randomBytes } from 'crypto';
 

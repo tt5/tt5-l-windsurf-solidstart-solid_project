@@ -1,4 +1,4 @@
-import { APIEvent } from "@solidjs/start/server";
+import type { APIEvent } from "@solidjs/start/server";
 import { jsonResponse } from '~/lib/server/utils';
 import { serialize } from 'cookie';
 

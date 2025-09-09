@@ -1,4 +1,4 @@
-import { APIEvent } from '@solidjs/start/server';
+import type { APIEvent } from '@solidjs/start/server';
 import type { ApiResponse } from '~/types/board';
 
 type ApiResponseOptions = {

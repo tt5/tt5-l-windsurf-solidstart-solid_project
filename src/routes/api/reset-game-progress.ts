@@ -1,4 +1,4 @@
-import { APIEvent } from '@solidjs/start/server';
+import type { APIEvent } from '@solidjs/start/server';
 import { getBasePointRepository } from '~/lib/server/db';
 import { withAuth } from '~/middleware/auth';
 import { createApiResponse, createErrorResponse, generateRequestId } from '~/utils/api';

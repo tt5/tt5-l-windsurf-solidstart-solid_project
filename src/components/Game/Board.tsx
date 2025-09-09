@@ -1,14 +1,21 @@
-import { Component, createEffect, createSignal, createResource, onMount } from 'solid-js';
+import { 
+  Component, 
+  createEffect, 
+  createSignal, 
+  createResource, 
+  onMount 
+} from 'solid-js';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
-// Local state for selected squares
-type SelectedSquares = number[];
 import type { 
   Direction, 
   Point, 
   BasePoint, 
   ApiResponse 
 } from '../../types/board';
+
+// Local state for selected squares
+type SelectedSquares = number[];
 import styles from './Board.module.css';
 
 // Types for board configuration

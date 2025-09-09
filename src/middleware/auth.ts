@@ -1,6 +1,7 @@
-import { APIEvent } from '@solidjs/start/server';
+import type { APIEvent } from '@solidjs/start/server';
 import { jsonResponse } from '~/lib/server/utils';
-import { getAuthUser, TokenPayload } from '~/lib/server/auth/jwt';
+import type { TokenPayload } from '~/lib/server/auth/jwt';
+import { getAuthUser } from '~/lib/server/auth/jwt';
 
 type AuthResponse = 
   | { user: TokenPayload }

@@ -1,4 +1,4 @@
-import { APIEvent } from '@solidjs/start/server';
+import type { APIEvent } from '@solidjs/start/server';
 import { getDb, getBasePointRepository } from '~/lib/server/db';
 import { generateToken } from '~/lib/server/auth/jwt';
 import { serialize } from 'cookie';
