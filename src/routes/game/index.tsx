@@ -2,6 +2,7 @@ import { Title } from "@solidjs/meta";
 import { createEffect, Show } from 'solid-js';
 import { useAuth } from '~/contexts/auth';
 import Board from '~/components/Game/Board';
+import { logger } from '~/utils/logger';
 import styles from './game.module.css';
 
 export default function GamePage() {
@@ -9,10 +10,10 @@ export default function GamePage() {
   
   createEffect(() => {
     const currentUser = user();
-    console.log('GamePage - Auth state:', {
+    logger.debug('game', 'Auth state updated', {
       isInitialized: isInitialized(),
       hasUser: !!currentUser,
-      user: currentUser
+      userId: currentUser?.id
     });
   });
 
