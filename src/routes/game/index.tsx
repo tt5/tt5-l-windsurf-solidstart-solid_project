@@ -3,6 +3,7 @@ import { createEffect } from 'solid-js';
 import { useAuth } from '~/contexts/auth';
 import { Show } from 'solid-js';
 import Board from '~/components/Game/Board';
+import styles from './game.module.css';
 
 export default function GamePage() {
   const { user, isInitialized } = useAuth();
@@ -17,50 +18,34 @@ export default function GamePage() {
   });
 
   return (
-    <div style={{ padding: '20px' }}>
+    <div class={styles.container}>
       <Title>Game</Title>
       
       <Show when={isInitialized()} fallback={
-        <div>
-          <h1>Loading Game...</h1>
-          <div>Initializing authentication...</div>
-        </div>
+          <div class={styles.loadingContainer}>
+            <h1>Loading Game...</h1>
+            <div>Initializing authentication...</div>
+          </div>
       }>
         <Show when={user()} fallback={
-          <div>
+          <div class={styles.loginContainer}>
             <h1>Not Logged In</h1>
             <p>Please log in to access the game.</p>
           </div>
         }>
-          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <div style={{ marginBottom: '20px' }}>
+          <div class={styles.gameContainer}>
+            <div class={styles.header}>
               <h1>Game Page</h1>
               <div>Welcome, {user()!.username}!</div>
               <div>User ID: {user()!.id}</div>
             </div>
             
-            <div style={{
-              border: '2px solid #333',
-              borderRadius: '8px',
-              padding: '20px',
-              backgroundColor: '#f9f9f9'
-            }}>
+            <div class={styles.gameBoard}>
               <Board />
             </div>
             
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button 
-                onClick={() => window.location.reload()}
-                style={{
-                  padding: '10px 20px',
-                  fontSize: '16px',
-                  cursor: 'pointer',
-                  backgroundColor: '#4CAF50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px'
-                }}
-              >
+            <div class={styles.refreshButton}>
+              <button onClick={() => window.location.reload()}>
                 Refresh Game
               </button>
             </div>

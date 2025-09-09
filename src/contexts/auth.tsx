@@ -1,5 +1,6 @@
 import { createContext, createEffect, createSignal, useContext, type ParentComponent } from 'solid-js';
 import { setupDevUser } from '~/lib/utils/devUser';
+import { getEnvVar } from '~/lib/utils/env';
 
 type User = { id: string; username: string } | null;
 
@@ -42,6 +43,14 @@ const createAuthStore = (): AuthStore => {
     if (typeof window === 'undefined') {
       return;
     }
+
+    // Set DISABLE_DEV_USER in localStorage if it's in the environment
+    const disableDevUser = import.meta.env.VITE_DISABLE_DEV_USER === 'true' || 
+                         process.env.DISABLE_DEV_USER === 'true';
+    
+    if (disableDevUser) {
+      localStorage.setItem('DISABLE_DEV_USER', 'true');
+    }
     
     const isDev = typeof import.meta.env.DEV !== 'undefined' ? import.meta.env.DEV : process.env.NODE_ENV !== 'production';
     
@@ -75,8 +84,8 @@ const createAuthStore = (): AuthStore => {
     // If we get here, either there's no saved user or there was an error
     setIsInitialized(true);
     
-    // In development, try to auto-login if no user is set
-    if (isDev && !process.env.DISABLE_DEV_USER) {
+    // In development, try to auto-login if no user is set and dev user is not disabled
+    if (isDev && !disableDevUser && !savedUser) {
       initializeDevUser().catch(error => {
         console.error('Failed to initialize dev user:', error);
         setIsInitialized(true);
@@ -118,14 +127,18 @@ const createAuthStore = (): AuthStore => {
         body: JSON.stringify({ username, password })
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || 'Login failed');
+        throw new Error(data?.error || 'Login failed');
       }
 
-      const { user: userData } = await response.json();
-      updateUser(userData);
-      return userData;
+      if (!data.user) {
+        throw new Error('Invalid server response: missing user data');
+      }
+      
+      updateUser(data.user);
+      return data.user;
     } catch (error) {
       console.error('Login error:', error);
       throw error;

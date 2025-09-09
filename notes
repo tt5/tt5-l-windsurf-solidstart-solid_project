@@ -1,0 +1,2 @@
+VITE_DISABLE_DEV_USER=true npm run dev
+curl -X POST http://localhost:3000/api/cleanup-lines

@@ -24,26 +24,8 @@ export default function LoginForm() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Important for cookies
-        body: JSON.stringify({
-          username: username(),
-          password: password(),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-
-      // Update auth context with the logged in user
-      auth.login(username());
+      // Use the auth context's login function which handles the API call
+      await auth.login(username(), password());
       
       // Redirect to game page after successful login
       navigate('/game', { replace: true });
