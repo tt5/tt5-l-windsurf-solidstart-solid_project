@@ -5,7 +5,7 @@
  * It handles request/response formatting, error handling, and content-type headers.
  */
 
-import type { ApiResponse } from '~/types/board';
+import type { ApiResponse } from './api';
 
 /**
  * Makes an API request to the server

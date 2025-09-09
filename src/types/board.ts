@@ -18,21 +18,6 @@ export interface Item {
   userId: string;
 }
 
-// API Response types
-export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  timestamp: number;
-}
-
-export interface PaginatedResponse<T> extends ApiResponse<T[]> {
-  page: number;
-  pageSize: number;
-  total: number;
-  hasMore: boolean;
-}
-
 // Game state types
 export interface GameState {
   position: Point;
@@ -41,7 +26,3 @@ export interface GameState {
   basePoints: BasePoint[];
   gridSize: number;
 }
-
-// Utility types
-export type Nullable<T> = T | null;
-export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;

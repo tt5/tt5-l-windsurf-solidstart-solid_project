@@ -1,7 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { getDb } from '~/lib/server/db';
 import { BasePointRepository } from '~/lib/server/repositories/base-point.repository';
-import { getAuthUser } from '~/lib/server/auth/jwt';
 
 type CalculateSquaresRequest = {
   borderIndices: number[];
@@ -18,20 +17,6 @@ const directionMap = {
 
 export async function POST({ request }: APIEvent) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'Authentication required' 
-        }), 
-        { 
-          status: 401, 
-          headers: { 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
     const { borderIndices, currentPosition, direction } = await request.json() as CalculateSquaresRequest;
     
     // Get database connection and initialize repository

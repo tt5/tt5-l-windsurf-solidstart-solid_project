@@ -5,8 +5,44 @@
  * status codes, and headers. It's designed to be used in server-side API routes.
  */
 
-import type { APIEvent } from '@solidjs/start/server';
-import type { ApiResponse } from '~/types/board';
+/**
+ * Standard API response format
+ * @template T - Type of the data payload
+ */
+export interface ApiResponse<T = unknown> {
+  /** Whether the request was successful */
+  success: boolean;
+  
+  /** Response data (present when success is true) */
+  data?: T;
+  
+  /** Error message (present when success is false) */
+  error?: string;
+  
+  /** Timestamp of when the response was generated */
+  timestamp: number;
+  
+  /** Optional request ID for tracing */
+  requestId?: string;
+}
+
+/**
+ * Paginated API response
+ * @template T - Type of items in the data array
+ */
+export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+  /** Current page number (1-based) */
+  page: number;
+  
+  /** Number of items per page */
+  pageSize: number;
+  
+  /** Total number of items across all pages */
+  total: number;
+  
+  /** Whether there are more items available */
+  hasMore: boolean;
+}
 
 /**
  * Options for creating an API response

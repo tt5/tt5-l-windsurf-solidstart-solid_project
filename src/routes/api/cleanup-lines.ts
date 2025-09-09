@@ -1,7 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { getDb } from '~/lib/server/db';
 
-export async function POST({ request }: APIEvent) {
+export async function POST() {
     try {
       const db = await getDb();
       
@@ -48,9 +48,10 @@ AND NOT (p1.x = 0 AND p1.y = 0);
       });
     } catch (error) {
       console.error('Error in line cleanup:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       return new Response(JSON.stringify({
         success: false,
-        error: error.message
+        error: errorMessage
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }

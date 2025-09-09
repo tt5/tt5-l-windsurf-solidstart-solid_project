@@ -1,8 +1,6 @@
-import type { APIEvent } from '@solidjs/start/server';
 import { getBasePointRepository } from '~/lib/server/db';
 import { withAuth } from '~/middleware/auth';
-import { createApiResponse, createErrorResponse, generateRequestId } from '~/utils/api';
-import type { ApiResponse } from '~/types/board';
+import { createApiResponse, createErrorResponse, generateRequestId, type ApiResponse } from '~/utils/api';
 
 type BasePointResponse = ApiResponse<{
   id: number;
