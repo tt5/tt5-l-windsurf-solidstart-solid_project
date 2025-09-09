@@ -682,11 +682,10 @@ const Board: Component = () => {
     <div class={styles.board}>
       <div class={styles.userBar}>
         <span>Welcome, {user()?.username || 'User'}!</span>
-        <div style={{ 'display': 'flex', 'gap': '1rem', 'margin-top': '1rem' }}>
+        <div class={styles.userBarActions}>
           <button 
             onClick={logout} 
-            class={styles.button}
-            style={{ 'background-color': '#6c757d' }}
+            class={`${styles.button} ${styles.logoutButton}`}
           >
             Logout
           </button>

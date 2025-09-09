@@ -46,6 +46,12 @@
   border-radius: 4px;
 }
 
+.userBarActions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
 .logoutButton {
   padding: 5px 10px;
   background-color: #f44336;
@@ -60,20 +66,6 @@
   background-color: #d32f2f;
 }
 
-.history {
-  margin-bottom: 20px;
-}
-
-.historyList {
-  list-style: none;
-  padding: 0;
-}
-
-.historyItem {
-  margin: 5px 0;
-  font-family: monospace;
-}
-
 .controls {
   margin-top: 10px;
 }
@@ -86,24 +78,15 @@
   margin-right: 10px;
 }
 
-.randomButton {
-  composes: button;
-  background-color: #4CAF50;
-  color: white;
-}
-
-.clearButton {
-  composes: button;
-  background-color: #f44336;
-  color: white;
-}
-
 .directionButton {
   composes: button;
+  min-width: 80px;
+  text-align: center;
   background-color: #2196F3;
   color: white;
   font-weight: bold;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s;
+  grid-column: span 1;
 }
 
 .directionButton:hover {
@@ -117,7 +100,6 @@
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.3) inset;
 }
 
-/* Add focus styles for better accessibility */
 .directionButton:focus-visible {
   outline: 3px solid #64B5F6;
   outline-offset: 2px;
@@ -128,12 +110,6 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 4px;
   margin-top: 10px;
-}
-
-.directionButton {
-  min-width: 80px;
-  text-align: center;
-  grid-column: span 1;
 }
 
 .directionButton:first-child,
@@ -161,10 +137,15 @@
   justify-content: center;
   cursor: pointer;
   border-radius: 4px;
-  transition: all 0.2s ease;
+  transition: 
+    background-color 0.2s ease,
+    transform 0.1s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   border: 1px solid #e0e0e0;
   position: relative;
   padding: 0;
+  will-change: transform, box-shadow;
 }
 
 .square:hover {
