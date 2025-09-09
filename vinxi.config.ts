@@ -1,5 +1,4 @@
-import { defineConfig } from "vinxi/config";
-import solid from "vite-plugin-solid";
+import { defineConfig } from "@solidjs/start/config";
 
 // Load environment variables
 const env = {
@@ -13,54 +12,41 @@ export default defineConfig({
     port: 3000,
     open: true,
   },
-  plugins: [
-    solid({
-      ssr: true,
-    }),
-    {
-      name: 'vite-plugin-env',
-      config() {
-        return {
-          define: {
-            'import.meta.env.NODE_ENV': JSON.stringify(env.NODE_ENV),
-            'import.meta.env.DEV': env.DEV,
-            'import.meta.env.PROD': env.PROD
-          }
-        };
+  vite: {
+    define: {
+      'import.meta.env.NODE_ENV': JSON.stringify(env.NODE_ENV),
+      'import.meta.env.DEV': env.DEV,
+      'import.meta.env.PROD': env.PROD
+    },
+    resolve: {
+      alias: {
+        '~': '/src',
+        './db': './src/lib/server/db',
+        'sqlite3': 'unenv/runtime/node/empty',
+        'fs': 'unenv/runtime/node/empty',
+        'path': 'unenv/runtime/node/empty',
+        'util': 'unenv/runtime/node/empty',
+        'stream': 'unenv/runtime/node/empty',
+        'crypto': 'unenv/runtime/node/empty'
       }
     },
-  ],
-  ssr: {
-    noExternal: true,
-  },
-  resolve: {
-    alias: {
-      '~': '/src',
-      './db': './src/lib/server/db',
-      'sqlite3': 'unenv/runtime/node/empty',
-      'fs': 'unenv/runtime/node/empty',
-      'path': 'unenv/runtime/node/empty',
-      'util': 'unenv/runtime/node/empty',
-      'stream': 'unenv/runtime/node/empty',
-      'crypto': 'unenv/runtime/node/empty'
-    }
-  },
-  optimizeDeps: {
-    include: ['solid-js', '@solidjs/start/server'],
-    exclude: ['fs', 'path', 'sqlite3', 'stream', 'crypto']
-  },
-  build: {
-    rollupOptions: {
-      external: ['fs', 'path', 'sqlite3', 'stream', 'crypto'],
-      onwarn(warning, warn) {
-        if (warning.code === 'SOURCEMAP_ERROR' && warning.id?.includes('node_modules/sqlite')) {
-          return;
+    optimizeDeps: {
+      include: ['solid-js', '@solidjs/start/server'],
+      exclude: ['fs', 'path', 'sqlite3', 'stream', 'crypto']
+    },
+    build: {
+      rollupOptions: {
+        external: ['fs', 'path', 'sqlite3', 'stream', 'crypto'],
+        onwarn(warning: any, warn: any) {
+          if (warning.code === 'SOURCEMAP_ERROR' && warning.id?.includes('node_modules/sqlite')) {
+            return;
+          }
+          if (warning.code === 'UNRESOLVED_IMPORT' && 
+              ['fs', 'path', 'sqlite3', 'stream', 'crypto'].some(mod => warning.message.includes(`'${mod}'`))) {
+            return;
+          }
+          warn(warning);
         }
-        if (warning.code === 'UNRESOLVED_IMPORT' && 
-            ['fs', 'path', 'sqlite3', 'stream', 'crypto'].some(mod => warning.message.includes(`'${mod}'`))) {
-          return;
-        }
-        warn(warning);
       }
     }
   }
