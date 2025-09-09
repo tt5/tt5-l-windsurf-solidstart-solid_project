@@ -1,6 +1,6 @@
 import { createHandler, StartServer } from "@solidjs/start/server";
-import { runDatabaseMigrations } from './lib/server/migrate';
-import { getDb } from './lib/server/db';
+import { runDatabaseMigrations } from '~/lib/server/migrate';
+import { getDb } from '~/lib/server/db';
 
 // Run migrations before starting the server
 const initServer = async () => {
@@ -17,7 +17,7 @@ const initServer = async () => {
           WHERE id NOT IN (
             SELECT MIN(id)
             FROM base_points
-            GROUP BY x, y, userId
+            GROUP BY x, y, user_id
           )
         `);
         console.log('Scheduled cleanup of duplicate base points completed');
