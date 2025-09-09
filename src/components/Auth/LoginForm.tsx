@@ -1,5 +1,5 @@
 import { createSignal } from 'solid-js';
-import { A, useNavigate, useLocation } from '@solidjs/router';
+import { A, useNavigate } from '@solidjs/router';
 import { useAuth } from '~/contexts/auth';
 
 interface LocationState {

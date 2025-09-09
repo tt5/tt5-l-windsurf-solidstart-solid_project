@@ -1,5 +1,4 @@
-import { Component, createEffect, createSignal, onMount, createResource } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
+import { Component, createEffect, createSignal, createResource, onMount } from 'solid-js';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
 // Local state for selected squares
@@ -59,7 +58,6 @@ const BOARD_CONFIG: BoardConfig = {
 interface AddBasePointResponse extends ApiResponse<BasePoint> {}
 
 const Board: Component = () => {
-  const navigate = useNavigate();
   const [board, setBoard] = createSignal<BoardConfig>(BOARD_CONFIG);
   
   // Hooks
