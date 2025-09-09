@@ -80,11 +80,19 @@ const Board: Component = () => {
   onMount(() => {
     setIsLoading(true);
     setBasePoints([]);
+    fetchBasePoints();
     
     // Cleanup function
     return () => {
       setIsLoading(false);
     };
+  });
+  
+  // Refetch base points when position changes
+  createEffect(() => {
+    // This will run whenever currentPosition changes
+    currentPosition();
+    fetchBasePoints();
   });
   
   // Track the current fetch promise to prevent duplicate requests
@@ -108,6 +116,7 @@ const Board: Component = () => {
       return;
     }
 
+    setIsFetching(true);
     if (!hasData) {
       setIsLoading(true);
     }
@@ -121,84 +130,38 @@ const Board: Component = () => {
           headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
         });
 
-        console.log('Response status:', response.status, response.statusText);
-
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        
         const { data } = await response.json();
-        const basePoints = data?.basePoints || [];
+        const newBasePoints = data?.basePoints || [];
 
-        if (Array.isArray(basePoints)) {
-          console.log('Setting base points:', basePoints);
-          setBasePoints(basePoints);
-
-          basePoints.forEach(pB => {
-        const p = {x: pB.x + currentPosition()[0], y: pB.y + currentPosition()[1]}
-        if (p.x - currentPosition()[0] < 7 && p.y - currentPosition()[1] < 7) {
-          
-
-        // TODO: res.flatMap(e => [p.x, p.y])
-        //  only coordinates that fall into the initial grid
-        // [0,0] x [6,6]
-
-        /*
-         setSelectedSquares([...new Set([
-          ...selectedSquares(),
-              // Existing horizontal and vertical lines
-              ...Array(BOARD_CONFIG.GRID_SIZE - p.x - 1).fill(0).map((_, i) => p.x + i + 1 + p.y * BOARD_CONFIG.GRID_SIZE), // Right
-              ...Array(p.x).fill(0).map((_, i) => i + p.y * BOARD_CONFIG.GRID_SIZE), // Left
-              ...Array(BOARD_CONFIG.GRID_SIZE - p.y - 1).fill(0).map((_, i) => p.x + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE), // Down
-              ...Array(p.y).fill(0).map((_, i) => p.x + i * BOARD_CONFIG.GRID_SIZE), // Up
-              
-              // New diagonal lines
-              // Top-right diagonal
-              ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, p.y)).fill(0).map((_, i) => 
-                (p.x + i + 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
-              ),
-              // Top-left diagonal
-              ...Array(Math.min(p.x, p.y)).fill(0).map((_, i) => 
-                (p.x - i - 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
-              ),
-              // Bottom-right diagonal
-              ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
-                (p.x + i + 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
-              ),
-              // Bottom-left diagonal
-              ...Array(Math.min(p.x, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
-                (p.x - i - 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
-              )
-        ])]);
-      */
-
-      }
-        })
-
+        if (Array.isArray(newBasePoints)) {
+          setBasePoints(newBasePoints);
           setLastFetchTime(now);
-          if (basePoints.length > 0) setIsLoading(false);
-        } else {
-          console.error('Invalid response format - expected basePoints array');
-          setBasePoints([]);
         }
-
       } catch (error) {
-        console.error('Failed to fetch base points:', error);
-        // Allow empty selection state
+        console.error('Error fetching base points:', error);
       } finally {
-        setIsLoading(false);
         setIsFetching(false);
+        setIsLoading(false);
         currentFetch = null;
       }
     })();
 
-    await currentFetch;
+    return currentFetch;
   };
 
-  // Effect to trigger base points fetch
+  // Effect to trigger base points fetch when user changes
   createEffect(() => {
     user();
+    fetchBasePoints().catch(console.error);
+  });
+
+  // Effect to refetch base points when position changes
+  createEffect(() => {
+    const [x, y] = currentPosition();
     fetchBasePoints().catch(console.error);
   });
   

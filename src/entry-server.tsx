@@ -19,8 +19,8 @@ startServer();
 // Schedule line cleanup every 30 seconds
 setInterval(async () => {
   try {
-    const db = getDb();
-    await db.execute(`
+    const db = await getDb();
+    await db.run(`
       DELETE FROM base_points
       WHERE id NOT IN (
         SELECT MIN(id)
