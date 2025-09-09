@@ -82,4 +82,4 @@ export const POST = withAuth(async ({ request, user }) => {
       headers: { 'Content-Type': 'application/json' } 
     });
   }
-}
+});
