@@ -144,6 +144,7 @@ const Board: Component = () => {
         //  only coordinates that fall into the initial grid
         // [0,0] x [6,6]
 
+        /*
          setSelectedSquares([...new Set([
           ...selectedSquares(),
               // Existing horizontal and vertical lines
@@ -170,6 +171,7 @@ const Board: Component = () => {
                 (p.x - i - 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
               )
         ])]);
+      */
 
       }
         })
@@ -459,7 +461,7 @@ const Board: Component = () => {
 
         const pB: BasePoint = responseData.data.basePoint;
         const p = {x: pB.x + currentPosition()[0], y: pB.y + currentPosition()[1]}
-
+/*
         setSelectedSquares([...new Set([
           ...selectedSquares(),
               // Existing horizontal and vertical lines
@@ -486,7 +488,7 @@ const Board: Component = () => {
                 (p.x - i - 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
               )
         ])]);
-
+*/
         setBasePoints(prev => [...prev, responseData.data.basePoint]);
       } else {
         console.error('Unexpected response format:', responseData);

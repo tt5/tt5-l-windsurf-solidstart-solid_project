@@ -8,24 +8,25 @@ export async function POST({ request }: APIEvent) {
       // First, identify points to delete
       const pointsToDelete = await db.all(`
         SELECT p1.id, p1.x, p1.y
-        FROM base_points p1
-        WHERE EXISTS (
-          -- Find other points that form a line with p1
-          SELECT 1 FROM base_points p2
-          WHERE p2.id != p1.id
-          AND (
-            -- Same x (vertical line)
-            p2.x = p1.x
-            -- OR same y (horizontal line)
-            OR p2.y = p1.y
-            -- OR same diagonal (x-y)
-            OR (p2.x - p2.y) = (p1.x - p1.y)
-          )
-          -- Keep the oldest point (lowest id)
-          AND p2.id < p1.id
-        )
-        -- Always keep [0,0]
-        AND NOT (p1.x = 0 AND p1.y = 0)
+FROM base_points p1
+WHERE EXISTS (
+  SELECT 1 FROM base_points p2
+  WHERE p2.id != p1.id
+  AND (
+    -- Same x (vertical line)
+    p2.x = p1.x
+    -- OR same y (horizontal line)
+    OR p2.y = p1.y
+    -- OR same diagonal (x-y)
+    OR (p2.x - p2.y) = (p1.x - p1.y)
+    -- OR same anti-diagonal (x+y)
+    OR (p2.x + p2.y) = (p1.x + p1.y)
+  )
+  -- Keep the oldest point (lowest id)
+  AND p2.id < p1.id
+)
+-- Always keep [0,0]
+AND NOT (p1.x = 0 AND p1.y = 0);
       `);
       
       // Delete the identified points
