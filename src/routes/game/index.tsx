@@ -43,12 +43,6 @@ export default function GamePage() {
             <div class={styles.gameBoard}>
               <Board />
             </div>
-            
-            <div class={styles.refreshButton}>
-              <button onClick={() => window.location.reload()}>
-                Refresh Game
-              </button>
-            </div>
           </div>
         </Show>
       </Show>

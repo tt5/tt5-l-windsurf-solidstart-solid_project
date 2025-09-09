@@ -1,18 +1,11 @@
 import { APIEvent } from '@solidjs/start/server';
+import type { ApiResponse } from '~/types/board';
 
 type ApiResponseOptions = {
   status?: number;
   headers?: Record<string, string>;
   requestId?: string;
   duration?: number;
-};
-
-type ApiResponse<T = any> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-  requestId?: string;
-  timestamp: number;
 };
 
 export function createApiResponse<T = any>(
@@ -48,13 +41,13 @@ export function createApiResponse<T = any>(
   });
 }
 
-export function createErrorResponse(
+export function createErrorResponse<T = any>(
   error: string,
   status: number = 500,
-  details?: any,
+  details?: T,
   options: Omit<ApiResponseOptions, 'status'> = {}
 ) {
-  const response: ApiResponse = {
+  const response: ApiResponse<T> = {
     success: false,
     error,
     timestamp: Date.now(),
@@ -74,6 +67,3 @@ export function createErrorResponse(
 export function generateRequestId() {
   return Math.random().toString(36).substring(2, 9);
 }
-
-// Helper type for API responses
-export type { ApiResponse };

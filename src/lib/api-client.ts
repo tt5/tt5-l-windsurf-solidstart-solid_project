@@ -1,9 +1,5 @@
 // Client-side API client that communicates with server endpoints
-
-interface ApiResponse<T> {
-  data?: T;
-  error?: string;
-}
+import type { ApiResponse } from '~/types/board';
 
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api/${endpoint}`, {
