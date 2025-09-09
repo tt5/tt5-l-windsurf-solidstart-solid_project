@@ -1,7 +1,6 @@
 import { Title } from "@solidjs/meta";
-import { createEffect } from 'solid-js';
+import { createEffect, Show } from 'solid-js';
 import { useAuth } from '~/contexts/auth';
-import { Show } from 'solid-js';
 import Board from '~/components/Game/Board';
 import styles from './game.module.css';
 
