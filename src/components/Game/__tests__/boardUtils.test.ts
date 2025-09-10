@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createPoint } from '../../types/board';
+import { createPoint } from '../../../types/board';
 
 // Mock the BOARD_CONFIG since it's used in the functions
 const GRID_SIZE = 7;
