@@ -1,11 +1,12 @@
 import { Title } from "@solidjs/meta";
-import { createEffect, Show } from 'solid-js';
+import { createEffect, Show, createSignal } from 'solid-js';
 import { useAuth } from '~/contexts/auth';
 import Board from '~/components/Game/Board';
 import styles from './game.module.css';
 
 export default function GamePage() {
   const { user, isInitialized } = useAuth();
+  const [activeTab, setActiveTab] = createSignal('info');
   
   return (
     <div class={styles.container}>
@@ -25,9 +26,37 @@ export default function GamePage() {
         }>
           <div class={styles.gameContainer}>
             <div class={styles.sidePanel}>
-              <h1>Game</h1>
-              <div>Welcome, {user()!.username}!</div>
-              <div>User ID: {user()!.id}</div>
+              <div class={styles.tabs}>
+                <button 
+                  class={`${styles.tab} ${styles.active}`}
+                  onClick={() => setActiveTab('info')}
+                >
+                  Info
+                </button>
+                <button 
+                  class={styles.tab}
+                  onClick={() => setActiveTab('settings')}
+                >
+                  Settings
+                </button>
+              </div>
+              
+              <div class={styles.tabContent}>
+                <Show when={activeTab() === 'info'}>
+                  <div class={styles.infoTab}>
+                    <h2>Player Info</h2>
+                    <div>Welcome, {user()!.username}!</div>
+                    <div>User ID: {user()!.id}</div>
+                  </div>
+                </Show>
+                
+                <Show when={activeTab() === 'settings'}>
+                  <div class={styles.settingsTab}>
+                    <h2>Game Settings</h2>
+                    <div>Settings content goes here</div>
+                  </div>
+                </Show>
+              </div>
             </div>
             
             <div class={styles.gameBoard}>

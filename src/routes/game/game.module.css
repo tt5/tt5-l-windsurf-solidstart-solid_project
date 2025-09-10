@@ -17,14 +17,44 @@
 
 .sidePanel {
   width: 250px;
-  padding: 1rem;
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid var(--color-border);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-.sidePanel h1 {
-  margin: 0 0 1rem 0;
-  font-size: 1.5rem;
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 0.5rem;
+}
+
+.tab {
+  flex: 1;
+  padding: 0.75rem 0.5rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--color-text-light);
+  transition: all 0.2s ease;
+}
+
+.tab:hover {
+  color: var(--color-text);
+}
+
+.tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 500;
+}
+
+.tabContent {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
 }
 
 .gameBoard {
