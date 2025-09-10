@@ -40,3 +40,5 @@ curl -b cookies.txt -X POST http://localhost:3000/api/cleanup-lines \
   -H "Content-Type: application/json"
 
 npx vitest watch src/test/example.test.ts
+
+learn more about the migration system (up, down, etc)

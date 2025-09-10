@@ -1,7 +1,8 @@
 import { getDb } from '~/lib/server/db';
 import { withAuth } from '~/middleware/auth';
 import { createErrorResponse } from '~/utils/api';
-import { getRandomSlopes, getSlopeConditions } from '~/utils/randomSlopes';
+import { getRandomSlopes } from '~/utils/randomSlopes';
+import { getPointsInLines, deletePoints } from '~/utils/sqlQueries';
 
 export const POST = withAuth(async ({ user }) => {
   // Check if user is admin
@@ -15,37 +16,11 @@ export const POST = withAuth(async ({ user }) => {
     // Get random slopes (2-4 random primes, including 1 for basic diagonals)
     const slopes = getRandomSlopes(2 + Math.floor(Math.random() * 3));
     
-    // Generate slope conditions for SQL query
-    const slopeConditions = getSlopeConditions(slopes);
+    // Get and delete points in lines
+    const pointsToDelete = await getPointsInLines(db, slopes);
     
-    // First, identify points to delete
-    const pointsToDelete = await db.all(`
-      SELECT p1.id, p1.x, p1.y
-      FROM base_points p1
-      WHERE EXISTS (
-        SELECT 1 FROM base_points p2
-        WHERE p2.id != p1.id
-        AND (
-          -- Same x (vertical line)
-          p2.x = p1.x
-          -- OR same y (horizontal line)
-          OR p2.y = p1.y
-          -- OR matching one of the random slopes
-          OR (${slopeConditions})
-        )
-        -- Keep the oldest point (lowest id)
-        AND p2.id < p1.id
-      )
-      -- Always keep [0,0]
-      AND NOT (p1.x = 0 AND p1.y = 0);
-    `);
-    
-    // Delete the identified points
     if (pointsToDelete.length > 0) {
-      await db.run(`
-        DELETE FROM base_points
-        WHERE id IN (${pointsToDelete.map(p => p.id).join(',')})
-      `);
+      await deletePoints(db, pointsToDelete);
     }
     
     return new Response(JSON.stringify({
