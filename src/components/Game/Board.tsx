@@ -509,44 +509,16 @@ const Board: Component = () => {
     squares: number[];
   }
 
-  // Create a resource for the async border calculation with a fallback
+  // Hardcoded initial border calculation
   const [borderData] = createResource<BorderCalculationResponse, void>(async () => {
+    // Center row of the 7x7 grid (indices 21-27)
+    const initialSquares = [21, 22, 23, 24, 25, 26, 27];
     
-    // Fallback squares (center of the board)
-    const fallbackSquares: number[] = [-1]; // Center of 7x7 grid (3,3)
+    // Set the initial selected squares
+    setSelectedSquares(initialSquares);
     
-    try {
-      const requestData = {
-        borderIndices: Array(BOARD_CONFIG.GRID_SIZE).fill(0).map((_, i) => i),
-        currentPosition: currentPosition(),
-        direction: 'right' // Default direction for initial selection
-      };
-      
-      console.log("--set fallbackSquares")
-      setSelectedSquares(fallbackSquares);
-      
-      const response = await fetch('/api/calculate-squares', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(requestData)
-      });
-      
-      const responseData = await response.json();
-      
-      if (!response.ok || !responseData?.success) {
-        const errorMessage = responseData?.error || 'Unknown error';
-        console.error('Board - Error response from border API:', errorMessage);
-        throw new Error(`Failed to calculate border: ${response.status} - ${errorMessage}`);
-      }
-      
-      // If response doesn't have squares, use fallback
-      return responseData.data?.squares || fallbackSquares;
-      
-    } catch (error) {
-      console.error('Board - Error calculating border:', error);
-      throw new Error('Failed to calculate border: ' + (error instanceof Error ? error.message : String(error)));
-    }
+    // Return the squares in the expected format
+    return { squares: initialSquares };
   });
 
   // Track if we have a manual update in progress
@@ -594,12 +566,12 @@ const Board: Component = () => {
   });
   
   // Calculate movement deltas based on direction
-  const getMovementDeltas = (dir: Direction): [number, number] => {
+  const getMovementDeltas = (dir: Direction): Point => {
     switch (dir) {
-      case 'left': return [-1, 0];
-      case 'right': return [1, 0];
-      case 'up': return [0, -1];
-      case 'down': return [0, 1];
+      case 'left': return createPoint(-1, 0);
+      case 'right': return createPoint(1, 0);
+      case 'up': return createPoint(0, -1);
+      case 'down': return createPoint(0, 1);
     }
   };
 
