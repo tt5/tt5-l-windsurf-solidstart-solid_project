@@ -643,6 +643,7 @@ const Board: Component = () => {
       
       // Get the new indices from the moved squares
       const newIndices = pointsToIndices(newSquares);
+
       
       try {
         // Fetch new border indices from calculate-squares
@@ -659,23 +660,42 @@ const Board: Component = () => {
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.data?.squares && Array.isArray(result.data.squares)) {
-            // Combine newIndices with the border indices from the API
-            const combinedIndices = [...new Set([...newIndices, ...result.data.squares])];
-            console.log("Combined indices:", { newIndices, borderSquares: result.data.squares, combinedIndices });
+            // Combine newIndices with the border indices from the API, excluding any base points
+            const allIndices = [...new Set([...newIndices, ...result.data.squares])];
+            const [offsetX, offsetY] = currentPosition();
+            
+            // Filter out indices that are base points
+            const combinedIndices = allIndices.filter(index => {
+              const x = index % BOARD_CONFIG.GRID_SIZE;
+              const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
+              const worldX = x - offsetX;
+              const worldY = y - offsetY;
+              return !isBasePoint(worldX, worldY);
+            });
+            
+            console.log("Combined indices (base points excluded):", { 
+              newIndices, 
+              borderSquares: result.data.squares, 
+              combinedIndices 
+            });
+            
             setSelectedSquares(combinedIndices);
           } else {
-            // Fallback to just newIndices if API response is invalid
-            console.warn("Invalid API response format, using newIndices only", { result, newIndices });
-            setSelectedSquares(newIndices);
+            // Fail hard if API response is invalid
+            const error = new Error(`Invalid API response format: ${JSON.stringify(result)}`);
+            console.error(error);
+            throw error;
           }
         } else {
-          // Fallback to just newIndices if API call fails
-          setSelectedSquares(newIndices);
+          // Fail hard if API call fails
+          const error = new Error(`API call failed with status: ${response.status} ${response.statusText}`);
+          console.error(error);
+          throw error;
         }
       } catch (error) {
         console.error('Error fetching border squares:', error);
-        // Fallback to just newIndices if there's an error
-        setSelectedSquares(newIndices);
+        // Rethrow the error to be handled by the outer catch block
+        throw new Error(`Failed to fetch border squares: ${error.message}`, { cause: error });
       }
       
     } catch (error) {
