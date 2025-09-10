@@ -27,6 +27,14 @@ export const POST = withAuth(async ({ user }) => {
           OR (p2.x - p2.y) = (p1.x - p1.y)
           -- OR same anti-diagonal (x+y)
           OR (p2.x + p2.y) = (p1.x + p1.y)
+          -- Slope 2:1 (dx * 2 = dy)
+          OR (p2.x - p1.x) * 2 = (p2.y - p1.y)
+          -- Slope 1:2 (dx = dy * 2)
+          OR (p2.x - p1.x) = (p2.y - p1.y) * 2
+          -- Slope 3:1 (dx * 3 = dy)
+          OR (p2.x - p1.x) * 3 = (p2.y - p1.y)
+          -- Slope 1:3 (dx = dy * 3)
+          OR (p2.x - p1.x) = (p2.y - p1.y) * 3
         )
         -- Keep the oldest point (lowest id)
         AND p2.id < p1.id

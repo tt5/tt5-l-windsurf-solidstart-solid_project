@@ -159,24 +159,86 @@ const Board: Component = () => {
                   ...Array(BOARD_CONFIG.GRID_SIZE - p.y - 1).fill(0).map((_, i) => p.x + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE), // Down
                   ...Array(p.y).fill(0).map((_, i) => p.x + i * BOARD_CONFIG.GRID_SIZE), // Up
                   
-                  // New diagonal lines
-                  // Top-right diagonal
+                  // Diagonal lines (slope 1 and -1)
                   ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, p.y)).fill(0).map((_, i) => 
                     (p.x + i + 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
-                  ),
-                  // Top-left diagonal
+                  ), // Top-right diagonal
                   ...Array(Math.min(p.x, p.y)).fill(0).map((_, i) => 
                     (p.x - i - 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
-                  ),
-                  // Bottom-right diagonal
+                  ), // Top-left diagonal
                   ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
                     (p.x + i + 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
-                  ),
-                  // Bottom-left diagonal
+                  ), // Bottom-right diagonal
                   ...Array(Math.min(p.x, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
                     (p.x - i - 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+                  ), // Bottom-left diagonal
+                  
+                  // Prime-numbered slopes
+                  // Slope 2:1 (up-right)
+                  ...Array(Math.min(
+                    Math.floor((BOARD_CONFIG.GRID_SIZE - p.x - 1) / 2),
+                    p.y
+                  )).fill(0).map((_, i) => 
+                    (p.x + (i + 1) * 2) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+                  ),
+                  
+                  // Slope 1:2 (up-right)
+                  ...Array(Math.min(
+                    BOARD_CONFIG.GRID_SIZE - p.x - 1,
+                    Math.floor(p.y / 2)
+                  )).fill(0).map((_, i) => 
+                    (p.x + i + 1) + (p.y - (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
+                  ),
+                  
+                  // Slope 3:1 (up-right)
+                  ...Array(Math.min(
+                    Math.floor((BOARD_CONFIG.GRID_SIZE - p.x - 1) / 3),
+                    p.y
+                  )).fill(0).map((_, i) => 
+                    (p.x + (i + 1) * 3) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+                  ),
+                  
+                  // Slope 1:3 (up-right)
+                  ...Array(Math.min(
+                    BOARD_CONFIG.GRID_SIZE - p.x - 1,
+                    Math.floor(p.y / 3)
+                  )).fill(0).map((_, i) => 
+                    (p.x + i + 1) + (p.y - (i + 1) * 3) * BOARD_CONFIG.GRID_SIZE
+                  ),
+                  
+                  // Add mirrored versions for other directions (left, down, etc.)
+                  // Slope 2:1 (down-right)
+                  ...Array(Math.min(
+                    Math.floor((BOARD_CONFIG.GRID_SIZE - p.x - 1) / 2),
+                    BOARD_CONFIG.GRID_SIZE - p.y - 1
+                  )).fill(0).map((_, i) => 
+                    (p.x + (i + 1) * 2) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+                  ),
+                  
+                  // Slope 1:2 (down-right)
+                  ...Array(Math.min(
+                    BOARD_CONFIG.GRID_SIZE - p.x - 1,
+                    Math.floor((BOARD_CONFIG.GRID_SIZE - p.y - 1) / 2)
+                  )).fill(0).map((_, i) => 
+                    (p.x + i + 1) + (p.y + (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
+                  ),
+                  
+                  // Slope 3:1 (down-right)
+                  ...Array(Math.min(
+                    Math.floor((BOARD_CONFIG.GRID_SIZE - p.x - 1) / 3),
+                    BOARD_CONFIG.GRID_SIZE - p.y - 1
+                  )).fill(0).map((_, i) => 
+                    (p.x + (i + 1) * 3) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+                  ),
+                  
+                  // Slope 1:3 (down-right)
+                  ...Array(Math.min(
+                    BOARD_CONFIG.GRID_SIZE - p.x - 1,
+                    Math.floor((BOARD_CONFIG.GRID_SIZE - p.y - 1) / 3)
+                  )).fill(0).map((_, i) => 
+                    (p.x + i + 1) + (p.y + (i + 1) * 3) * BOARD_CONFIG.GRID_SIZE
                   )
-            ])]);
+              ])]);
           }
             })
           setLastFetchTime(now);
@@ -467,24 +529,86 @@ const Board: Component = () => {
               ...Array(BOARD_CONFIG.GRID_SIZE - p.y - 1).fill(0).map((_, i) => p.x + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE), // Down
               ...Array(p.y).fill(0).map((_, i) => p.x + i * BOARD_CONFIG.GRID_SIZE), // Up
               
-              // New diagonal lines
-              // Top-right diagonal
+              // Diagonal lines (slope 1 and -1)
               ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, p.y)).fill(0).map((_, i) => 
                 (p.x + i + 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
-              ),
-              // Top-left diagonal
+              ), // Top-right diagonal
               ...Array(Math.min(p.x, p.y)).fill(0).map((_, i) => 
                 (p.x - i - 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
-              ),
-              // Bottom-right diagonal
+              ), // Top-left diagonal
               ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
                 (p.x + i + 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
-              ),
-              // Bottom-left diagonal
+              ), // Bottom-right diagonal
               ...Array(Math.min(p.x, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
                 (p.x - i - 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+              ), // Bottom-left diagonal
+              
+              // Prime-numbered slopes
+              // Slope 2:1 (up-right)
+              ...Array(Math.min(
+                Math.floor((BOARD_CONFIG.GRID_SIZE - p.x - 1) / 2),
+                p.y
+              )).fill(0).map((_, i) => 
+                (p.x + (i + 1) * 2) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+              ),
+              
+              // Slope 1:2 (up-right)
+              ...Array(Math.min(
+                BOARD_CONFIG.GRID_SIZE - p.x - 1,
+                Math.floor(p.y / 2)
+              )).fill(0).map((_, i) => 
+                (p.x + i + 1) + (p.y - (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
+              ),
+              
+              // Slope 3:1 (up-right)
+              ...Array(Math.min(
+                Math.floor((BOARD_CONFIG.GRID_SIZE - p.x - 1) / 3),
+                p.y
+              )).fill(0).map((_, i) => 
+                (p.x + (i + 1) * 3) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+              ),
+              
+              // Slope 1:3 (up-right)
+              ...Array(Math.min(
+                BOARD_CONFIG.GRID_SIZE - p.x - 1,
+                Math.floor(p.y / 3)
+              )).fill(0).map((_, i) => 
+                (p.x + i + 1) + (p.y - (i + 1) * 3) * BOARD_CONFIG.GRID_SIZE
+              ),
+              
+              // Add mirrored versions for other directions (left, down, etc.)
+              // Slope 2:1 (down-right)
+              ...Array(Math.min(
+                Math.floor((BOARD_CONFIG.GRID_SIZE - p.x - 1) / 2),
+                BOARD_CONFIG.GRID_SIZE - p.y - 1
+              )).fill(0).map((_, i) => 
+                (p.x + (i + 1) * 2) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+              ),
+              
+              // Slope 1:2 (down-right)
+              ...Array(Math.min(
+                BOARD_CONFIG.GRID_SIZE - p.x - 1,
+                Math.floor((BOARD_CONFIG.GRID_SIZE - p.y - 1) / 2)
+              )).fill(0).map((_, i) => 
+                (p.x + i + 1) + (p.y + (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
+              ),
+              
+              // Slope 3:1 (down-right)
+              ...Array(Math.min(
+                Math.floor((BOARD_CONFIG.GRID_SIZE - p.x - 1) / 3),
+                BOARD_CONFIG.GRID_SIZE - p.y - 1
+              )).fill(0).map((_, i) => 
+                (p.x + (i + 1) * 3) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+              ),
+              
+              // Slope 1:3 (down-right)
+              ...Array(Math.min(
+                BOARD_CONFIG.GRID_SIZE - p.x - 1,
+                Math.floor((BOARD_CONFIG.GRID_SIZE - p.y - 1) / 3)
+              )).fill(0).map((_, i) => 
+                (p.x + i + 1) + (p.y + (i + 1) * 3) * BOARD_CONFIG.GRID_SIZE
               )
-        ])]);
+          ])]);
 
         setBasePoints(prev => [...prev, responseData.data.basePoint]);
       } else {
