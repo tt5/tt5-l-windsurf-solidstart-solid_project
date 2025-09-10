@@ -5,14 +5,8 @@ export default function Login() {
   return (
     <>
       <Title>Login - Your App Name</Title>
-      <div>
-        <div>
-          <h1>Sign in to your account</h1>
-        </div>
-        <div>
-          <LoginForm />
-        </div>
-      </div>
+      <h1>Sign in to your account</h1>
+      <LoginForm />
     </>
   );
 }

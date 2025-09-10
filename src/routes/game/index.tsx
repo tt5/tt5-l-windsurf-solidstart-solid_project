@@ -24,8 +24,8 @@ export default function GamePage() {
           </div>
         }>
           <div class={styles.gameContainer}>
-            <div class={styles.header}>
-              <h1>Game Page</h1>
+            <div class={styles.sidePanel}>
+              <h1>Game</h1>
               <div>Welcome, {user()!.username}!</div>
               <div>User ID: {user()!.id}</div>
             </div>
