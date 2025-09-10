@@ -115,17 +115,13 @@ const Board: Component = () => {
 
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchTime();
-    const hasData = basePoints().length > 0;
     
     // Skip if we already have recent data or a request is in progress
-    if (isFetching() || currentFetch || isMoving() || (timeSinceLastFetch < 100 && hasData)) {
+    if (isFetching() || currentFetch || isMoving() || (timeSinceLastFetch < 100)) {
       return;
     }
 
     setIsFetching(true);
-    if (!hasData) {
-      setIsLoading(true);
-    }
 
     // Create a single fetch promise to prevent duplicates
     currentFetch = (async () => {
@@ -504,65 +500,18 @@ const Board: Component = () => {
     }
   };
 
-  // Type for the border calculation response
-  interface BorderCalculationResponse {
-    squares: number[];
-  }
-
-  // Hardcoded initial border calculation
-  const [borderData] = createResource<BorderCalculationResponse, void>(async () => {
-    // Center row of the 7x7 grid (indices 21-27)
-    const initialSquares = [21, 22, 23, 24, 25, 26, 27];
-    
-    // Set the initial selected squares
-    setSelectedSquares(initialSquares);
-    
-    // Return the squares in the expected format
-    return { squares: initialSquares };
-  });
+  // Initial border squares (center row of the 7x7 grid)
+  const INITIAL_SQUARES = [21, 22, 23, 24, 25, 26, 27];
 
   // Track if we have a manual update in progress
   const [isManualUpdate, setIsManualUpdate] = createSignal(false);
   
-  // Single effect to handle border data and loading states
-  createEffect(() => {
-    // Skip updates during manual operations
-    if (isManualUpdate()) {
-      return;
+  // Initialize squares on mount
+  onMount(() => {
+    if (selectedSquares().length === 0) {
+      setSelectedSquares(INITIAL_SQUARES);
     }
-    
-    const data = borderData();
-    const currentState = borderData.state;
-    const currentSquares = selectedSquares();
-    
-    switch (currentState) {
-      case 'ready':
-        // Only update if this is the initial load and we don't have any squares
-        if (data?.squares && currentSquares.length === 0 && borderData.loading) {
-          setSelectedSquares(data.squares);
-        }
-        // Clear loading states
-        if (isLoading() || isFetching()) {
-          setIsLoading(false);
-          setIsFetching(false);
-        }
-        break;
-        
-      case 'errored':
-        console.warn('Board - Border data error');
-        // Allow empty selection state
-        // Clear loading states
-        setIsLoading(false);
-        setIsFetching(false);
-        break;
-        
-      case 'pending':
-        // Only set loading if we don't have any squares yet
-        if (currentSquares.length === 0) {
-          setIsLoading(true);
-        }
-        break;
-    }
+    setIsLoading(false);
   });
   
   // Calculate movement deltas based on direction
@@ -712,35 +661,6 @@ const Board: Component = () => {
     }
   };
 
-
-  // Determine if we should show loading state
-  const showLoading = () => {
-    // If we're in a loading or fetching state and don't have any squares yet
-    if ((isLoading() || isFetching()) && selectedSquares().length === 0) {
-      return true;
-    }
-    
-    // If border data is still pending and we don't have any squares
-    if (borderData.state === 'pending' && selectedSquares().length === 0) {
-      return true;
-    }
-    
-    return false;
-  };
-  
-  // Show loading state if needed
-  if (showLoading()) {
-    return (
-      <div class={styles.loadingContainer}>
-        <div class={styles.loadingSpinner}></div>
-        <p>Loading game data...</p>
-        <div class={styles.loadingMessage}>
-          {!user() ? 'Waiting for user authentication...' : 'Fetching game data...'}
-        </div>
-      </div>
-    );
-  }
-  
   console.log('Rendering base points:', basePoints());
 
   return (
