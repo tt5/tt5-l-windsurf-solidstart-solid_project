@@ -658,12 +658,14 @@ const Board: Component = () => {
         
         if (response.ok) {
           const result = await response.json();
-          if (result.success && Array.isArray(result.data)) {
+          if (result.success && result.data?.squares && Array.isArray(result.data.squares)) {
             // Combine newIndices with the border indices from the API
-            const combinedIndices = [...new Set([...newIndices, ...result.data])];
+            const combinedIndices = [...new Set([...newIndices, ...result.data.squares])];
+            console.log("Combined indices:", { newIndices, borderSquares: result.data.squares, combinedIndices });
             setSelectedSquares(combinedIndices);
           } else {
             // Fallback to just newIndices if API response is invalid
+            console.warn("Invalid API response format, using newIndices only", { result, newIndices });
             setSelectedSquares(newIndices);
           }
         } else {
