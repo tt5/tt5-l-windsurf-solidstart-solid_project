@@ -1,15 +1,22 @@
 import { getDb } from '~/lib/server/db';
 import { withAuth } from '~/middleware/auth';
 import { createErrorResponse } from '~/utils/api';
+import { getRandomSlopes, getSlopeConditions } from '~/utils/randomSlopes';
 
 export const POST = withAuth(async ({ user }) => {
   // Check if user is admin
-  if (user.role !== 'admin'&& process.env.NODE_ENV !== 'development) {
+  if (user.role !== 'admin' && process.env.NODE_ENV !== 'development') {
     return createErrorResponse('Forbidden', 403, 'Admin access required');
   }
   
   try {
     const db = await getDb();
+    
+    // Get random slopes (2-4 random primes, including 1 for basic diagonals)
+    const slopes = getRandomSlopes(2 + Math.floor(Math.random() * 3));
+    
+    // Generate slope conditions for SQL query
+    const slopeConditions = getSlopeConditions(slopes);
     
     // First, identify points to delete
     const pointsToDelete = await db.all(`
@@ -23,18 +30,8 @@ export const POST = withAuth(async ({ user }) => {
           p2.x = p1.x
           -- OR same y (horizontal line)
           OR p2.y = p1.y
-          -- OR same diagonal (x-y)
-          OR (p2.x - p2.y) = (p1.x - p1.y)
-          -- OR same anti-diagonal (x+y)
-          OR (p2.x + p2.y) = (p1.x + p1.y)
-          -- Slope 2:1 (dx * 2 = dy)
-          OR (p2.x - p1.x) * 2 = (p2.y - p1.y)
-          -- Slope 1:2 (dx = dy * 2)
-          OR (p2.x - p1.x) = (p2.y - p1.y) * 2
-          -- Slope 3:1 (dx * 3 = dy)
-          OR (p2.x - p1.x) * 3 = (p2.y - p1.y)
-          -- Slope 1:3 (dx = dy * 3)
-          OR (p2.x - p1.x) = (p2.y - p1.y) * 3
+          -- OR matching one of the random slopes
+          OR (${slopeConditions})
         )
         -- Keep the oldest point (lowest id)
         AND p2.id < p1.id
@@ -55,7 +52,8 @@ export const POST = withAuth(async ({ user }) => {
       success: true,
       message: 'Line cleanup completed',
       deletedCount: pointsToDelete.length,
-      deletedPoints: pointsToDelete
+      deletedPoints: pointsToDelete,
+      slopesUsed: slopes // Include used slopes in response for debugging
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
