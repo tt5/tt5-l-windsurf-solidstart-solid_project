@@ -603,12 +603,78 @@ const Board: Component = () => {
       // Process square movement before updating position
       const squaresAsCoords = indicesToPoints([...selectedSquares()]);
       const newSquares = moveSquares(squaresAsCoords, dir, newPosition);
+
+      // Calculate the opposite border in the direction of movement
+      const borderSquares = [];
+      const gridSize = BOARD_CONFIG.GRID_SIZE;
       
-      // Only update position if moveSquares succeeds
+      // Get the row or column indices for the opposite border
+      switch(dir) {
+        case 'up':
+          // Bottom row (y = gridSize - 1)
+          for (let x = 0; x < gridSize; x++) {
+            borderSquares.push((gridSize - 1) * gridSize + x);
+          }
+          break;
+        case 'down':
+          // Top row (y = 0)
+          for (let x = 0; x < gridSize; x++) {
+            borderSquares.push(x);
+          }
+          break;
+        case 'left':
+          // Right column (x = gridSize - 1)
+          for (let y = 0; y < gridSize; y++) {
+            borderSquares.push(y * gridSize + (gridSize - 1));
+          }
+          break;
+        case 'right':
+          // Left column (x = 0)
+          for (let y = 0; y < gridSize; y++) {
+            borderSquares.push(y * gridSize);
+          }
+          break;
+      }
+
+
+      
+      // Update position
       setCurrentPosition(newPosition);
       
+      // Get the new indices from the moved squares
       const newIndices = pointsToIndices(newSquares);
-      setSelectedSquares(newIndices);
+      
+      try {
+        // Fetch new border indices from calculate-squares
+        const response = await fetch('/api/calculate-squares', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            borderIndices: borderSquares,
+            currentPosition: newPosition,
+            direction: dir
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && Array.isArray(result.data)) {
+            // Combine newIndices with the border indices from the API
+            const combinedIndices = [...new Set([...newIndices, ...result.data])];
+            setSelectedSquares(combinedIndices);
+          } else {
+            // Fallback to just newIndices if API response is invalid
+            setSelectedSquares(newIndices);
+          }
+        } else {
+          // Fallback to just newIndices if API call fails
+          setSelectedSquares(newIndices);
+        }
+      } catch (error) {
+        console.error('Error fetching border squares:', error);
+        // Fallback to just newIndices if there's an error
+        setSelectedSquares(newIndices);
+      }
       
     } catch (error) {
       console.error('Movement failed:', error);
