@@ -41,19 +41,19 @@ interface DirectionVectors {
  */
 const DIRECTION_MAP: Record<Direction, DirectionVectors> = {
   up: {
-    delta: [0, -1],
+    delta: createPoint(0, -1),
     borderIndices: getBorderIndices('bottom')
   },
   down: {
-    delta: [0, 1],
+    delta: createPoint(0, 1),
     borderIndices: getBorderIndices('top')
   },
   left: {
-    delta: [-1, 0],
+    delta: createPoint(-1, 0),
     borderIndices: getBorderIndices('right')
   },
   right: {
-    delta: [1, 0],
+    delta: createPoint(1, 0),
     borderIndices: getBorderIndices('left')
   }
 };

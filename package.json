@@ -15,7 +15,7 @@
     "db:check": "tsx scripts/check-db.ts",
     "db:verify": "tsx scripts/check-db.ts verify",
     "db:validate": "tsx scripts/validate-migrations.ts",
-    "test": "vitest",
+    "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",
     "db": "echo 'Use specific db commands: db:migrate, db:check, db:verify'"

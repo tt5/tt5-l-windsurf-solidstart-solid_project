@@ -73,7 +73,7 @@ const Board: Component = () => {
   
   // State with explicit types
   const currentUser = user();
-  const [currentPosition, setCurrentPosition] = createSignal<Point>([...BOARD_CONFIG.DEFAULT_POSITION]);
+  const [currentPosition, setCurrentPosition] = createSignal<Point>(createPoint(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]));
   const [basePoints, setBasePoints] = createSignal<BasePoint[]>([]);
   const [isLoading, setIsLoading] = createSignal<boolean>(true);
   const [lastFetchTime, setLastFetchTime] = createSignal<number>(0);
@@ -214,7 +214,7 @@ const Board: Component = () => {
   const gridIndices = (): number[] => Array.from({ length: gridSize() * gridSize() });
   const username = (): string => currentUser?.username || 'User';
   
-  const resetPosition = () => setCurrentPosition([...BOARD_CONFIG.DEFAULT_POSITION]);
+  const resetPosition = () => setCurrentPosition(BOARD_CONFIG.DEFAULT_POSITION);
   
   // Event handler types
   type KeyboardHandler = (e: KeyboardEvent) => void;
@@ -603,18 +603,18 @@ const Board: Component = () => {
     }
   };
 
-  // Convert square indices to coordinates
-  const indicesToCoords = (indices: number[]) => 
+  // Convert square indices to Point objects
+  const indicesToPoints = (indices: number[]) => 
     indices.map(index => createPoint(
       index % BOARD_CONFIG.GRID_SIZE,
       Math.floor(index / BOARD_CONFIG.GRID_SIZE)
     ));
 
-  // Convert coordinates back to indices
-  const coordsToIndices = (coords: [number, number][]) => 
+  // Convert Point coordinates back to grid indices
+  const pointsToIndices = (coords: Point[]) => 
     coords.map(([x, y]) => y * BOARD_CONFIG.GRID_SIZE + x);
 
-  const handleDirection = async (dir: Direction) => {
+  const handleDirection = async (dir: Direction): Promise<void> => {
     if (isMoving()) {
       return; // Prevent multiple movements at once
     }
@@ -629,15 +629,14 @@ const Board: Component = () => {
       const newPosition = createPoint(x + dx, y + dy);
       
       // Process square movement before updating position
-      const squaresAsCoords = indicesToCoords([...selectedSquares()]);
+      const squaresAsCoords = indicesToPoints([...selectedSquares()]);
       const newSquares = moveSquares(squaresAsCoords, dir, newPosition);
       
       // Only update position if moveSquares succeeds
       setCurrentPosition(newPosition);
       
-      const newIndices = coordsToIndices(newSquares);
+      const newIndices = pointsToIndices(newSquares);
       setSelectedSquares(newIndices);
-      return newIndices;
       
     } catch (error) {
       console.error('Movement failed:', error);

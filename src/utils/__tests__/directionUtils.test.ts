@@ -8,7 +8,7 @@ describe('moveSquares', () => {
     const direction: Direction = 'right';
     const currentPosition = createPoint(0, 0);
     
-    const result: Point[] = directionUtils.moveSquares(currentSquares, direction, currentPosition);
+    const result = directionUtils.moveSquares(currentSquares, direction, currentPosition);
     
     // Should move from [2,1] to [3,1] (x increases by 1 when moving right)
     expect(result).toHaveLength(1);
