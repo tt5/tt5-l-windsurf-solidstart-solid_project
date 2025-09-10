@@ -501,7 +501,16 @@ const Board: Component = () => {
   };
 
   // Initial border squares (center row of the 7x7 grid)
-  const INITIAL_SQUARES = [21, 22, 23, 24, 25, 26, 27];
+  const INITIAL_SQUARES = [
+    0,1,2,3,4,5,6,
+    7,8,
+    14,16,
+    21,24,
+    28,32,
+    35,40,
+    42,48,
+  ]
+
 
   // Track if we have a manual update in progress
   const [isManualUpdate, setIsManualUpdate] = createSignal(false);
