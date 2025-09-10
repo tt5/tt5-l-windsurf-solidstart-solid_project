@@ -644,7 +644,8 @@ const Board: Component = () => {
       } catch (error) {
         console.error('Error fetching border squares:', error);
         // Rethrow the error to be handled by the outer catch block
-        throw new Error(`Failed to fetch border squares: ${error.message}`, { cause: error });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        throw new Error(`Failed to fetch border squares: ${errorMessage}`, { cause: error });
       }
       
     } catch (error) {
@@ -665,18 +666,6 @@ const Board: Component = () => {
 
   return (
     <div class={styles.board}>
-      <div class={styles.userBar}>
-        <span>Welcome, {user()?.username || 'User'}!</span>
-        <div class={styles.userBarActions}>
-          <button 
-            onClick={logout} 
-            class={`${styles.button} ${styles.logoutButton}`}
-          >
-            Logout
-          </button>
-        </div>
-      </div>
-      
       <div class={styles.grid}>
         {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
           const x = index % BOARD_CONFIG.GRID_SIZE;
