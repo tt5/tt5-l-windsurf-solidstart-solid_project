@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as directionUtils from '../directionUtils';
-import type { Point } from '../directionUtils';
+import type { Point } from '~/types/board';
 
 describe('moveSquares', () => {
   it('moves a single square to the right', () => {
@@ -8,11 +8,12 @@ describe('moveSquares', () => {
     const direction = 'right' as const;
     const currentPosition: [number, number] = [0, 0];
     
-    const result = directionUtils.moveSquares(currentSquares, direction, currentPosition);
+    const result: Point[] = directionUtils.moveSquares(currentSquares, direction, currentPosition);
     
     // Should move from [2,1] to [3,1] (x increases by 1 when moving right)
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual([3, 1]);
+    // result is now explicitly typed as Point[]
   });
 
   it('moves a single square to the left', () => {
@@ -20,7 +21,7 @@ describe('moveSquares', () => {
     const direction = 'left' as const;
     const currentPosition: [number, number] = [0, 0];
     
-    const result = directionUtils.moveSquares(currentSquares, direction, currentPosition);
+    const result: Point[] = directionUtils.moveSquares(currentSquares, direction, currentPosition);
     
     // Should move from [2,1] to [1,1] (x decreases by 1 when moving left)
     expect(result[0]).toEqual([1, 1]);
@@ -31,7 +32,7 @@ describe('moveSquares', () => {
     const direction = 'up' as const;
     const currentPosition: [number, number] = [0, 0];
     
-    const result = directionUtils.moveSquares(currentSquares, direction, currentPosition);
+    const result: Point[] = directionUtils.moveSquares(currentSquares, direction, currentPosition);
     
     // Should move from [2,2] to [2,1] (y decreases by 1 when moving up)
     expect(result[0]).toEqual([2, 1]);
@@ -42,7 +43,7 @@ describe('moveSquares', () => {
     const direction = 'down' as const;
     const currentPosition: [number, number] = [0, 0];
     
-    const result = directionUtils.moveSquares(currentSquares, direction, currentPosition);
+    const result: Point[] = directionUtils.moveSquares(currentSquares, direction, currentPosition);
     
     // Should move from [2,2] to [2,3] (y increases by 1 when moving down)
     expect(result[0]).toEqual([2, 3]);
@@ -57,7 +58,7 @@ describe('moveSquares', () => {
     ];
 
     testCases.forEach(({ direction, position, expected }) => {
-      const result = directionUtils.moveSquares([position], direction, [0, 0]);
+      const result: Point[] = directionUtils.moveSquares([position], direction, [0, 0]);
       expect(result).toEqual(expected);
     });
   });
@@ -69,7 +70,7 @@ describe('moveSquares', () => {
       [5, 5]
     ];
     
-    const result = directionUtils.moveSquares(squares, 'right', [0, 0]);
+    const result: Point[] = directionUtils.moveSquares(squares, 'right', [0, 0]);
     expect(result).toHaveLength(3);
     expect(result).toContainEqual([2, 1]);
     expect(result).toContainEqual([3, 2]);
@@ -81,7 +82,7 @@ describe('moveSquares', () => {
     const direction = 'left' as const;
     const currentPosition: [number, number] = [0, 0];
     
-    const result = directionUtils.moveSquares(currentSquares, direction, currentPosition);
+    const result: Point[] = directionUtils.moveSquares(currentSquares, direction, currentPosition);
     
     // Should be filtered out as it would move off the grid
     expect(result).toHaveLength(0);

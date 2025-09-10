@@ -1,12 +1,4 @@
-/**
- * Represents a direction of movement on the game board
- */
-type Direction = 'up' | 'down' | 'left' | 'right';
-
-/**
- * Represents a coordinate point [x, y] on the game board
- */
-type Point = [number, number];
+import type { Direction, Point } from '~/types/board';
 
 /**
  * Size of the game grid (7x7)
