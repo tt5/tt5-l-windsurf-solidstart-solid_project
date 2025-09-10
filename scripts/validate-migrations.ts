@@ -36,6 +36,7 @@ export async function validateMigrations() {
       
       // Check required exports
       try {
+        // @vite-ignore
         const migration = await import(`../migrations/${file}`) as Migration;
         
         for (const exp of REQUIRED_EXPORTS) {

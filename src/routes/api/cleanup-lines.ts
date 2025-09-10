@@ -4,7 +4,7 @@ import { createErrorResponse } from '~/utils/api';
 
 export const POST = withAuth(async ({ user }) => {
   // Check if user is admin
-  if (user.role !== 'admin' && process.env.NODE_ENV === 'production') {
+  if (user.role !== 'admin'&& process.env.NODE_ENV !== 'development) {
     return createErrorResponse('Forbidden', 403, 'Admin access required');
   }
   

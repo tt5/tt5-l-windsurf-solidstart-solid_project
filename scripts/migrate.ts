@@ -27,6 +27,7 @@ const getMigrationFiles = async (): Promise<string[]> => {
 };
 
 const loadMigration = async (file: string) => {
+  // @vite-ignore
   const migration = await import(`../migrations/${file}`);
   
   // Handle both default and named exports
