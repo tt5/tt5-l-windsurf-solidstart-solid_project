@@ -1,5 +1,13 @@
 // Core types
-export type Point = [number, number];
+declare const brand: unique symbol;
+type Brand<T, B> = T & { [brand]: B };
+
+export type Point = Brand<[number, number], 'Point'>;
+
+export function createPoint(x: number, y: number): Point {
+  return [x, y] as Point;
+}
+
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
 export interface BasePoint {

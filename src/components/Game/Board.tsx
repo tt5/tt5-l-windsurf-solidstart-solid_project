@@ -7,10 +7,11 @@ import {
 } from 'solid-js';
 import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
-import type { 
-  Direction, 
-  Point, 
-  BasePoint 
+import { 
+  type Direction, 
+  type Point, 
+  type BasePoint,
+  createPoint
 } from '../../types/board';
 import type { ApiResponse } from '../../utils/api';
 
@@ -42,7 +43,7 @@ type BoardConfig = {
 // Board configuration
 const BOARD_CONFIG: BoardConfig = {
   GRID_SIZE: 7, // 7x7 grid
-  DEFAULT_POSITION: [0, 0],
+  DEFAULT_POSITION: createPoint(0, 0),
   DIRECTION_MAP: {
     'ArrowUp': 'up',
     'ArrowDown': 'down',
@@ -604,10 +605,10 @@ const Board: Component = () => {
 
   // Convert square indices to coordinates
   const indicesToCoords = (indices: number[]) => 
-    indices.map(index => [
+    indices.map(index => createPoint(
       index % BOARD_CONFIG.GRID_SIZE,
       Math.floor(index / BOARD_CONFIG.GRID_SIZE)
-    ] as [number, number]);
+    ));
 
   // Convert coordinates back to indices
   const coordsToIndices = (coords: [number, number][]) => 
@@ -625,11 +626,11 @@ const Board: Component = () => {
     try {
       const [x, y] = currentPosition();
       const [dx, dy] = getMovementDeltas(dir);
-      const newPosition: Point = [x + dx, y + dy];
+      const newPosition = createPoint(x + dx, y + dy);
       
       // Process square movement before updating position
       const squaresAsCoords = indicesToCoords([...selectedSquares()]);
-      const newSquares = await moveSquares(squaresAsCoords, dir, newPosition);
+      const newSquares = moveSquares(squaresAsCoords, dir, newPosition);
       
       // Only update position if moveSquares succeeds
       setCurrentPosition(newPosition);

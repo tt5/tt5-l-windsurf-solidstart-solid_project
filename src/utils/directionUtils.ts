@@ -1,4 +1,4 @@
-import type { Direction, Point } from '~/types/board';
+import { createPoint, type Direction, type Point } from '../types/board';
 
 /**
  * Size of the game grid (7x7)
@@ -68,8 +68,8 @@ const DIRECTION_MAP: Record<Direction, DirectionVectors> = {
  * @returns New position after movement
  */
 const movePosition = ([x, y]: Point, direction: Direction): Point => {
-  const [dx, dy] = DIRECTION_MAP[direction].delta;
-  return [x + dx, y + dy];
+  const { delta: [dx, dy] } = DIRECTION_MAP[direction];
+  return createPoint(x + dx, y + dy);
 };
 
 /**

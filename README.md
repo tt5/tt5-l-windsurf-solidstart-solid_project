@@ -2,6 +2,19 @@
 
 A SolidStart application with SQLite database integration.
 
+## Code Style
+
+This project does not use ESLint. Instead, it relies on TypeScript's type checking and code formatting tools for the following reasons:
+
+- Simpler project setup and maintenance
+- Faster build and development cycles
+- Reduced toolchain complexity
+- Focus on type safety through TypeScript
+
+Code style is maintained through:
+1. TypeScript's built-in type checking
+2. Manual code reviews
+
 ## Getting Started
 
 ### Prerequisites
