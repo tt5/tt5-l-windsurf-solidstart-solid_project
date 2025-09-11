@@ -60,8 +60,45 @@
   will-change: transform, box-shadow;
 }
 
+/* Hover States */
 .square:hover { background-color: color-mix(in srgb, var(--color-bg) 50%, white); }
 .square:active { transform: scale(0.98); }
+
+/* Valid Placement Hover */
+.square.valid-hover {
+  background-color: #e8f5e9;
+  border-color: #4caf50;
+  box-shadow: 0 0 0 2px #4caf50;
+  transform: translateY(-2px);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+/* Invalid Placement Hover */
+.square.invalid-hover {
+  background-color: #ffebee;
+  border-color: #f44336;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Loading State */
+.square.loading {
+  position: relative;
+  cursor: wait;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.square.loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-primary);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
 .square.selected { 
   background-color: #e3f2fd;
   border-color: #1265a8;
@@ -82,6 +119,20 @@
   background: var(--color-success);
   border-radius: 50%;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Error Message */
+.errorMessage {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: #ffebee;
+  border-left: 4px solid #f44336;
+  color: #b71c1c;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.9rem;
+  max-width: 100%;
+  text-align: center;
+  transition: all var(--transition-normal);
 }
 
 /* Player Position */

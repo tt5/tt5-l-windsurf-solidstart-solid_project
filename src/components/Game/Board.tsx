@@ -38,10 +38,57 @@ const Board: Component = () => {
   const [isMoving, setIsMoving] = createSignal<boolean>(false);
   const [isSaving, setIsSaving] = createSignal<boolean>(false);
   const [restrictedSquares, setRestrictedSquares] = createSignal<RestrictedSquares>([]);
+  const [hoveredSquare, setHoveredSquare] = createSignal<number | null>(null);
+  const [error, setError] = createSignal<string | null>(null);
   
   // Check if there's a base point at the given world coordinates
   const isBasePoint = (x: number, y: number): boolean => {
     return basePoints().some(point => point.x === x && point.y === y);
+  };
+
+  // Validate if a square can have a base point
+  const validateSquarePlacement = (index: number): { isValid: boolean; reason?: string } => {
+    if (!currentUser) {
+      return { isValid: false, reason: 'Not logged in' };
+    }
+
+    const gridX = index % BOARD_CONFIG.GRID_SIZE;
+    const gridY = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
+    const [offsetX, offsetY] = currentPosition();
+    const worldX = gridX - offsetX;
+    const worldY = gridY - offsetY;
+
+    // Check if it's the player's position
+    if (worldX === 0 && worldY === 0) {
+      return { isValid: false, reason: 'Cannot place on player position' };
+    }
+
+    // Check if already a base point
+    if (isBasePoint(worldX, worldY)) {
+      return { isValid: false, reason: 'Base point already exists here' };
+    }
+
+    // Check if it's a restricted square
+    if (restrictedSquares().includes(index)) {
+      return { isValid: false, reason: 'Cannot place in restricted area' };
+    }
+
+    return { isValid: true };
+  };
+
+  // Handle square hover
+  const handleSquareHover = (index: number | null) => {
+    setHoveredSquare(index);
+    if (index === null) {
+      setError(null);
+    } else {
+      const validation = validateSquarePlacement(index);
+      if (!validation.isValid) {
+        setError(validation.reason || 'Invalid placement');
+      } else {
+        setError(null);
+      }
+    }
   };
   
   // Initialize loading state on mount
@@ -279,36 +326,26 @@ const Board: Component = () => {
   };
 
   const handleSquareClick = async (index: number) => {
-    if (!currentUser) {
-      console.warn('No user logged in');
+    // Validate before proceeding
+    const validation = validateSquarePlacement(index);
+    if (!validation.isValid) {
+      setError(validation.reason || 'Invalid placement');
       return;
     }
-    
+
     // Calculate grid position from index
     const gridX = index % BOARD_CONFIG.GRID_SIZE;
     const gridY = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-    
-    // Calculate world coordinates (matching the grid rendering logic)
     const [offsetX, offsetY] = currentPosition();
     const worldX = gridX - offsetX;
     const worldY = gridY - offsetY;
 
-    console.log(`--click, ${index}, ${gridX}, ${gridY}, ${worldX}, ${worldY} currentPosition: ${currentPosition()}`)
-    
-    // Don't proceed if the click is on the player's position or if a base point already exists
-    if (worldX === 0 && worldY === 0) return;
-    
-    // Check if a base point already exists at these coordinates
-    const existingPoint = basePoints().find(
-      point => point.x === worldX && point.y === worldY
-    );
-    if (existingPoint) {
-      console.log('Base point already exists at these coordinates');
-      return;
-    }
+    console.log(`[Board] Placing base point at world coordinates:`, { x: worldX, y: worldY });
     
     try {
-      console.log('[Board] Sending request to /api/base-points with:', { x: worldX, y: worldY });
+      setIsSaving(true);
+      setError(null);
+      
       const response = await fetch('/api/base-points', {
         method: 'POST',
         headers: { 
@@ -319,39 +356,45 @@ const Board: Component = () => {
         body: JSON.stringify({
           x: worldX,
           y: worldY,
-          userId: currentUser.id
+          userId: currentUser?.id
         })
       });
       
-      console.log('Response status:', response.status, response.statusText);
-      
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Error response:', errorData);
-        throw new Error(errorData.error || `Failed to save base point: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `Failed to save base point: ${response.status} ${response.statusText}`;
+        console.error('Error response:', errorMessage);
+        setError(errorMessage);
+        return;
       }
       
       const responseData = await response.json();
-
       
       if (responseData.success && responseData.data?.basePoint) {
         console.log('Successfully added base point:', responseData.data.basePoint);
-
+        
+        // Update restricted squares
         const pB: BasePoint = responseData.data.basePoint;
-        const p = {x: pB.x + currentPosition()[0], y: pB.y + currentPosition()[1]}
+        const p = {x: pB.x + currentPosition()[0], y: pB.y + currentPosition()[1]};
         setRestrictedSquares(calculateRestrictedSquares(createPoint(p.x, p.y), restrictedSquares()));
-
+        
+        // Update base points
         setBasePoints(prev => [...prev, responseData.data.basePoint]);
+        
+        // Clear any previous errors
+        setError(null);
       } else {
+        const errorMessage = responseData.error || 'Invalid response format from server';
         console.error('Unexpected response format:', responseData);
-        throw new Error(responseData.error || 'Invalid response format from server');
+        setError(errorMessage);
       }
       
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       console.error('Error in handleSquareClick:', error);
-      if (error instanceof Error) {
-        console.error('Error details:', error.message, error.stack);
-      }
+      setError(errorMessage);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -446,25 +489,51 @@ const Board: Component = () => {
           const isSelected = restrictedSquares().includes(squareIndex);
           const isBP = isBasePoint(worldX, worldY);
           const isPlayerPosition = worldX === 0 && worldY === 0;
+          const isHovered = hoveredSquare() === index;
+          const validation = validateSquarePlacement(index);
+          const isValid = validation.isValid && !isSaving();
+
+          // Determine the class based on state
+          const squareClass = () => {
+            const classes = [styles.square];
+            if (isSelected) classes.push(styles.selected);
+            if (isBP) classes.push(styles.basePoint);
+            if (isPlayerPosition) classes.push(styles.playerPosition);
+            if (isSaving() && isHovered) classes.push(styles.loading);
+            else if (isHovered) {
+              classes.push(isValid ? styles['valid-hover'] : styles['invalid-hover']);
+            }
+            return classes.join(' ');
+          };
 
           return (
             <button
-              class={`${styles.square} ${isSelected ? styles.selected : ''} ${isBP ? styles.basePoint : ''} ${isPlayerPosition ? styles.playerPosition : ''}`}
+              class={squareClass()}
               onClick={() => {
-                if (isSelected) return;
+                if (isSelected || isSaving()) return;
                 handleSquareClick(squareIndex);
               }}
+              onMouseEnter={() => handleSquareHover(index)}
+              onMouseLeave={() => handleSquareHover(null)}
               onContextMenu={(e) => {
                 e.preventDefault();
                 // Right click does nothing now
               }}
-              title={isBP ? 'Base Point' : 'Left-click to add base point\nRight-click to select'}
+              disabled={isSaving()}
+              title={isBP ? 'Base Point' : 
+                     !validation.isValid ? validation.reason : 
+                     'Left-click to add base point\nRight-click to select'}
             >
               {isBP && <div class={styles.basePointMarker} />}
             </button>
           );
         })}
       </div>
+      {error() && (
+        <div class={styles.errorMessage}>
+          {error()}
+        </div>
+      )}
     </div>
   );
 };
