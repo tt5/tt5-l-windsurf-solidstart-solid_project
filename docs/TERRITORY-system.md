@@ -68,11 +68,42 @@ To prevent gridlock and ensure fair play:
   4. Removes other points in the line
 - All cleanup actions are logged for monitoring
 
+## Movement and Border System
+
+The movement system controls how players navigate the world and how new territory becomes visible and claimable.
+
 ### Player Movement
-- Movement speed: 3 cells/second
-- Cooldown: 0.2s between moves
-- Action point cost: 1 per cell
-- Viewport updates in real-time during movement
+- **Speed**: 3 cells/second maximum
+- **Cooldown**: 100ms between moves (client-side)
+- **Action Point Cost**: 1 per cell moved
+- **Viewport Updates**: Real-time during movement
+
+### Border Squares Management
+When a player moves, new border squares come into view. These are handled as follows:
+
+1. **Border Detection**:
+   - Moving reveals a new row or column of squares at the edge of the viewport
+   - The specific border depends on movement direction (top, bottom, left, or right)
+
+2. **API Integration**:
+   - New border squares are sent to the server via `/api/calculate-squares`
+   - The server returns which of these squares are restricted
+   - The response includes any new restricted squares that affect the player's movement
+
+3. **Restricted Squares**:
+   - Displayed visually to indicate where base points cannot be placed
+   - Updated dynamically as the player moves
+   - Persist in the current view until the player moves away
+
+4. **Performance Optimization**:
+   - 100ms cooldown prevents rapid successive API calls
+   - Client-side caching of known restricted squares
+   - Only newly revealed squares are checked against the server
+
+5. **Visual Feedback**:
+   - Newly restricted squares are immediately shown in the UI
+   - The viewport updates smoothly to show new areas
+   - Players can see their movement options update in real-time
 
 ## World Management
 
