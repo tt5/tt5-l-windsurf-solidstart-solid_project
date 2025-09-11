@@ -22,10 +22,13 @@
   - **Special Rules**:
     - The point at (0,0) is protected and cannot be claimed
     - **Line Cleanup Process**:
-      - When base points are placed in a line (horizontally, vertically, or diagonally)
-      - The system periodically runs a cleanup that removes newer points that form lines with existing points
-      - The oldest point (by ID) in any line is preserved, newer points are removed
-      - This creates a simple form of territory control where only the first player to claim a line maintains their claim
+      - The system runs an automatic cleanup every 30 seconds
+      - During cleanup, it selects 2-4 random line slopes (including horizontal, vertical, and diagonal)
+      - For each selected slope, it finds all points that form straight lines in that direction
+      - For each line of points, it removes all points except the oldest one (by ID)
+      - This creates a dynamic territory control system where only the first point in a line is preserved
+      - The cleanup process is logged for monitoring and debugging purposes
+      - The process is idempotent and handles errors gracefully to prevent server crashes
 - **Multiplayer Experience**:
   - The world state is shared across all players through a central database
   - Updates are fetched when:
