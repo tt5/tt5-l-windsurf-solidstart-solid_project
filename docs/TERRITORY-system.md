@@ -1,38 +1,64 @@
-# Territory Control System v2
+# Territory System
 
-## Core Gameplay
+## Base Points
 
-### Base Points & Influence
-- **Placement**:
-  - 15x15 viewport grid
-  - 2-second cooldown between placements
-  - Consumes action points (regenerates over time)
-  - Restricted squares prevent placement too close to existing points
-  - Encourages strategic placement and natural territory expansion
+### Placement Rules
+- Placed on the visible grid (currently 7×7, planned 15×15)
+- Can only be placed on non-restricted squares
+- Each player starts with one base point at (0,0)
+- Additional points can be placed during exploration
 
-- **Influence Mechanics**:
-  - Projects along straight lines (cardinal, diagonal, prime slopes)
-  - Infinite reach until interrupted
-  - Creates territory boundaries at intersections by:
-    - Detecting where influence lines from different players cross
-    - Forming polygon shapes where influences meet through:
-      - Connecting intersection points in clockwise/counter-clockwise order
-      - Creating Voronoi-like cells around each base point
-      - Adjusting for line-of-sight obstacles
-      - Ensuring all polygon edges follow grid alignment
-    - Assigning enclosed areas to the nearest base point
-    - Resolving conflicts using a weighted system:
-      - 70% weight to point age because it:
-        - Rewards early investment and long-term strategy
-        - Prevents territory flipping through temporary advantages
-        - Encourages players to plan their expansion carefully
-        - Creates a sense of permanence and history in the game world
-      - 30% weight to distance (closer points have advantage) because it:
-        - Encourages players to spread out and explore
-        - Prevents concentration of power in a single area
-        - Creates a sense of balance and fairness
-      - Additional factors in tiebreakers:
-        - Number of connected friendly territories
+### Behavior
+- Fixed at their world coordinates
+- Visible to all players when in view
+- The initial (0,0) base point is permanent and neutral
+- Base points cannot be removed or destroyed
+
+## Territory Mechanics
+
+### Influence
+
+Each base point projects influence in multiple directions to create restricted areas. While new base points can be placed in these areas, they will be removed during the next cleanup process:
+
+1. **Primary Directions** (infinite range until another base point):
+   - Horizontal (left/right)
+   - Vertical (up/down)
+   - Both diagonals (45° and 135°)
+
+2. **Additional Directions** (within visible grid bounds):
+   - Prime-numbered slopes (e.g., 2:1, 1:2)
+   - Other calculated angles that create strategic chokepoints
+
+3. **Restricted Squares**:
+   - Calculated using `calculateRestrictedSquares` based on visible base points
+   - Only considers base points currently in the viewport
+   - May allow placement that conflicts with base points outside the current view
+   - Creates temporary territory boundaries that are enforced during cleanup
+
+### Territory Formation
+- Territory consists of all squares uniquely claimed by a player's base point
+- Created where a player's influence lines don't intersect with others'
+- Visualized as highlighted areas on the grid
+
+### Conflict Resolution
+- When influence lines intersect:
+  - The older base point's influence takes precedence
+  - If same age, first-come-first-served based on database ID
+  - Rewards early investment and long-term strategy
+  - Prevents territory flipping through temporary advantages
+- The point at (0,0) is protected and cannot be claimed
+
+## System Maintenance
+
+### Line Cleanup
+- Automatic cleanup runs periodically (every 30 seconds)
+- Process:
+  1. Selects 2-4 random line slopes (including cardinal and diagonal)
+  2. For each slope, finds all points forming straight lines
+  3. Keeps only the oldest point in each line (by ID)
+  4. Removes other points in the line
+- Ensures fair play and prevents gridlock
+- Logs all cleanup actions for monitoring
         - Player's overall influence in the region
         - Random element (small %) to prevent stalemates
   - Visualized with semi-transparent colored regions
@@ -80,9 +106,10 @@
       - Unexplored areas
       - Enemy territory
   - **Restrictions**:
-    - 50-100 unit min distance from other players
+    - Players are always at (0,0) in their local coordinate system
+    - Teleportation moves the viewport, not the player
     - 3-turn protection after teleport
-    - Global map shows density heatmap for valid destinations
+    - Global map shows explored areas for reference
 
 ### Security
 - **Authentication**:

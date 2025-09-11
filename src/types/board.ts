@@ -1,3 +1,5 @@
+import { ApiResponse } from "~/utils/api";
+
 // Core types
 declare const brand: unique symbol;
 type Brand<T, B> = T & { [brand]: B };

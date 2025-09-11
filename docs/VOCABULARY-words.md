@@ -1,0 +1,1 @@
+user player position viewport "base point" world border square "restricted square" direction move movement grid "grid size" "default position" "direction map" neutral teleportation Point minimap
