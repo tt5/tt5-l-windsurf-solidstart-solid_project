@@ -33,6 +33,29 @@
   animation: spin 1s linear infinite;
 }
 
+/* Boundary Message */
+.boundaryMessage {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--color-error);
+  color: white;
+  padding: 8px 16px;
+  border-radius: var(--border-radius-md);
+  font-size: 0.9rem;
+  z-index: 10;
+  animation: fadeInOut 2s ease-in-out forwards;
+  opacity: 0;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, -10px); }
+  10% { opacity: 1; transform: translate(-50%, 0); }
+  90% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -10px); }
+}
+
 /* Game Elements */
 .grid {
   --grid-cell-size: 45px;

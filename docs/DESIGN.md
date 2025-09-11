@@ -26,7 +26,10 @@
 - **Player**: In-game entity representing the user, fixed at (0,0)
 - **Base Point**: Significant location that projects influence and creates territory
 - **Viewport**: The 15×15 grid currently visible on screen
-- **World**: 2001×2001 unit grid (±1000 from center) that appears infinite during play
+- **World**: 2001×2001 unit grid (±1000 from center) with enforced boundaries
+  - Players cannot move the viewport outside these boundaries
+  - Boundary check occurs before any movement is processed
+  - Visual feedback appears when boundary is reached
 
 ## Game World
 
@@ -73,9 +76,11 @@
 
 ### Movement and Border System
 - **Basic Movement**:
-  - Speed: 3 cells/second
-  - 100ms cooldown between moves
+  - Speed: 50 cells/second (20ms cooldown between moves)
   - 1 action point per cell
+  - 20ms cooldown between moves to prevent rapid successive movements
+  - Movement is blocked at world boundaries (±1000, ±1000)
+  - Visual feedback when attempting to move beyond boundaries
 
 - **Border Squares Management**:
   - Moving reveals a new row or column of squares
@@ -129,41 +134,101 @@
 
 ## Performance Optimization
 
-### Real-time Metrics
-- **Endpoint**: `/api/admin/performance` (GET)
-  - **Authentication**: Admin access required
-  - **Metrics Tracked**:
-    - `calculate-squares` operation metrics:
-      - Average duration
-      - Maximum base points processed
-      - Average response size
-    - Total request count
-  - **Data Retention**: Last 1,000 metrics
-  - **Response Format**:
-    ```json
-    {
-      "success": true,
-      "data": {
-        "totalRequests": number,
-        "calculateSquares": {
-          "count": number,
-          "averageDuration": number,
-          "maxBasePoints": number,
-          "averageResponseSize": number
-        },
-        "lastUpdated": "ISO timestamp"
-      }
-    }
-    ```
+### Current Implementation
 
-### Optimization Strategies
-- **Spatial Indexing**:
-  - Quad-tree for efficient base point queries
-  - Viewport-based culling (20-unit radius)
-  - Cached calculations with 100ms cooldown
-  - Client-side filtering of base points
-  - Simple coordinate-based queries
-  - Basic error handling
+#### Performance Tracker (`/src/utils/performance.ts`)
+- **Metrics Collection**:
+  - Tracks timing and operational data for key game operations
+  - Stores up to 1,000 most recent metrics in memory
+  - Each metric includes:
+    - Timestamp
+    - Operation name
+    - Duration in milliseconds
+    - Custom data payload
+
+#### Admin Endpoint (`/api/admin/performance`)
+- **Access**: Admin authentication required
+- **Metrics Tracked**:
+  - `calculate-squares` operation:
+    - Call count
+    - Average duration
+    - Maximum base points processed
+    - Average response size
+  - Total request count
+  - Last updated timestamp
+
+#### Data Model
+```typescript
+type PerformanceMetric = {
+  timestamp: number;
+  operation: string;
+  duration: number;
+  data: {
+    basePointCount?: number;
+    playerCount?: number;
+    responseSize?: number;
+    dbTime?: number;
+    processingTime?: number;
+  };
+};
+```
+
+#### Response Format
+```json
+{
+  "success": true,
+  "data": {
+    "totalRequests": number,
+    "calculateSquares": {
+      "count": number,
+      "averageDuration": number,
+      "maxBasePoints": number,
+      "averageResponseSize": number
+    },
+    "lastUpdated": "ISO-8601 timestamp"
+  }
+}
+```
+
+### Current Limitations
+1. **In-Memory Storage**:
+   - Metrics are lost on server restart
+   - Limited to last 1,000 metrics
+
+2. **Manual Instrumentation**:
+   - Requires explicit `track()` calls
+   - Not all operations are instrumented
+
+3. **Limited Metrics**:
+   - No memory usage tracking
+   - No CPU utilization data
+   - No network latency measurements
+
+4. **No Alerting**:
+   - No automated alerts for performance issues
+   - No threshold monitoring
+
+### Future Optimization Opportunities
+1. **Automatic Instrumentation**:
+   - Middleware for API endpoints
+   - Database query monitoring
+   - Client-side performance tracking
+
+2. **Enhanced Metrics**:
+   - Memory usage tracking
+   - CPU utilization monitoring
+   - Network latency measurements
+   - Error rate tracking
+
+3. **Persistence Layer**:
+   - Time-series database integration
+   - Long-term metric storage
+   - Data retention policies
+
+4. **Alerting System**:
+   - Performance degradation alerts
+   - Error rate monitoring
+   - Resource utilization thresholds
 
 ## Multiplayer Features
 - Shared state via database

@@ -121,7 +121,19 @@ export const handleDirection = async (
   try {
     const [x, y] = currentPosition();
     const [dx, dy] = getMovementDeltas(dir);
-    const newPosition = createPoint(x + dx, y + dy);
+    const newX = x + dx;
+    const newY = y + dy;
+    
+    // Check world boundaries
+    if (newX < BOARD_CONFIG.WORLD_BOUNDS.MIN_X || 
+        newX > BOARD_CONFIG.WORLD_BOUNDS.MAX_X ||
+        newY < BOARD_CONFIG.WORLD_BOUNDS.MIN_Y || 
+        newY > BOARD_CONFIG.WORLD_BOUNDS.MAX_Y) {
+      // Don't move beyond world boundaries
+      return;
+    }
+    
+    const newPosition = createPoint(newX, newY);
     
     // Process square movement before updating position
     const squaresAsCoords = indicesToPoints([...restrictedSquares()]);
@@ -229,7 +241,7 @@ export const handleDirection = async (
     setTimeout(() => {
       setIsManualUpdate(false);
       setIsMoving(false);
-    }, 100);
+    }, 20);
   }
 };
 

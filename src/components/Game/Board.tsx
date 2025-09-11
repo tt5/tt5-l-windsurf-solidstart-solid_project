@@ -40,6 +40,7 @@ const Board: Component = () => {
   const [restrictedSquares, setRestrictedSquares] = createSignal<RestrictedSquares>([]);
   const [hoveredSquare, setHoveredSquare] = createSignal<number | null>(null);
   const [error, setError] = createSignal<string | null>(null);
+  const [reachedBoundary, setReachedBoundary] = createSignal<boolean>(false);
   
   // Check if there's a base point at the given world coordinates
   const isBasePoint = (x: number, y: number): boolean => {
@@ -463,6 +464,22 @@ const Board: Component = () => {
 
   // Handle direction movement
   const handleDirection = async (dir: Direction): Promise<void> => {
+    setReachedBoundary(false); // Reset boundary flag on new movement
+    
+    const [x, y] = currentPosition();
+    const [dx, dy] = getMovementDeltas(dir);
+    const newX = x + dx;
+    const newY = y + dy;
+    
+    // Check world boundaries
+    if (newX < BOARD_CONFIG.WORLD_BOUNDS.MIN_X || 
+        newX > BOARD_CONFIG.WORLD_BOUNDS.MAX_X ||
+        newY < BOARD_CONFIG.WORLD_BOUNDS.MIN_Y || 
+        newY > BOARD_CONFIG.WORLD_BOUNDS.MAX_Y) {
+      setReachedBoundary(true);
+      return;
+    }
+    
     return handleDirectionUtil(dir, {
       isMoving,
       currentPosition,
@@ -478,6 +495,11 @@ const Board: Component = () => {
 
   return (
     <div class={styles.board}>
+      {reachedBoundary() && (
+        <div class={styles.boundaryMessage}>
+          You've reached the edge of the world!
+        </div>
+      )}
       <div class={styles.grid}>
         {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
           const x = index % BOARD_CONFIG.GRID_SIZE;
