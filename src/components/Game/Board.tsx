@@ -2,7 +2,6 @@ import {
   Component, 
   createEffect, 
   createSignal, 
-  createResource, 
   onMount 
 } from 'solid-js';
 import { moveSquares } from '../../utils/directionUtils';
@@ -187,6 +186,7 @@ const Board: Component = () => {
   
   // Initialize loading state on mount
   onMount(() => {
+    console.log("[Board] setIsLoading (onMount)")
     setIsLoading(true);
     setBasePoints([]);
     fetchBasePoints();
@@ -200,7 +200,9 @@ const Board: Component = () => {
   // Refetch base points when position changes
   createEffect(() => {
     // This will run whenever currentPosition changes
+    console.log("[Board] currentPosition (createEffect 1)")
     currentPosition();
+    console.log("[Board] fetchBasePoints (createEffect 1)")
     fetchBasePoints();
   });
   
@@ -212,6 +214,7 @@ const Board: Component = () => {
     const currentUser = user();
     if (!currentUser) {
       setBasePoints([]);
+      console.log("[Board] setIsLoading(false) (fetchBasePoints)")
       setIsLoading(false);
       return;
     }
@@ -224,6 +227,7 @@ const Board: Component = () => {
       return;
     }
 
+    console.log("[Board] setIsFetching(false) (fetchBasePoints)")
     setIsFetching(true);
 
     // Create a single fetch promise to prevent duplicates
@@ -247,9 +251,7 @@ const Board: Component = () => {
           setBasePoints(newBasePoints);
           basePoints().forEach(pB => {
             const p = {x: pB.x + currentPosition()[0], y: pB.y + currentPosition()[1]}
-              console.log(`before p: ${p.x}, ${p.y}`)
             if (p.x < 7 &&  p.x >= 0 && p.y < 7 && p.y >= 0) {
-              console.log(`p: ${p.x}, ${p.y}`)
               
             // TODO: res.flatMap(e => [p.x, p.y])
             //  only coordinates that fall into the initial grid
@@ -279,6 +281,7 @@ const Board: Component = () => {
 
   // Effect to refetch base points when position changes
   createEffect(() => {
+    console.log("[Board] currentPosition (createEffect 2)")
     const [x, y] = currentPosition();
     fetchBasePoints().catch(console.error);
   });
@@ -341,12 +344,7 @@ const Board: Component = () => {
     }
   });
   
-  // Enhanced return type for better error handling
-  type SaveResult = {
-    success: boolean;
-    error?: string;
-    data?: BasePoint;
-  };
+  // Using ApiResponse<BasePoint> for consistent API response handling
 
   // Helper function to create a timeout promise
   const withTimeout = <T,>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> => {
@@ -372,7 +370,7 @@ const Board: Component = () => {
   };
 
   // Handle adding a new base point with proper typing and error handling
-  const handleAddBasePoint = async (x: number, y: number): Promise<SaveResult> => {
+  const handleAddBasePoint = async (x: number, y: number): Promise<ApiResponse<BasePoint>> => {
     if (!currentUser) return { success: false, error: 'User not authenticated' };
     if (isSaving()) return { success: false, error: 'Operation already in progress' };
     
@@ -439,6 +437,7 @@ const Board: Component = () => {
         userId: responseData.userId,
         createdAtMs: responseData.createdAtMs
       };
+      
       setBasePoints(prev => [...prev, newBasePoint]);
       return { success: true, data: newBasePoint };
     } catch (error) {

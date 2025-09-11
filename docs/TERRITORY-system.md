@@ -7,15 +7,8 @@
   - 15x15 viewport grid
   - 2-second cooldown between placements
   - Consumes action points (regenerates over time)
-  - Minimum distance between points (5-8 grid cells) to:
-    - Prevent visual clutter and performance issues
-    - Encourage strategic placement over spamming
-    - Maintain clear territory boundaries
-    - Balance early-game expansion by:
-      - Preventing rapid territory grabs
-      - Encouraging exploration over clustering
-      - Giving new players time to establish presence
-      - Creating natural expansion patterns
+  - Restricted squares prevent placement too close to existing points
+  - Encourages strategic placement and natural territory expansion
 
 - **Influence Mechanics**:
   - Projects along straight lines (cardinal, diagonal, prime slopes)
