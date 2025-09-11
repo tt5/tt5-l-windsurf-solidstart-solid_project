@@ -21,7 +21,7 @@ import styles from './Board.module.css';
 
 // Board configuration
 export const BOARD_CONFIG: BoardConfig = {
-  GRID_SIZE: 7, // 7x7 grid
+  GRID_SIZE: 15, // 7x7 grid
   DEFAULT_POSITION: createPoint(0, 0),
   DIRECTION_MAP: {
     'ArrowUp': 'up',
@@ -69,6 +69,9 @@ const Board: Component = () => {
       onMount1
       setIsLoading setBasePoints([]) fetchBasePoints()
     `)
+    // Set CSS variable for grid size
+    document.documentElement.style.setProperty('--grid-size', BOARD_CONFIG.GRID_SIZE.toString());
+    
     setIsLoading(true);
     setBasePoints([]);
     fetchBasePoints();

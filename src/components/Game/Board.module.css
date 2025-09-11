@@ -37,8 +37,8 @@
 .grid {
   --grid-cell-size: 45px;
   display: grid;
-  grid-template-columns: repeat(7, var(--grid-cell-size));
-  grid-template-rows: repeat(7, var(--grid-cell-size));
+  grid-template-columns: repeat(var(--grid-size), var(--grid-cell-size));
+  grid-template-rows: repeat(var(--grid-size), var(--grid-cell-size));
   gap: var(--spacing-xs);
   width: fit-content;
   margin: var(--spacing-lg) auto;

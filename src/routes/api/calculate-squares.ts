@@ -2,6 +2,7 @@ import { getDb } from '~/lib/server/db';
 import { BasePointRepository } from '~/lib/server/repositories/base-point.repository';
 import { withAuth } from '~/middleware/auth';
 import { createErrorResponse, generateRequestId } from '~/utils/api';
+import { BOARD_CONFIG } from '~/components/Game/Board';
 
 type CalculateSquaresRequest = {
   borderIndices: number[];
@@ -32,12 +33,14 @@ export const POST = withAuth(async ({ request, user }) => {
       throw new Error(`Expected basePoints to be an array, got ${typeof basePoints}`);
     }
 
+    /*
     console.log("====")
     console.log(Date.now())
     console.log("borderIndices: ", borderIndices)
     console.log("currentPosition: ", currentPosition)
     console.log("direction: ", direction)
     console.log("====")
+    */
 
     const uniqueBasePoints = basePoints.length > 0 
       ? [...new Map(basePoints.map(p => [`${p.x},${p.y}`, p])).values()]
@@ -45,8 +48,8 @@ export const POST = withAuth(async ({ request, user }) => {
     
     const [dx, dy] = directionMap[direction];
     const newSquares = borderIndices.flatMap((i, index) => {
-      const x = (i % 7) - currentPosition[0];
-      const y = Math.floor(i / 7) - currentPosition[1];
+      const x = (i % BOARD_CONFIG.GRID_SIZE) - currentPosition[0];
+      const y = Math.floor(i / BOARD_CONFIG.GRID_SIZE) - currentPosition[1];
       
       return uniqueBasePoints.flatMap(({ x: bx, y: by }) => {
         if (bx === x && by === y) return [];
@@ -60,7 +63,9 @@ export const POST = withAuth(async ({ request, user }) => {
           const ny = y + currentPosition[1] + dy;
           
             // Original logic for straight lines and diagonals
-            return nx >= 0 && nx < 7 && ny >= 0 && ny < 7 ? [nx + ny * 7] : [];
+            return nx >= 0 && nx < BOARD_CONFIG.GRID_SIZE && ny >= 0 && ny < BOARD_CONFIG.GRID_SIZE 
+              ? [nx + ny * BOARD_CONFIG.GRID_SIZE] 
+              : [];
         }
         return [];
       });

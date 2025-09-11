@@ -339,7 +339,7 @@ export const fetchBasePoints = async ({
           y: pB.y + currentPosition()[1]
         };
         
-        if (p.x < 7 && p.x >= 0 && p.y < 7 && p.y >= 0) {
+        if (p.x < BOARD_CONFIG.GRID_SIZE && p.x >= 0 && p.y < BOARD_CONFIG.GRID_SIZE && p.y >= 0) {
           setRestrictedSquares(calculateRestrictedSquares(createPoint(p.x, p.y), restrictedSquares()));
         }
       });

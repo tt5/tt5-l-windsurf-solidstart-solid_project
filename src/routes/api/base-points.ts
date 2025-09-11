@@ -13,7 +13,7 @@ type BasePointResponse = ApiResponse<{
 type BasePointRequest = { x: number; y: number };
 
 const MAX_COORDINATE = 1000; // Reasonable limit to prevent abuse
-const VIEW_RADIUS = 10; // Fetch points within this radius of the current position
+const VIEW_RADIUS = 20; // Fetch points within this radius of the current position
 
 const validateCoordinates = (x: number, y: number) => {
   // Type checking
