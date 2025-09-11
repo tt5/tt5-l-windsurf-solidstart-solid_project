@@ -224,7 +224,7 @@ export const handleDirection = async (
             return !isBasePoint(worldX, worldY);
           });
           
-          console.log("Combined indices (base points excluded):", { 
+          console.log("[Board:handleDirection] Combined indices (base points excluded):", { 
             newIndices, 
             borderSquares: result.data.squares, 
             combinedIndices 
@@ -234,13 +234,13 @@ export const handleDirection = async (
         } else {
           // Fail hard if API response is invalid
           const error = new Error(`Invalid API response format: ${JSON.stringify(result)}`);
-          console.error(error);
+          console.error("[Board:handleDirection]", error);
           throw error;
         }
       } else {
         // Fail hard if API call fails
         const error = new Error(`API call failed with status: ${response.status} ${response.statusText}`);
-        console.error(error);
+        console.error("[Board:handleDirection]", error);
         throw error;
       }
     } catch (error) {
@@ -298,8 +298,8 @@ export const fetchBasePoints = async ({
 }: FetchBasePointsOptions): Promise<void> => {
   const currentUser = user();
   if (!currentUser) {
+    console.log("[Board:fetchBasePoints] setBasePoints([]) setIsLoading(false)")
     setBasePoints([]);
-    console.log("[Board] setIsLoading(false) (fetchBasePoints)")
     setIsLoading(false);
     return;
   }
@@ -312,7 +312,7 @@ export const fetchBasePoints = async ({
     return;
   }
 
-  console.log("[Board] setIsFetching(true) (fetchBasePoints)")
+  console.log("[Board:fetchBasePoints] setIsFetching(true)")
   setIsFetching(true);
 
   try {
@@ -330,7 +330,7 @@ export const fetchBasePoints = async ({
     const newBasePoints = data?.basePoints || [];
 
     if (Array.isArray(newBasePoints)) {
-      console.log("newBasePoints", JSON.stringify(newBasePoints));
+      console.log("[Board:fetchBasePoints] newBasePoints", JSON.stringify(newBasePoints));
       setBasePoints(newBasePoints);
       
       newBasePoints.forEach(pB => {

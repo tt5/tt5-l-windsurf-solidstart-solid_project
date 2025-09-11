@@ -2,7 +2,8 @@ import {
   Component, 
   createEffect, 
   createSignal, 
-  onMount 
+  onMount,
+  on 
 } from 'solid-js';
 import { useAuth } from '../../contexts/auth';
 import { 
@@ -79,17 +80,6 @@ const Board: Component = () => {
     };
   });
   
-  // Refetch base points when position changes
-  createEffect(() => {
-    // This will run whenever currentPosition changes
-    console.log(`[Board]:Effect
-      currentPosition
-      fetchBasePoints
-      `)
-    currentPosition();
-    fetchBasePoints();
-  });
-  
   // Track the current fetch promise to prevent duplicate requests
   let currentFetch: Promise<void> | null = null;
   
@@ -119,27 +109,42 @@ const Board: Component = () => {
   };
 
   // Effect to handle user changes and fetch base points
-  createEffect(() => {
-    const currentUser = user();
-    console.log("[Board] User changed, fetching base points");
-    
-    // Only reset restricted squares if user logs out
-    if (!currentUser) {
-      setRestrictedSquares([]);
-    } else if (restrictedSquares().length === 0) {
-      // Initialize with default restricted squares for new user session
-      setRestrictedSquares(INITIAL_SQUARES);
-    }
-    
-    // Always fetch base points on user change
-    fetchBasePoints().catch(console.error);
-  });
+  createEffect(on(
+    () => user(),
+    (currentUserValue) => {
+      if (currentUserValue === undefined) return;
+      console.log("[Board] Effect: User changed, fetching base points");
+      
+      // Only reset restricted squares if user logs out
+      if (!currentUserValue) {
+        setRestrictedSquares([]);
+      } else if (restrictedSquares().length === 0) {
+        // Initialize with default restricted squares for new user session
+        setRestrictedSquares(INITIAL_SQUARES);
+      }
+      
+      // Always fetch base points on user change
+      fetchBasePoints().catch(console.error);
+    },
+    { defer: true }  // Don't run the effect on initial setup
+  ));
 
-  // Effect to refetch base points when position changes
+  // Effect to handle position changes and fetch base points
   createEffect(() => {
-    console.log("[Board] Effect: currentPosition changed, fetching base points");
     const [x, y] = currentPosition();
-    fetchBasePoints().catch(console.error);
+    const currentUser = user();
+    
+    // Skip if we don't have a user or if this is the initial render
+    if (!currentUser) return;
+    
+    console.log(`[Board] Position changed to [${x}, ${y}], fetching base points`);
+    
+    // Use requestIdleCallback to batch the fetch with the position update
+    const id = requestIdleCallback(() => {
+      fetchBasePoints().catch(console.error);
+    });
+    
+    return () => cancelIdleCallback(id);
   });
   
   // Derived state with explicit return types
