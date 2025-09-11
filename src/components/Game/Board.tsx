@@ -10,140 +10,18 @@ import {
   type Direction, 
   type Point, 
   type BasePoint,
+  type BoardConfig,
+  type RestrictedSquares,
+  type AddBasePointResponse,
   createPoint
 } from '../../types/board';
 import type { ApiResponse } from '../../utils/api';
-
-// Local state for restricted squares due to base point influence lines
-type RestrictedSquares = number[];
-
-/**
- * Calculate restricted squares based on a base point position
- * @param p The base point position {x, y}
- * @param currentRestrictedSquares Current array of restricted squares
- * @returns New array of restricted squares including the new influence area
- */
-const calculateRestrictedSquares = (
-  p: { x: number; y: number },
-  currentRestrictedSquares: number[]
-): number[] => {
-  return [
-    ...new Set([
-      ...currentRestrictedSquares,
-      // Horizontal and vertical lines
-      ...Array(BOARD_CONFIG.GRID_SIZE - p.x - 1).fill(0).map((_, i) => p.x + i + 1 + p.y * BOARD_CONFIG.GRID_SIZE), // Right
-      ...Array(p.x).fill(0).map((_, i) => i + p.y * BOARD_CONFIG.GRID_SIZE), // Left
-      ...Array(BOARD_CONFIG.GRID_SIZE - p.y - 1).fill(0).map((_, i) => p.x + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE), // Down
-      ...Array(p.y).fill(0).map((_, i) => p.x + i * BOARD_CONFIG.GRID_SIZE), // Up
-      
-      // Diagonal lines (slope 1 and -1)
-      ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, p.y)).fill(0).map((_, i) => 
-        (p.x + i + 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
-      ), // Top-right diagonal
-      ...Array(Math.min(p.x, p.y)).fill(0).map((_, i) => 
-        (p.x - i - 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
-      ), // Top-left diagonal
-      ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
-        (p.x + i + 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
-      ), // Bottom-right diagonal
-      ...Array(Math.min(p.x, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
-        (p.x - i - 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
-      ), // Bottom-left diagonal
-      
-      // prime - 1
-
-      // Prime-numbered slopes
-      // Slope 2:1 (up-right)
-      ...Array(Math.ceil(Math.min(
-        (BOARD_CONFIG.GRID_SIZE - p.x - 1) / 2,
-        p.y
-      ))).fill(0).map((_, i) => 
-        (p.x + (i + 1) * 2) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 2:1 (up-left)
-      ...Array(Math.ceil(Math.min(
-        p.x / 2,
-        p.y
-      ))).fill(0).map((_, i) => 
-        (p.x - (i + 1) * 2) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 1:2 (up-right)
-      ...Array(Math.ceil(Math.min(
-        BOARD_CONFIG.GRID_SIZE - p.x - 1,
-        p.y / 2
-      ))).fill(0).map((_, i) => 
-        (p.x + i + 1) + (p.y - (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 1:2 (up-left)
-      ...Array(Math.ceil(Math.min(
-        p.x,
-        p.y / 2
-      ))).fill(0).map((_, i) => 
-        (p.x - i - 1) + (p.y - (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 2:1 (down-right)
-      ...Array(Math.ceil(Math.min(
-        (BOARD_CONFIG.GRID_SIZE - p.x - 1) / 2,
-        BOARD_CONFIG.GRID_SIZE - p.y - 1
-      ))).fill(0).map((_, i) => 
-        (p.x + (i + 1) * 2) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 2:1 (down-left)
-      ...Array(Math.ceil(Math.min(
-        p.x / 2,
-        BOARD_CONFIG.GRID_SIZE - p.y - 1
-      ))).fill(0).map((_, i) => 
-        (p.x - (i + 1) * 2) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 1:2 (down-right)
-      ...Array(Math.ceil(Math.min(
-        BOARD_CONFIG.GRID_SIZE - p.x - 1,
-        (BOARD_CONFIG.GRID_SIZE - p.y - 1) / 2
-      ))).fill(0).map((_, i) => 
-        (p.x + i + 1) + (p.y + (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 1:2 (down-left)
-      ...Array(Math.ceil(Math.min(
-        p.x,
-        (BOARD_CONFIG.GRID_SIZE - p.y - 1) / 2
-      ))).fill(0).map((_, i) => 
-        (p.x - i - 1) + (p.y + (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-    ])
-  ];
-};
+import { calculateRestrictedSquares, fetchBasePoints as fetchBasePointsUtil } from '../../utils/boardUtils';
 import styles from './Board.module.css';
 
-// Types for board configuration
-type BoardConfig = {
-  readonly GRID_SIZE: number;
-  readonly DEFAULT_POSITION: Point;
-  readonly DIRECTION_MAP: {
-    readonly [key: string]: Direction;
-    readonly ArrowUp: Direction;
-    readonly ArrowDown: Direction;
-    readonly ArrowLeft: Direction;
-    readonly ArrowRight: Direction;
-  };
-  readonly BUTTONS: readonly {
-    readonly label: string;
-    readonly className: string;
-  }[];
-  readonly DIRECTIONS: readonly {
-    readonly key: Direction;
-    readonly label: string;
-  }[];
-};
 
 // Board configuration
-const BOARD_CONFIG: BoardConfig = {
+export const BOARD_CONFIG: BoardConfig = {
   GRID_SIZE: 7, // 7x7 grid
   DEFAULT_POSITION: createPoint(0, 0),
   DIRECTION_MAP: {
@@ -158,20 +36,17 @@ const BOARD_CONFIG: BoardConfig = {
   ],
   DIRECTIONS: [
     { key: 'up', label: '↑ Up' },
+    { key: 'down', label: '↓ Down' },
     { key: 'left', label: '← Left' },
-    { key: 'right', label: 'Right →' },
-    { key: 'down', label: '↓ Down' }
+    { key: 'right', label: '→ Right' }
   ]
-} as const;
-
-// Type for the response when adding a base point
-interface AddBasePointResponse extends ApiResponse<BasePoint> {}
+};
 
 const Board: Component = () => {
   const [board, setBoard] = createSignal<BoardConfig>(BOARD_CONFIG);
   
   // Hooks
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   
   // State with explicit types
   const currentUser = user();
@@ -184,15 +59,24 @@ const Board: Component = () => {
   const [isSaving, setIsSaving] = createSignal<boolean>(false);
   const [restrictedSquares, setRestrictedSquares] = createSignal<RestrictedSquares>([]);
   
+  // Check if there's a base point at the given world coordinates
+  const isBasePoint = (x: number, y: number): boolean => {
+    return basePoints().some(point => point.x === x && point.y === y);
+  };
+  
   // Initialize loading state on mount
   onMount(() => {
-    console.log("[Board] setIsLoading (onMount)")
+    console.log(`[Board]:
+      onMount
+      setIsLoading setBasePoints([]) fetchBasePoints()
+    `)
     setIsLoading(true);
     setBasePoints([]);
     fetchBasePoints();
     
     // Cleanup function
     return () => {
+      console.log(`[Board]:onUnmount setIsLoading(false)`)
       setIsLoading(false);
     };
   });
@@ -200,9 +84,11 @@ const Board: Component = () => {
   // Refetch base points when position changes
   createEffect(() => {
     // This will run whenever currentPosition changes
-    console.log("[Board] currentPosition (createEffect 1)")
+    console.log(`[Board]
+      currentPosition
+      fetchBasePoints
+      `)
     currentPosition();
-    console.log("[Board] fetchBasePoints (createEffect 1)")
     fetchBasePoints();
   });
   
@@ -211,66 +97,27 @@ const Board: Component = () => {
   
   // Fetch base points with proper error handling and loading states
   const fetchBasePoints = async () => {
-    const currentUser = user();
-    if (!currentUser) {
-      setBasePoints([]);
-      console.log("[Board] setIsLoading(false) (fetchBasePoints)")
-      setIsLoading(false);
-      return;
-    }
-
-    const now = Date.now();
-    const timeSinceLastFetch = now - lastFetchTime();
+    const promise = fetchBasePointsUtil({
+      user,
+      currentPosition,
+      lastFetchTime,
+      isFetching,
+      isMoving,
+      setBasePoints,
+      setLastFetchTime,
+      setIsFetching,
+      setIsLoading,
+      setRestrictedSquares,
+      restrictedSquares
+    });
     
-    // Skip if we already have recent data or a request is in progress
-    if (isFetching() || currentFetch || isMoving() || (timeSinceLastFetch < 100)) {
-      return;
-    }
-
-    console.log("[Board] setIsFetching(false) (fetchBasePoints)")
-    setIsFetching(true);
-
-    // Create a single fetch promise to prevent duplicates
-    currentFetch = (async () => {
-      try {
-        const [x, y] = currentPosition();
-        const response = await fetch(`/api/base-points?x=${x}&y=${y}`, {
-          credentials: 'include',
-          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const { data } = await response.json();
-        const newBasePoints = data?.basePoints || [];
-
-        if (Array.isArray(newBasePoints)) {
-          console.log("newBasePoints", JSON.stringify(newBasePoints))
-          setBasePoints(newBasePoints);
-          basePoints().forEach(pB => {
-            const p = {x: pB.x + currentPosition()[0], y: pB.y + currentPosition()[1]}
-            if (p.x < 7 &&  p.x >= 0 && p.y < 7 && p.y >= 0) {
-              
-            // TODO: res.flatMap(e => [p.x, p.y])
-            //  only coordinates that fall into the initial grid
-            // [0,0] x [6,6]
-              setRestrictedSquares(calculateRestrictedSquares(p, restrictedSquares()));
-          }
-            })
-          setLastFetchTime(now);
-        }
-      } catch (error) {
-        console.error('Error fetching base points:', error);
-      } finally {
-        setIsFetching(false);
-        setIsLoading(false);
+    if (promise) {
+      currentFetch = promise.finally(() => {
         currentFetch = null;
-      }
-    })();
-
-    return currentFetch;
+      });
+      return currentFetch;
+    }
+    return Promise.resolve();
   };
 
   // Effect to trigger base points fetch when user changes
@@ -340,11 +187,18 @@ const Board: Component = () => {
   // Reset selected squares when user changes
   createEffect(() => {
     if (currentUser) {
+      console.log('[Board] User changed, resetting restricted squares');
       setRestrictedSquares([]);
     }
   });
   
-  // Using ApiResponse<BasePoint> for consistent API response handling
+  // Helper function to create a properly typed API response
+  const createResponse = <T,>(success: boolean, data?: T, error?: string): ApiResponse<T> => ({
+    success,
+    ...(data && { data }),
+    ...(error && { error }),
+    timestamp: Date.now()
+  });
 
   // Helper function to create a timeout promise
   const withTimeout = <T,>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> => {
@@ -371,107 +225,66 @@ const Board: Component = () => {
 
   // Handle adding a new base point with proper typing and error handling
   const handleAddBasePoint = async (x: number, y: number): Promise<ApiResponse<BasePoint>> => {
-    if (!currentUser) return { success: false, error: 'User not authenticated' };
-    if (isSaving()) return { success: false, error: 'Operation already in progress' };
+    if (!currentUser) return createResponse<BasePoint>(false, undefined, 'User not authenticated');
+    if (isSaving()) return createResponse<BasePoint>(false, undefined, 'Operation already in progress');
     
     // Validate input coordinates
     if (!isValidCoordinate(x) || !isValidCoordinate(y)) {
-      return { 
-        success: false, 
-        error: `Coordinates must be integers between 0 and ${BOARD_CONFIG.GRID_SIZE - 1} (inclusive)` 
-      };
+      return createResponse<BasePoint>(
+        false, 
+        undefined, 
+        `Coordinates must be integers between 0 and ${BOARD_CONFIG.GRID_SIZE - 1} (inclusive)`
+      );
     }
     
     // Check for duplicate base point
     if (isDuplicateBasePoint(x, y)) {
-      return {
-        success: false,
-        error: `A base point already exists at position (${x}, ${y})`
-      };
+      return createResponse<BasePoint>(
+        false,
+        undefined,
+        'Base point already exists at these coordinates'
+      );
     }
     
-    setIsSaving(true);
-    let controller: AbortController | null = new AbortController();
-    
     try {
-      const fetchPromise = fetch('/api/base-points', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ x, y }),
-        signal: controller?.signal
-      });
-      
-      // Set a 10 second timeout for the request
-      const response = await withTimeout(
-        fetchPromise,
-        10000, // 10 seconds
-        'Request timed out. Please try again.'
+      setIsSaving(true);
+      const response = await withTimeout<AddBasePointResponse>(
+        fetch('/api/base-points', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({ x, y })
+        }).then(res => res.json()),
+        10000, // 10 second timeout
+        'Request timed out'
       );
       
-      // Clear the controller reference since we don't need it anymore
-      controller = null;
-      
-      const responseData = await response.json();
-
-      
-      if (!response.ok) {
-        const errorMessage = responseData?.error || 'Failed to save base point';
-        console.error('Error saving base point:', errorMessage);
-        return { success: false, error: errorMessage };
-      }
-      
-      // Success case - update the base points
-      if (!responseData) {
-        console.error('No data in successful response');
-        return { success: false, error: 'No data in response' };
+      if (!response.success) {
+        return createResponse<BasePoint>(false, undefined, response.error || 'Failed to save base point');
       }
       
       const newBasePoint: BasePoint = {
-        id: responseData.id,
-        x: responseData.x,
-        y: responseData.y,
-        userId: responseData.userId,
-        createdAtMs: responseData.createdAtMs
+        x,
+        y,
+        userId: response.data?.userId || currentUser.id,
+        createdAtMs: response.data?.createdAtMs || Date.now(),
+        id: 0
       };
       
       setBasePoints(prev => [...prev, newBasePoint]);
-      return { success: true, data: newBasePoint };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Unexpected error in handleAddBasePoint:', error);
-      return { success: false, error: errorMessage };
-    } finally {
-      // Abort the request if it's still pending
-      if (controller) {
-        controller.abort();
-      }
-      setIsSaving(false);
-    }
-  };
-
-  // Check if a grid cell is a base point
-  const isBasePoint = (worldX: number, worldY: number) => {
-    try {
-      const points = basePoints();
-      if (!Array.isArray(points)) {
-        return false;
-      }
+      return createResponse<BasePoint>(true, newBasePoint);
       
-      // Check if there's a base point at these world coordinates
-      return points.some(bp => {
-        if (!bp || typeof bp.x !== 'number' || typeof bp.y !== 'number') {
-          return false;
-        }
-        // Check if this base point matches the world coordinates
-        return bp.x === worldX && bp.y === worldY;
-      });
     } catch (error) {
-      console.error('Error in isBasePoint:', error);
-      return false;
+      return createResponse<BasePoint>(
+        false,
+        undefined,
+        error instanceof Error ? error.message : 'Failed to save base point'
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -505,7 +318,7 @@ const Board: Component = () => {
     }
     
     try {
-      console.log('Sending request to /api/base-points with:', { x: worldX, y: worldY });
+      console.log('[Board] Sending request to /api/base-points with:', { x: worldX, y: worldY });
       const response = await fetch('/api/base-points', {
         method: 'POST',
         headers: { 
@@ -536,7 +349,7 @@ const Board: Component = () => {
 
         const pB: BasePoint = responseData.data.basePoint;
         const p = {x: pB.x + currentPosition()[0], y: pB.y + currentPosition()[1]}
-        setRestrictedSquares(calculateRestrictedSquares(p, restrictedSquares()));
+        setRestrictedSquares(calculateRestrictedSquares(createPoint(p.x, p.y), restrictedSquares()));
 
         setBasePoints(prev => [...prev, responseData.data.basePoint]);
       } else {
@@ -722,8 +535,6 @@ const Board: Component = () => {
       }, 100);
     }
   };
-
-  console.log('Rendering base points:', basePoints());
 
   return (
     <div class={styles.board}>

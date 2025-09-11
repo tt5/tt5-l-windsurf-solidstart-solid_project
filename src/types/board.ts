@@ -26,6 +26,30 @@ export interface Item {
   userId: string;
 }
 
+export type RestrictedSquares = number[];
+
+export interface BoardConfig {
+  readonly GRID_SIZE: number;
+  readonly DEFAULT_POSITION: Point;
+  readonly DIRECTION_MAP: {
+    readonly [key: string]: Direction;
+    readonly ArrowUp: Direction;
+    readonly ArrowDown: Direction;
+    readonly ArrowLeft: Direction;
+    readonly ArrowRight: Direction;
+  };
+  readonly BUTTONS: readonly {
+    readonly label: string;
+    readonly className: string;
+  }[];
+  readonly DIRECTIONS: readonly {
+    readonly key: Direction;
+    readonly label: string;
+  }[];
+}
+
+export interface AddBasePointResponse extends ApiResponse<BasePoint> {}
+
 // Game state types
 export interface GameState {
   position: Point;
