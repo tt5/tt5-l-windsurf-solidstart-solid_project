@@ -4,7 +4,6 @@ import {
   createSignal, 
   onMount 
 } from 'solid-js';
-import { moveSquares } from '../../utils/directionUtils';
 import { useAuth } from '../../contexts/auth';
 import { 
   type Direction, 
@@ -16,9 +15,8 @@ import {
   createPoint
 } from '../../types/board';
 import type { ApiResponse } from '../../utils/api';
-import { calculateRestrictedSquares, fetchBasePoints as fetchBasePointsUtil } from '../../utils/boardUtils';
+import { calculateRestrictedSquares, fetchBasePoints as fetchBasePointsUtil, handleDirection as handleDirectionUtil } from '../../utils/boardUtils';
 import styles from './Board.module.css';
-
 
 // Board configuration
 export const BOARD_CONFIG: BoardConfig = {
@@ -67,7 +65,7 @@ const Board: Component = () => {
   // Initialize loading state on mount
   onMount(() => {
     console.log(`[Board]:
-      onMount
+      onMount1
       setIsLoading setBasePoints([]) fetchBasePoints()
     `)
     setIsLoading(true);
@@ -84,7 +82,7 @@ const Board: Component = () => {
   // Refetch base points when position changes
   createEffect(() => {
     // This will run whenever currentPosition changes
-    console.log(`[Board]
+    console.log(`[Board]:Effect
       currentPosition
       fetchBasePoints
       `)
@@ -120,15 +118,26 @@ const Board: Component = () => {
     return Promise.resolve();
   };
 
-  // Effect to trigger base points fetch when user changes
+  // Effect to handle user changes and fetch base points
   createEffect(() => {
-    user();
+    const currentUser = user();
+    console.log("[Board] User changed, fetching base points");
+    
+    // Only reset restricted squares if user logs out
+    if (!currentUser) {
+      setRestrictedSquares([]);
+    } else if (restrictedSquares().length === 0) {
+      // Initialize with default restricted squares for new user session
+      setRestrictedSquares(INITIAL_SQUARES);
+    }
+    
+    // Always fetch base points on user change
     fetchBasePoints().catch(console.error);
   });
 
   // Effect to refetch base points when position changes
   createEffect(() => {
-    console.log("[Board] currentPosition (createEffect 2)")
+    console.log("[Board] Effect: currentPosition changed, fetching base points");
     const [x, y] = currentPosition();
     fetchBasePoints().catch(console.error);
   });
@@ -165,6 +174,7 @@ const Board: Component = () => {
   
   // Setup and cleanup event listeners
   onMount(() => {
+    console.log("[Board]onMount2")
     const eventListeners: [string, EventListener][] = [
       ['keydown', handleKeyDown as EventListener],
       ['keyup', handleKeyUp as EventListener]
@@ -181,15 +191,6 @@ const Board: Component = () => {
         window.removeEventListener(event, handler);
       });
     };
-  });
-
-  
-  // Reset selected squares when user changes
-  createEffect(() => {
-    if (currentUser) {
-      console.log('[Board] User changed, resetting restricted squares');
-      setRestrictedSquares([]);
-    }
   });
   
   // Helper function to create a properly typed API response
@@ -376,12 +377,12 @@ const Board: Component = () => {
     42,48,
   ]
 
-
   // Track if we have a manual update in progress
   const [isManualUpdate, setIsManualUpdate] = createSignal(false);
   
   // Initialize squares on mount
   onMount(() => {
+    console.log("[Board] onMount3")
     if (restrictedSquares().length === 0) {
       setRestrictedSquares(INITIAL_SQUARES);
     }
@@ -398,142 +399,19 @@ const Board: Component = () => {
     }
   };
 
-  // Convert square indices to Point objects
-  const indicesToPoints = (indices: number[]) => 
-    indices.map(index => createPoint(
-      index % BOARD_CONFIG.GRID_SIZE,
-      Math.floor(index / BOARD_CONFIG.GRID_SIZE)
-    ));
-
-  // Convert Point coordinates back to grid indices
-  const pointsToIndices = (coords: Point[]) => 
-    coords.map(([x, y]) => y * BOARD_CONFIG.GRID_SIZE + x);
-
+  // Handle direction movement
   const handleDirection = async (dir: Direction): Promise<void> => {
-    if (isMoving()) {
-      return; // Prevent multiple movements at once
-    }
-    
-    setIsMoving(true);
-    setIsManualUpdate(true);
-    setIsLoading(true);
-    
-    try {
-      const [x, y] = currentPosition();
-      const [dx, dy] = getMovementDeltas(dir);
-      const newPosition = createPoint(x + dx, y + dy);
-      
-      // Process square movement before updating position
-      const squaresAsCoords = indicesToPoints([...restrictedSquares()]);
-      const newSquares = moveSquares(squaresAsCoords, dir, newPosition);
-
-      // Calculate the opposite border in the direction of movement
-      const borderSquares = [];
-      const gridSize = BOARD_CONFIG.GRID_SIZE;
-      
-      // Get the row or column indices for the opposite border
-      switch(dir) {
-        case 'up':
-          // Bottom row (y = gridSize - 1)
-          for (let x = 0; x < gridSize; x++) {
-            borderSquares.push((gridSize - 1) * gridSize + x);
-          }
-          break;
-        case 'down':
-          // Top row (y = 0)
-          for (let x = 0; x < gridSize; x++) {
-            borderSquares.push(x);
-          }
-          break;
-        case 'left':
-          // Right column (x = gridSize - 1)
-          for (let y = 0; y < gridSize; y++) {
-            borderSquares.push(y * gridSize + (gridSize - 1));
-          }
-          break;
-        case 'right':
-          // Left column (x = 0)
-          for (let y = 0; y < gridSize; y++) {
-            borderSquares.push(y * gridSize);
-          }
-          break;
-      }
-
-
-      
-      // Update position
-      setCurrentPosition(newPosition);
-      
-      // Get the new indices from the moved squares
-      const newIndices = pointsToIndices(newSquares);
-
-      
-      try {
-        // Fetch new border indices from calculate-squares
-        const response = await fetch('/api/calculate-squares', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            borderIndices: borderSquares,
-            currentPosition: newPosition,
-            direction: dir
-          })
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data?.squares && Array.isArray(result.data.squares)) {
-            // Combine newIndices with the border indices from the API, excluding any base points
-            const allIndices = [...new Set([...newIndices, ...result.data.squares])];
-            const [offsetX, offsetY] = currentPosition();
-            
-            // Filter out indices that are base points
-            const combinedIndices = allIndices.filter(index => {
-              const x = index % BOARD_CONFIG.GRID_SIZE;
-              const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-              const worldX = x - offsetX;
-              const worldY = y - offsetY;
-              return !isBasePoint(worldX, worldY);
-            });
-            
-            console.log("Combined indices (base points excluded):", { 
-              newIndices, 
-              borderSquares: result.data.squares, 
-              combinedIndices 
-            });
-            
-            setRestrictedSquares(combinedIndices);
-          } else {
-            // Fail hard if API response is invalid
-            const error = new Error(`Invalid API response format: ${JSON.stringify(result)}`);
-            console.error(error);
-            throw error;
-          }
-        } else {
-          // Fail hard if API call fails
-          const error = new Error(`API call failed with status: ${response.status} ${response.statusText}`);
-          console.error(error);
-          throw error;
-        }
-      } catch (error) {
-        console.error('Error fetching border squares:', error);
-        // Rethrow the error to be handled by the outer catch block
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        throw new Error(`Failed to fetch border squares: ${errorMessage}`, { cause: error });
-      }
-      
-    } catch (error) {
-      console.error('Movement failed:', error);
-      // Re-throw to be handled by the caller if needed
-      throw error;
-    } finally {
-      setIsLoading(false);
-      // Small delay to prevent rapid successive movements
-      setTimeout(() => {
-        setIsManualUpdate(false);
-        setIsMoving(false);
-      }, 100);
-    }
+    return handleDirectionUtil(dir, {
+      isMoving,
+      currentPosition,
+      setCurrentPosition,
+      restrictedSquares,
+      setRestrictedSquares,
+      setIsMoving,
+      setIsManualUpdate,
+      setIsLoading,
+      isBasePoint
+    });
   };
 
   return (
@@ -550,7 +428,6 @@ const Board: Component = () => {
           const isBP = isBasePoint(worldX, worldY);
           const isPlayerPosition = worldX === 0 && worldY === 0;
 
-          
           return (
             <button
               class={`${styles.square} ${isSelected ? styles.selected : ''} ${isBP ? styles.basePoint : ''} ${isPlayerPosition ? styles.playerPosition : ''}`}
