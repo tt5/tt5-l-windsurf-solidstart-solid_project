@@ -50,18 +50,30 @@ class ServerInitializer {
         console.log('Running cleanup...');
         const db = await getDb();
         const slopes = getRandomSlopes(2 + Math.floor(Math.random() * 3));
+        console.log('Using slopes:', slopes);
+        
+        // Get all points before cleanup for comparison
+        const allPoints = await db.all('SELECT id, x, y FROM base_points');
+        console.log('Points before cleanup:', allPoints);
+        
         const pointsToDelete = await getPointsInLines(db, slopes);
+        console.log('Points to delete:', pointsToDelete);
         
         if (pointsToDelete.length > 0) {
+          console.log('Executing delete for points:', pointsToDelete.map(p => `(${p.x},${p.y})`).join(', '));
           await deletePoints(db, pointsToDelete);
           console.log(`[Cleanup] Removed ${pointsToDelete.length} points in lines`);
+          
+          // Get points after cleanup
+          const remainingPoints = await db.all('SELECT id, x, y FROM base_points');
+          console.log('Points after cleanup:', remainingPoints);
         } else {
           console.log('No duplicate base points found to clean up');
         }
       } catch (error) {
         console.error('Error during cleanup:', error);
       }
-    }, 30000); // 30 seconds
+    }, 10000);
   }
 }
 

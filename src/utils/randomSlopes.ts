@@ -28,8 +28,12 @@ export function getRandomSlopes(count: number = 4): number[] {
 export function getSlopeConditions(slopes: number[]): string {
   return slopes.flatMap(prime => [
     // Slope prime:1 (dx * prime = dy)
-    `(p2.x - p1.x) * ${prime} = (p2.y - p1.y)`,
+    `(p2.x - p1.x) * ${prime} = (p2.y - p1.y) AND (p2.x - p1.x) != 0`,
+    // Slope -prime:1 (dx * -prime = dy)
+    `(p2.x - p1.x) * -${prime} = (p2.y - p1.y) AND (p2.x - p1.x) != 0`,
     // Slope 1:prime (dx = dy * prime)
-    `(p2.x - p1.x) = (p2.y - p1.y) * ${prime}`
+    `(p2.x - p1.x) = (p2.y - p1.y) * ${prime} AND (p2.y - p1.y) != 0`,
+    // Slope -1:prime (dx = dy * -prime)
+    `(p2.x - p1.x) = (p2.y - p1.y) * -${prime} AND (p2.y - p1.y) != 0`
   ]).join(' OR ');
 }
