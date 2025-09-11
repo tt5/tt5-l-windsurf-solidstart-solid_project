@@ -11,6 +11,7 @@ interface BasePoint {
   y: number;
   createdAt: Date;
   influenceRange: number; // Default: 4 directions (N-S, E-W, NE-SW, NW-SE)
+  worldId: string; // Which world instance this point belongs to
 }
 ```
 
@@ -22,10 +23,47 @@ interface Territory {
   vertices: { x: number; y: number }[]; // Polygon vertices
   area: number;
   lastUpdated: Date;
+  worldId: string; // Reference to world instance
+  basePointIds: string[]; // Base points forming this territory
+```
+
+## Phase 2: World Management
+
+### 2.1 World Instances
+```typescript
+interface WorldInstance {
+  id: string;
+  basePoints: BasePoint[];
+  playerCount: number;
+  createdAt: Date;
+  lastActivity: Date;
+  status: 'active' | 'merging' | 'inactive';
 }
 ```
 
-## Phase 2: Core Algorithms
+### 2.2 World Splitting
+1. **Trigger Conditions**
+   - When world reaches 1000 base points
+   - Use k-means clustering to find natural player groups
+   - Create new world instance with split base points
+
+2. **Player Assignment**
+   - Auto-assign players based on base point distribution
+   - Transfer relevant base points to new world
+   - Update player world assignments
+
+### 2.3 World Merging
+1. **Trigger Conditions**
+   - When world drops below 25% capacity
+   - 24-hour grace period before merging
+   
+2. **Merge Process**
+   - Find suitable target world (similar player count/activity)
+   - Transfer base points with coordinate translation
+   - Run anti-fragmentation algorithm
+   - Notify affected players
+
+## Phase 3: Core Algorithms
 
 ### 2.1 Influence Calculation
 1. **Line Projection**
@@ -49,7 +87,48 @@ interface Territory {
      - Split territory at intersection point
      - Assign ownership based on distance to nearest base points
 
-## Phase 3: Game Loop Integration
+## Phase 4: Player Systems
+
+### 4.1 Player State
+```typescript
+interface Player {
+  id: string;
+  currentWorldId: string;
+  exploredAreas: { worldId: string; x: number; y: number; radius: number }[];
+  teleportCooldown: Date | null;
+  hasUsedStarterToken: boolean;
+}
+```
+
+### 4.2 Teleportation System
+1. **Starter Token**
+   - Granted on first join
+   - One-time use, unlimited range
+   - Must be used in first session
+
+2. **Standard Teleport**
+   - 50-unit range limit
+   - 5-minute cooldown
+   - Can only target explored areas
+   - Minimum 50-100 unit distance from other players
+
+3. **Implementation**
+   - Server validates all teleport requests
+   - Maintains cooldown state
+   - Updates player's position and explored areas
+
+### 4.3 Exploration System
+1. **Fog of War**
+   - Track explored areas per player
+   - Reveal areas within view radius
+   - Persist exploration state
+
+2. **Minimap Updates**
+   - Only show explored areas
+   - Update in real-time as player moves
+   - Cache exploration data for performance
+
+## Phase 5: Game Loop Integration
 
 ### 3.1 Event Handlers
 ```typescript
@@ -111,7 +190,21 @@ function handleBasePointPlacement(basePoint: BasePoint) {
 - Animation for territory changes
 - Visual indicators for contested areas
 
-## Phase 6: Multiplayer Sync
+## Phase 6: Security & Anti-Exploitation
+
+### 6.1 Authentication
+- OAuth 2.0 integration
+- Email verification
+- Rate limiting
+- Device fingerprinting
+
+### 6.2 Anti-Cheat Measures
+- Server-side validation of all actions
+- Behavior analysis for unusual patterns
+- Manual review system for flagged accounts
+- Cooldown enforcement
+
+## Phase 7: Multiplayer Sync
 
 ### 6.1 State Management
 - Use CRDTs for conflict-free replicated data
@@ -143,6 +236,28 @@ function handleBasePointPlacement(basePoint: BasePoint) {
 - Database query performance
 
 ## Future Enhancements
+
+### 8.1 Gameplay
+- **Environmental Obstacles**
+  - Natural terrain features
+  - Player-created structures
+  - Temporary zone effects
+  
+- **Team Play**
+  - Shared territories
+  - Team abilities
+  - Cooperative strategies
+
+### 8.2 Technical
+- **Performance**
+  - Client-side prediction
+  - Optimized network protocols
+  - Advanced spatial indexing
+  
+- **Analytics**
+  - Player behavior tracking
+  - Performance metrics
+  - Balance telemetry
 1. **Advanced Territory Abilities**
    - Special powers based on territory size
    - Resource generation

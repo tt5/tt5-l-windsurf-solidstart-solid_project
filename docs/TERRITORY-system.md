@@ -1,102 +1,185 @@
-# Territory Control System
-
-## Overview
-An infinite 2D grid where players compete for control by strategically placing base points. The system automatically manages world instances to ensure optimal performance and balanced gameplay.
+# Territory Control System v2
 
 ## Core Gameplay
 
-### Base Points
+### Base Points & Influence
 - **Placement**:
-  - Restricted to current 7x7 viewport
+  - 15x15 viewport grid
   - 2-second cooldown between placements
   - Consumes action points (regenerates over time)
-- **Influence**:
-  - Projects in straight lines (cardinal, diagonal, and prime slopes)
-  - Extends infinitely until interrupted
-  - Creates territory boundaries at intersections
-- **Movement**:
-  - Smooth movement (3 cells/second)
-  - 0.2s cooldown between moves
-  - Consumes action points (1 per cell)
+  - Minimum distance between points (5-8 grid cells) to:
+    - Prevent visual clutter and performance issues
+    - Encourage strategic placement over spamming
+    - Maintain clear territory boundaries
+    - Balance early-game expansion by:
+      - Preventing rapid territory grabs
+      - Encouraging exploration over clustering
+      - Giving new players time to establish presence
+      - Creating natural expansion patterns
 
-### World Management
-- **Splitting**:
+- **Influence Mechanics**:
+  - Projects along straight lines (cardinal, diagonal, prime slopes)
+  - Infinite reach until interrupted
+  - Creates territory boundaries at intersections by:
+    - Detecting where influence lines from different players cross
+    - Forming polygon shapes where influences meet through:
+      - Connecting intersection points in clockwise/counter-clockwise order
+      - Creating Voronoi-like cells around each base point
+      - Adjusting for line-of-sight obstacles
+      - Ensuring all polygon edges follow grid alignment
+    - Assigning enclosed areas to the nearest base point
+    - Resolving conflicts using a weighted system:
+      - 70% weight to point age because it:
+        - Rewards early investment and long-term strategy
+        - Prevents territory flipping through temporary advantages
+        - Encourages players to plan their expansion carefully
+        - Creates a sense of permanence and history in the game world
+      - 30% weight to distance (closer points have advantage) because it:
+        - Encourages players to spread out and explore
+        - Prevents concentration of power in a single area
+        - Creates a sense of balance and fairness
+      - Additional factors in tiebreakers:
+        - Number of connected friendly territories
+        - Player's overall influence in the region
+        - Random element (small %) to prevent stalemates
+  - Visualized with semi-transparent colored regions
+
+### Player Movement
+- Smooth movement at 3 cells/second
+- 0.2s cooldown between moves
+- Action point consumption (1 per cell)
+- Viewport updates in real-time
+
+## World Management
+
+### World Instances
+- **Automatic Splitting**:
   - Triggers at 1000 base points
   - Uses k-means clustering
-  - Players choose which new world to join
-- **Merging**:
+  - Players auto-assigned based on base point distribution
+  - Maintains spatial relationships
+
+- **World Merging**:
   - When world drops below 25% capacity
   - 24-hour grace period
-  - Automatic conflict resolution
-- **Instances**:
-  - Independent cleanup processes
-  - Shared coordinate system
-  - (0,0) preserved across all instances
+  - Auto-resolves conflicts (older points preserved)
+  - Anti-fragmentation measures
 
-## Visual Elements
-
-### Minimap
-- **Overview**: Miniature map showing the entire play area
-- **Viewport Indicator**: Highlights the player's current visible area
-- **Base Points**: Shows all base points with color-coded ownership
-- **Zoom & Pan**: Interactive controls for navigation
-- **Auto-update**: Live updates as the player moves or places points
-- **Landmark Visibility**: Highlights key locations (0,0, world borders)
+- **World Visitation**:
+  - Visit any world with your base points
+  - 60-second cooldown between world changes
+  - Active points remain in original world
+  - World list shows player count/activity
 
 ## Player Systems
 
 ### Progression
 - **Teleportation**:
-  - 1 token per 24h (max 3)
-  - Global map access
-  - Density heatmap preview
-  - 50-100 unit minimum distance
-  - 3-turn protection after teleport
+  - **One-time Token**:
+    - New players receive 1 token for unlimited-range teleport
+    - Must be used during first session
+    - Cannot be stored or banked
+  - **Standard Teleport**:
+    - All players can teleport up to 50 units
+    - Must target previously explored areas
+    - 5-minute cooldown between uses
+    - Cannot teleport into or through:
+      - Unexplored areas
+      - Enemy territory
+  - **Restrictions**:
+    - 50-100 unit min distance from other players
+    - 3-turn protection after teleport
+    - Global map shows density heatmap for valid destinations
 
-### Account Management
-- **Inactivity**:
-  - 90-day auto-deletion
-  - Warnings at 60/30 days
-  - Weekly cleanup batches
-- **Deletion**:
-  - Immediate point removal
-  - Territory recalculation
-  - World merging if needed
+### Security
+- **Authentication**:
+  - OAuth 2.0 (Google, GitHub, etc.)
+  - Email verification required
+  - Rate-limited account creation
 
-## Performance
+- **Anti-Exploitation**:
+  - Device fingerprinting
+  - Behavior analysis
+  - Manual review system
 
-### Optimization
+## Visual Elements
+
+### Minimap
+- Shows only explored areas (fog of war)
+- Viewport indicator for current position
+- Color-coded base points in visible range
+- Interactive zoom/pan within explored areas
+- Live updates as new areas are discovered
+- Key landmarks revealed through exploration
+
+### Territory Display
+- Semi-transparent colored regions
+- Clear border indicators
+- Ownership labels
+- Influence line visualization
+
+## Performance Considerations
+
+### Optimization Strategies
 - **Spatial Indexing**:
-  - Quad-tree implementation
-  - O(n log n) collision detection
-  - Efficient point queries
-- **Line Processing**:
-  - Parallel calculations
-  - Segment caching
-  - Progressive updates
-- **Caching**:
-  - Multi-level boundary cache
-  - Smart invalidation
-  - Background pre-computation
+  - Quad-tree implementation for base points
+  - Only process points within viewport + buffer zone
+  - Cache recent territory calculations
+  
+- **Update Management**:
+  - Track dirty regions needing recalculation
+  - Batch database operations
+  - Implement incremental updates
+  - Use delta compression for network traffic
+
+### Resource Management
+- **Memory Usage**:
+  - Compress exploration data using bitmask or RLE
+  - Implement level-of-detail for distant areas
+  - Use object pooling for frequent allocations
+  
+- **Database Optimization**:
+  - Index frequently queried fields
+  - Use write-behind caching
+  - Consider time-series databases for metrics
+  - Implement connection pooling
 
 ### Scaling
-- **Load Distribution**:
-  - Automatic instance creation
-  - Balanced player distribution
-  - Resource monitoring
-- **Network**:
-  - Delta updates
-  - Update throttling
-  - Priority queuing
+- **Horizontal Scaling**:
+  - Distribute world instances across servers
+  - Implement automatic load balancing
+  - Use region-based sharding
+  
+- **Monitoring**:
+  - Track frame rates and memory usage
+  - Monitor network latency
+  - Log performance metrics
+  - Set up alerts for degradation
 
-## Future Enhancements
+## Implementation
+- Quad-tree spatial indexing
+- O(n log n) collision detection
+- Parallel line calculations
+- Multi-level caching
+- Delta updates
+- Priority processing
+- Update throttling
+- Background pre-computation
+
+## Future Development
 
 ### Gameplay
-- Territory-based abilities
+- Territory abilities
 - Resource generation
 - Dynamic events
+- Team mechanics
+- Environmental obstacles and barriers
+  - Natural terrain features
+  - Player-created structures
+  - Temporary zone effects
 
 ### Technical
-- Improved line algorithms
+- Improved algorithms
 - Client prediction
-- Enhanced server architecture
+- Enhanced networking
+- Analytics integration
