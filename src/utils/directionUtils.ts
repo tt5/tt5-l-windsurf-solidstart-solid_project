@@ -1,9 +1,7 @@
 import { createPoint, type Direction, type Point } from '../types/board';
+import { BOARD_CONFIG } from '../constants/game';
 
-/**
- * Size of the game grid (7x7)
- */
-const GRID_SIZE = 7 as const;
+const GRID_SIZE = BOARD_CONFIG.GRID_SIZE;
 
 /**
  * Generates border indices for a specific edge of the grid

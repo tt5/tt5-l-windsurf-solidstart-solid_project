@@ -1,4 +1,4 @@
-import { BOARD_CONFIG } from '../components/Game/Board';
+import { BOARD_CONFIG } from '../constants/game';
 import { createPoint, Point, BasePoint, Direction } from '../types/board';
 import type { Accessor, Setter } from 'solid-js';
 import { moveSquares } from './directionUtils';

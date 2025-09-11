@@ -1,12 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createPoint } from '../../../types/board';
+import { BOARD_CONFIG } from '../../../constants/game';
 
-// Mock the BOARD_CONFIG since it's used in the functions
-const GRID_SIZE = 7;
-const mockBoardConfig = {
-  GRID_SIZE,
-  // Add other required properties if needed
-};
+const GRID_SIZE = BOARD_CONFIG.GRID_SIZE;
 
 // We'll test these functions directly
 const indicesToPoints = (indices: number[], gridSize: number = GRID_SIZE) => 
@@ -21,13 +17,13 @@ const pointsToIndices = (coords: Point[], gridSize: number = GRID_SIZE) =>
 describe('Board Utilities', () => {
   describe('indicesToPoints', () => {
     it('converts indices to Point objects correctly', () => {
-      // Test with a 7x7 grid (GRID_SIZE = 7)
-      const indices = [0, 8, 15, 48];
+      // Test with the configured grid size
+      const indices = [0, 16, 31, 224]; // 15*15=225 total cells (0-224)
       const expected = [
-        createPoint(0, 0),  // index 0 -> (0, 0)
-        createPoint(1, 1),  // index 8 -> (1, 1)  (7*1 + 1 = 8)
-        createPoint(1, 2),  // index 15 -> (1, 2) (7*2 + 1 = 15)
-        createPoint(6, 6),  // index 48 -> (6, 6) (7*6 + 6 = 48)
+        createPoint(0, 0),   // index 0 -> (0, 0)
+        createPoint(1, 1),   // index 16 -> (1, 1)  (15*1 + 1 = 16)
+        createPoint(1, 2),   // index 31 -> (1, 2)  (15*2 + 1 = 31)
+        createPoint(14, 14)  // index 224 -> (14, 14) (15*14 + 14 = 224)
       ];
 
       const result = indicesToPoints(indices);

@@ -2,7 +2,7 @@ import { getDb } from '~/lib/server/db';
 import { BasePointRepository } from '~/lib/server/repositories/base-point.repository';
 import { withAuth } from '~/middleware/auth';
 import { createErrorResponse, generateRequestId } from '~/utils/api';
-import { BOARD_CONFIG } from '~/components/Game/Board';
+import { BOARD_CONFIG } from '~/constants/game';
 
 type CalculateSquaresRequest = {
   borderIndices: number[];

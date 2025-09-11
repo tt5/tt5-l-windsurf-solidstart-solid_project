@@ -19,27 +19,8 @@ import type { ApiResponse } from '../../utils/api';
 import { calculateRestrictedSquares, fetchBasePoints as fetchBasePointsUtil, handleDirection as handleDirectionUtil } from '../../utils/boardUtils';
 import styles from './Board.module.css';
 
-// Board configuration
-export const BOARD_CONFIG: BoardConfig = {
-  GRID_SIZE: 15, // 7x7 grid
-  DEFAULT_POSITION: createPoint(0, 0),
-  DIRECTION_MAP: {
-    'ArrowUp': 'up',
-    'ArrowDown': 'down',
-    'ArrowLeft': 'left',
-    'ArrowRight': 'right'
-  },
-  BUTTONS: [
-    { label: 'Random', className: 'randomButton' },
-    { label: 'Clear All', className: 'clearButton' }
-  ],
-  DIRECTIONS: [
-    { key: 'up', label: '↑ Up' },
-    { key: 'down', label: '↓ Down' },
-    { key: 'left', label: '← Left' },
-    { key: 'right', label: '→ Right' }
-  ]
-};
+// Import shared board configuration
+import { BOARD_CONFIG } from '~/constants/game';
 
 const Board: Component = () => {
   const [board, setBoard] = createSignal<BoardConfig>(BOARD_CONFIG);
