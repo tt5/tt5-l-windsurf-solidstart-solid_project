@@ -6,6 +6,8 @@ type PerformanceMetric = {
     basePointCount?: number;
     playerCount?: number;
     responseSize?: number;
+    dbTime?: number;
+    processingTime?: number;
   };
 };
 

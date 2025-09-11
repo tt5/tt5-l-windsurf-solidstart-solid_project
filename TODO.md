@@ -2,63 +2,58 @@
 
 ## High Priority
 
-1. ✅ **Update Game Design Documentation**
-   - [x] Align DESIGN.md with current implementation
-   - [x] Document viewport-based mechanics
-   - [x] Clarify base point placement rules
-
-2. **Implement Basic Territory Visualization**
-   - **2.1 Player Color Mapping**
-     - [ ] Create utility function for distinct player colors
-     - [ ] Map user IDs to specific colors
-     - [ ] Store color mapping in game state
-   - **2.2 Board Rendering Updates**
+1. **Implement Core Gameplay**
+   - [ ] **Base Point Placement**
+     - [ ] Add visual feedback for valid/invalid placements
+     - [ ] Handle edge cases (world boundaries, etc.)
+     - [ ] Implement placement cooldown
+   - [ ] **Territory Visualization**
      - [ ] Show base points with player colors
-     - [ ] Add visual indicators for restricted squares
-     - [ ] Implement hover/selection states
-   - **2.3 Visual Feedback System**
-     - [ ] Add CSS classes for territory states
-     - [ ] Implement smooth state transitions
-     - [ ] Distinguish claimed vs restricted areas
+     - [x] Add visual indicators for restricted squares
+     - [ ] Implement territory highlighting
+   - [ ] **Player Movement**
+     - [ ] Implement smooth viewport transitions
+     - [ ] Add movement cooldown (100ms)
+     - [ ] Handle edge-of-world boundaries
 
-3. **Enhance Base Point Placement**
-   - Improve validation logic
-   - Add visual feedback for valid/invalid placements
-   - Handle edge cases (world boundaries, etc.)
+2. **Multiplayer Features**
+   - [ ] **Player Management**
+     - [ ] Improve player authentication
+     - [ ] Add player color mapping
+     - [ ] Handle player disconnects/reconnects
+   - [ ] **State Synchronization**
+     - [ ] Ensure consistent world state
+     - [ ] Handle concurrent modifications
+     - [ ] Implement conflict resolution
 
-4. **Optimize Cleanup Process**
-   - Ensure cleanup runs efficiently
-   - Add detailed logging
-   - Prevent race conditions
+3. **Performance Optimization**
+   - [ ] **Spatial Indexing**
+     - [ ] Implement quad-tree for base points
+     - [ ] Add viewport-based culling (20-unit radius)
+     - [ ] Optimize re-renders
+   - [ ] **Server Optimization**
+     - [ ] Implement batch processing of updates
+     - [ ] Add caching for frequent queries
+     - [ ] Optimize database queries
 
-5. **Add Core Game Tests**
-   - Unit tests for base point placement
-   - Tests for territory calculation
-   - Cleanup process tests
+4. **Testing**
+   - [ ] **Unit Tests**
+     - [ ] Base point placement validation
+     - [ ] Territory calculation
+     - [ ] Cleanup process
+   - [ ] **Integration Tests**
+     - [ ] Multiplayer synchronization
+     - [ ] World state management
+     - [ ] Performance benchmarks
 
-6. **Improve Multiplayer Sync**
-   - Ensure consistent world state
-   - Handle concurrent modifications
-   - Add basic conflict resolution
-
-7. **Enhance Error Handling**
-   - Add proper error boundaries
-   - Improve error messages
-   - Log errors for debugging
-
-8. **Optimize Performance**
-   - Implement viewport-based loading
-   - Add spatial indexing for base points
-   - Optimize re-renders
-
-9. **Add Basic Analytics**
-   - Track key game metrics
-   - Log important events
-   - Monitor performance
-
-10. **Update README**
-    - Add setup instructions
-    - Document environment variables
-    - Add contribution guidelines
+5. **Documentation**
+   - [ ] **API Documentation**
+     - [ ] Document all endpoints
+     - [ ] Add request/response examples
+     - [ ] Document authentication flow
+   - [ ] **Developer Guide**
+     - [ ] Setup instructions
+     - [ ] Architecture overview
+     - [ ] Contribution guidelines
 
 *Last updated: 2025-09-11*

@@ -8,5 +8,6 @@ export default () => (
     <A href="/login">Login</A>
     <A href="/register">Register</A>
     <A href="/game">Game</A>
+    <A href="/api/admin/performance">Performance</A>
   </>
 );
