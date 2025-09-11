@@ -355,16 +355,46 @@ const Board: Component = () => {
     }
   };
 
-  // Initial border squares (center row of the 7x7 grid)
-  const INITIAL_SQUARES = [
-    0,1,2,3,4,5,6,
-    7,8,9,
-    14,15,16,18,
-    21,24,
-    28,30,32,34,
-    35,40,
-    42,45,48,
-  ]
+  // Initial squares for a single quadrant with (0,0) at the center
+  // Using only positive x and y coordinates (top-right quadrant)
+  const localGridSize = 15;
+  const centerX = 0;  // Center is at (0,0)
+  const centerY = 0;
+  
+  // Helper function to convert (x,y) to grid index for bottom-right quadrant
+  const toIndex = (x: number, y: number): number => {
+    // Convert from world coordinates to grid indices
+    // For bottom-right quadrant, both x and y increase as we go right and down
+    return y * localGridSize + x;
+  };
+  
+  // Calculate all lines in the positive quadrant
+  const INITIAL_SQUARES: number[] = [];
+  
+  // Add axes
+  for (let x = 0; x < localGridSize; x++) {
+    INITIAL_SQUARES.push(toIndex(x, 0));  // Bottom x-axis
+  }
+  for (let y = 0; y < localGridSize; y++) {
+    INITIAL_SQUARES.push(toIndex(0, y));  // Left y-axis
+  }
+  
+  // Add diagonal (y = x)
+  for (let d = 1; d < localGridSize; d++) {
+    INITIAL_SQUARES.push(toIndex(d, d));
+  }
+  
+  // Add slope 2:1 (y = 2x)
+  for (let x = 1; x < localGridSize / 2; x++) {
+    INITIAL_SQUARES.push(toIndex(x, 2 * x));
+  }
+  
+  // Add slope 1:2 (y = x/2)
+  for (let x = 2; x < localGridSize; x += 2) {
+    INITIAL_SQUARES.push(toIndex(x, x / 2));
+  }
+
+  INITIAL_SQUARES.push(toIndex(0, 0));
 
   // Track if we have a manual update in progress
   const [isManualUpdate, setIsManualUpdate] = createSignal(false);

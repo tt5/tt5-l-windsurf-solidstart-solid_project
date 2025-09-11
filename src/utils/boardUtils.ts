@@ -8,93 +8,62 @@ export const calculateRestrictedSquares = (
   currentRestrictedSquares: number[]
 ): number[] => {
   const [x, y] = p; // Destructure the Point tuple
+  const gridSize = BOARD_CONFIG.GRID_SIZE;
+  const maxIndex = gridSize * gridSize - 1;
+  
+  // Helper function to check if a point is within the grid
+  const isValidSquare = (square: number): boolean => {
+    return square >= 0 && square <= maxIndex;
+  };
+
+  // Calculate squares in a straight line from (x,y) in a given direction
+  const calculateLine = (dx: number, dy: number): number[] => {
+    const squares: number[] = [];
+    let cx = x + dx;
+    let cy = y + dy;
+    
+    while (cx >= 0 && cx < gridSize && cy >= 0 && cy < gridSize) {
+      const square = cx + cy * gridSize;
+      if (isValidSquare(square)) {
+        squares.push(square);
+      }
+      cx += dx;
+      cy += dy;
+    }
+    
+    return squares;
+  };
+
+  // Calculate all restricted squares
+  const newRestrictedSquares = [
+    // Horizontal and vertical lines
+    ...calculateLine(1, 0),   // Right
+    ...calculateLine(-1, 0),  // Left
+    ...calculateLine(0, 1),   // Down
+    ...calculateLine(0, -1),  // Up
+    
+    // Diagonal lines (slope 1 and -1)
+    ...calculateLine(1, -1),  // Top-right diagonal
+    ...calculateLine(-1, -1), // Top-left diagonal
+    ...calculateLine(1, 1),   // Bottom-right diagonal
+    ...calculateLine(-1, 1),  // Bottom-left diagonal
+    
+    // Prime-numbered slopes
+    ...calculateLine(2, -1),  // Slope 2:1 (up-right)
+    ...calculateLine(-2, -1), // Slope 2:1 (up-left)
+    ...calculateLine(1, -2),  // Slope 1:2 (up-right)
+    ...calculateLine(-1, -2), // Slope 1:2 (up-left)
+    ...calculateLine(2, 1),   // Slope 2:1 (down-right)
+    ...calculateLine(-2, 1),  // Slope 2:1 (down-left)
+    ...calculateLine(1, 2),   // Slope 1:2 (down-right)
+    ...calculateLine(-1, 2),  // Slope 1:2 (down-left)
+  ].filter(square => square !== x + y * gridSize); // Exclude the current position
+
+  // Combine with existing restricted squares and remove duplicates
   return [
     ...new Set([
       ...currentRestrictedSquares,
-      // Horizontal and vertical lines
-      ...Array(BOARD_CONFIG.GRID_SIZE - x - 1).fill(0).map((_, i) => x + i + 1 + y * BOARD_CONFIG.GRID_SIZE), // Right
-      ...Array(x).fill(0).map((_, i) => i + y * BOARD_CONFIG.GRID_SIZE), // Left
-      ...Array(BOARD_CONFIG.GRID_SIZE - y - 1).fill(0).map((_, i) => x + (y + i + 1) * BOARD_CONFIG.GRID_SIZE), // Down
-      ...Array(y).fill(0).map((_, i) => x + i * BOARD_CONFIG.GRID_SIZE), // Up
-      
-      // Diagonal lines (slope 1 and -1)
-      ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - x - 1, y)).fill(0).map((_, i) => 
-        (x + i + 1) + (y - i - 1) * BOARD_CONFIG.GRID_SIZE
-      ), // Top-right diagonal
-      ...Array(Math.min(x, y)).fill(0).map((_, i) => 
-        (x - i - 1) + (y - i - 1) * BOARD_CONFIG.GRID_SIZE
-      ), // Top-left diagonal
-      ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - x - 1, BOARD_CONFIG.GRID_SIZE - y - 1)).fill(0).map((_, i) => 
-        (x + i + 1) + (y + i + 1) * BOARD_CONFIG.GRID_SIZE
-      ), // Bottom-right diagonal
-      ...Array(Math.min(x, BOARD_CONFIG.GRID_SIZE - y - 1)).fill(0).map((_, i) => 
-        (x - i - 1) + (y + i + 1) * BOARD_CONFIG.GRID_SIZE
-      ), // Bottom-left diagonal
-      
-      // Prime-numbered slopes
-      // Slope 2:1 (up-right)
-      ...Array(Math.ceil(Math.min(
-        (BOARD_CONFIG.GRID_SIZE - x - 1) / 2,
-        y
-      ))).fill(0).map((_, i) => 
-        (x + (i + 1) * 2) + (y - i - 1) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 2:1 (up-left)
-      ...Array(Math.ceil(Math.min(
-        x / 2,
-        y
-      ))).fill(0).map((_, i) => 
-        (x - (i + 1) * 2) + (y - i - 1) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 1:2 (up-right)
-      ...Array(Math.ceil(Math.min(
-        BOARD_CONFIG.GRID_SIZE - x - 1,
-        y / 2
-      ))).fill(0).map((_, i) => 
-        (x + i + 1) + (y - (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 1:2 (up-left)
-      ...Array(Math.ceil(Math.min(
-        x,
-        y / 2
-      ))).fill(0).map((_, i) => 
-        (x - i - 1) + (y - (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 2:1 (down-right)
-      ...Array(Math.ceil(Math.min(
-        (BOARD_CONFIG.GRID_SIZE - x - 1) / 2,
-        BOARD_CONFIG.GRID_SIZE - y - 1
-      ))).fill(0).map((_, i) => 
-        (x + (i + 1) * 2) + (y + i + 1) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 2:1 (down-left)
-      ...Array(Math.ceil(Math.min(
-        x / 2,
-        BOARD_CONFIG.GRID_SIZE - y - 1
-      ))).fill(0).map((_, i) => 
-        (x - (i + 1) * 2) + (y + i + 1) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 1:2 (down-right)
-      ...Array(Math.ceil(Math.min(
-        BOARD_CONFIG.GRID_SIZE - x - 1,
-        (BOARD_CONFIG.GRID_SIZE - y - 1) / 2
-      ))).fill(0).map((_, i) => 
-        (x + i + 1) + (y + (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
-      
-      // Slope 1:2 (down-left)
-      ...Array(Math.ceil(Math.min(
-        x,
-        (BOARD_CONFIG.GRID_SIZE - y - 1) / 2
-      ))).fill(0).map((_, i) => 
-        (x - i - 1) + (y + (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
-      ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
+      ...newRestrictedSquares.filter(sq => sq >= 0 && sq <= maxIndex)
     ])
   ];
 };
