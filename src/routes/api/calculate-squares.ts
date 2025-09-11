@@ -44,7 +44,7 @@ export const POST = withAuth(async ({ request, user }) => {
       : [{ x: 0, y: 0, userId: 'default' }];
     
     const [dx, dy] = directionMap[direction];
-    const newSquares = borderIndices.flatMap(i => {
+    const newSquares = borderIndices.flatMap((i, index) => {
       const x = (i % 7) - currentPosition[0];
       const y = Math.floor(i / 7) - currentPosition[1];
       
@@ -53,13 +53,15 @@ export const POST = withAuth(async ({ request, user }) => {
         const xdiff = Math.abs(x - bx);
         const ydiff = Math.abs(y - by);
         
-        if (xdiff === 0 || ydiff === 0 || xdiff === ydiff) {
+        // Check for straight lines (horizontal/vertical/diagonal) or slopes 2:1 and 1:2
+        if (xdiff === 0 || ydiff === 0 || xdiff === ydiff || 
+            (xdiff === ydiff / 2) || (ydiff === xdiff / 2)) {
           const nx = x + currentPosition[0] + dx;
           const ny = y + currentPosition[1] + dy;
-          console.log(">>>", nx >= 0 && nx < 7 && ny >= 0 && ny < 7 ? [nx + ny * 7] : [])
-          return nx >= 0 && nx < 7 && ny >= 0 && ny < 7 ? [nx + ny * 7] : [];
+          
+            // Original logic for straight lines and diagonals
+            return nx >= 0 && nx < 7 && ny >= 0 && ny < 7 ? [nx + ny * 7] : [];
         }
-        console.log("***", i)
         return [];
       });
     });
