@@ -1,94 +1,114 @@
 # Territory System
 
-## Base Points
+## Overview
+The territory system governs how players claim and control areas of the infinite 2D grid world through strategic placement of base points. The system uses line-of-influence mechanics to determine territory boundaries and resolve conflicts.
 
-### Placement Rules
-- Placed on the visible grid (currently 7×7, planned 15×15)
+## Core Concepts
+
+### Base Points
+Base points are the fundamental unit of territory control. Each base point projects influence in multiple directions, creating restricted areas that other players cannot claim.
+
+#### Placement Rules
+- Must be placed within the visible 15×15 viewport
 - Can only be placed on non-restricted squares
-- Each player starts with one base point at (0,0)
+- Each player starts with one base point at world coordinates (0,0)
 - Additional points can be placed during exploration
-
-### Behavior
-- Fixed at their world coordinates
-- Visible to all players when in view
 - The initial (0,0) base point is permanent and neutral
-- Base points cannot be removed or destroyed
+
+#### Behavior
+- Fixed at their world coordinates once placed
+- Visible to all players when within their viewport
+- Cannot be removed or destroyed (except through system cleanup)
+- Influence extends infinitely in primary directions until another base point is encountered
 
 ## Territory Mechanics
 
-### Influence
+### Influence System
+Base points project influence in multiple directions to create restricted areas:
 
-Each base point projects influence in multiple directions to create restricted areas. While new base points can be placed in these areas, they will be removed during the next cleanup process:
+#### Primary Directions (Infinite Range)
+- Horizontal (left/right)
+- Vertical (up/down)
+- Diagonal (45° and 135°)
 
-1. **Primary Directions** (infinite range until another base point):
-   - Horizontal (left/right)
-   - Vertical (up/down)
-   - Both diagonals (45° and 135°)
+#### Additional Directions (Viewport-Bound)
+- Prime-numbered slopes (2:1, 1:2, 3:1, 1:3, 3:2, 2:3)
+- Creates complex territory boundaries and strategic chokepoints
 
-2. **Additional Directions** (within visible grid bounds):
-   - Prime-numbered slopes (e.g., 2:1, 1:2)
-   - Other calculated angles that create strategic chokepoints
-
-3. **Restricted Squares**:
-   - Calculated using `calculateRestrictedSquares` based on visible base points
-   - Only considers base points currently in the viewport
-   - May allow placement that conflicts with base points outside the current view
-   - Creates temporary territory boundaries that are enforced during cleanup
+### Viewport Considerations (15×15 Grid)
+- **Visibility**: 225 squares visible at once (4.6× more than previous 7×7)
+- **Strategic Impact**:
+  - Better situational awareness
+  - Reduced need for constant panning
+  - More efficient scouting and planning
+  - Multiple base points may be visible simultaneously
 
 ### Territory Formation
-- Territory consists of all squares uniquely claimed by a player's base point
-- Created where a player's influence lines don't intersect with others'
-- Visualized as highlighted areas on the grid
+- Territory consists of all squares uniquely claimed by a player's base points
+- Created where influence lines don't intersect with others'
+- Visualized with semi-transparent colored regions on the grid
 
 ### Conflict Resolution
-- When influence lines intersect:
-  - The older base point's influence takes precedence
-  - If same age, first-come-first-served based on database ID
-  - Rewards early investment and long-term strategy
-  - Prevents territory flipping through temporary advantages
-- The point at (0,0) is protected and cannot be claimed
+When influence lines intersect:
+1. Older base point's influence takes precedence
+2. If same age, earlier database ID wins (first-come-first-served)
+3. The neutral point at (0,0) is always protected
+
+This system rewards early investment and prevents territory flipping through temporary advantages.
 
 ## System Maintenance
 
 ### Line Cleanup
-- Automatic cleanup runs periodically (every 30 seconds)
+To prevent gridlock and ensure fair play:
+- Runs automatically every 30 seconds
 - Process:
   1. Selects 2-4 random line slopes (including cardinal and diagonal)
-  2. For each slope, finds all points forming straight lines
-  3. Keeps only the oldest point in each line (by ID)
+  2. Identifies all points forming straight lines along these slopes
+  3. Keeps only the oldest point in each line
   4. Removes other points in the line
-- Ensures fair play and prevents gridlock
-- Logs all cleanup actions for monitoring
-        - Player's overall influence in the region
-        - Random element (small %) to prevent stalemates
-  - Visualized with semi-transparent colored regions
+- All cleanup actions are logged for monitoring
 
 ### Player Movement
-- Smooth movement at 3 cells/second
-- 0.2s cooldown between moves
-- Action point consumption (1 per cell)
-- Viewport updates in real-time
+- Movement speed: 3 cells/second
+- Cooldown: 0.2s between moves
+- Action point cost: 1 per cell
+- Viewport updates in real-time during movement
 
 ## World Management
 
 ### World Instances
 - **Automatic Splitting**:
-  - Triggers at 1000 base points
-  - Uses k-means clustering
+  - Trigger: 1000 base points in a world
+  - Method: k-means clustering
   - Players auto-assigned based on base point distribution
-  - Maintains spatial relationships
+  - Maintains spatial relationships during split
 
 - **World Merging**:
-  - When world drops below 25% capacity
-  - 24-hour grace period
-  - Auto-resolves conflicts (older points preserved)
-  - Anti-fragmentation measures
+  - Trigger: World drops below 25% capacity
+  - Grace period: 24 hours before merging
 
-- **World Visitation**:
-  - Visit any world with your base points
-  - 60-second cooldown between world changes
-  - Active points remain in original world
-  - World list shows player count/activity
+## Technical Implementation
+
+### Restricted Squares Calculation
+- Uses `calculateRestrictedSquares` function
+- Only considers currently visible base points
+- Creates temporary boundaries enforced during cleanup
+- May allow temporary conflicts with points outside current view
+
+### Performance Considerations
+- Efficient line-of-sight calculations
+- Viewport-based culling for performance
+- Batch processing for territory updates
+- Delta compression for network efficiency
+
+## Future Considerations
+- Dynamic influence range based on point age
+- Temporary alliances for territory sharing
+- Specialized base points with unique influence patterns
+- Visual indicators for contested areas
+- Auto-resolves conflicts (older points preserved)
+- Anti-fragmentation measures
+- World visitation system with cooldowns
 
 ## Player Systems
 

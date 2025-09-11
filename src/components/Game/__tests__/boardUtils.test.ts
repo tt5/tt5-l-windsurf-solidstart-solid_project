@@ -52,11 +52,11 @@ describe('Board Utilities', () => {
   describe('pointsToIndices', () => {
     it('converts points to indices correctly', () => {
       const coords = [
-        createPoint(0, 0),  // (0, 0) -> 0
-        createPoint(1, 1),  // (1, 1) -> 8  (7*1 + 1 = 8)
-        createPoint(6, 6),  // (6, 6) -> 48 (7*6 + 6 = 48)
+        createPoint(0, 0),   // (0, 0) -> 0
+        createPoint(1, 1),   // (1, 1) -> 16 (15*1 + 1 = 16)
+        createPoint(14, 14), // (14, 14) -> 224 (15*14 + 14 = 224)
       ];
-      const expected = [0, 8, 48];
+      const expected = [0, 16, 224];
 
       const result = pointsToIndices(coords);
       expect(result).toEqual(expected);

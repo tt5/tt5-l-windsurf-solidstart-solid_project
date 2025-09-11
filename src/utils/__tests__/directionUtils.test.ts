@@ -51,10 +51,10 @@ describe('moveSquares', () => {
 
   it('filters out squares that would move off the grid', () => {
     const testCases = [
-      { direction: 'left' as const, position: createPoint(0, 3), expected: [] },
-      { direction: 'right' as const, position: createPoint(6, 3), expected: [] },
-      { direction: 'up' as const, position: createPoint(3, 0), expected: [] },
-      { direction: 'down' as const, position: createPoint(3, 6), expected: [] },
+      { direction: 'left' as const, position: createPoint(0, 7), expected: [] },
+      { direction: 'right' as const, position: createPoint(14, 7), expected: [] },
+      { direction: 'up' as const, position: createPoint(7, 0), expected: [] },
+      { direction: 'down' as const, position: createPoint(7, 14), expected: [] },
     ];
 
     testCases.forEach((testCase) => {

@@ -3,7 +3,7 @@
 ## Core Concept
 - **Game Grid Implementation**:
   - **Viewport Movement**:
-    - Fixed 7×7 grid (configured in `BOARD_CONFIG.GRID_SIZE`)
+    - Fixed 15×15 grid (configured in `BOARD_CONFIG.GRID_SIZE`)
     - Movement handled by `handleDirection` in `boardUtils.ts`
     - Movement process:
       1. Calculates new position using `getMovementDeltas`
