@@ -374,12 +374,12 @@ const Board: Component = () => {
   // Initial border squares (center row of the 7x7 grid)
   const INITIAL_SQUARES = [
     0,1,2,3,4,5,6,
-    7,
-    14,16,
+    7,8,9,
+    14,15,16,18,
     21,24,
-    28,32,
+    28,30,32,34,
     35,40,
-    42,48,
+    42,45,48,
   ]
 
   // Track if we have a manual update in progress

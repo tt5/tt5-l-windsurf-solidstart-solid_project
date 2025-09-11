@@ -103,10 +103,10 @@ export async function getPointsInLines(db: any, slopes: number[]): Promise<BaseP
     ORDER BY point_id
   `);
   
-  console.log('Points to delete:', linePoints.map(p => `(${p.x},${p.y})[${p.id}]`).join(', '));
+  console.log('Points to delete:', linePoints.map((p: BasePoint) => `(${p.x},${p.y})[${p.id}]`).join(', '));
   
   // Return the points to delete
-  return linePoints.map((row: any) => ({
+  return linePoints.map((row: BasePoint) => ({
     id: row.id,
     x: row.x,
     y: row.y
