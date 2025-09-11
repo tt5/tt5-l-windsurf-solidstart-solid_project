@@ -3,6 +3,7 @@ import { BasePointRepository } from '~/lib/server/repositories/base-point.reposi
 import { withAuth } from '~/middleware/auth';
 import { createErrorResponse, generateRequestId } from '~/utils/api';
 import { BOARD_CONFIG } from '~/constants/game';
+import { performanceTracker } from '~/utils/performance';
 
 type CalculateSquaresRequest = {
   borderIndices: number[];
@@ -20,8 +21,13 @@ const directionMap = {
 export const POST = withAuth(async ({ request, user }) => {
   const requestId = generateRequestId();
   
+  const startTime = performance.now();
+  
   try {
     const { borderIndices, currentPosition, direction } = await request.json() as CalculateSquaresRequest;
+    
+    // Track request start
+    const dbStartTime = performance.now();
     
     // Get database connection and initialize repository
     const db = await getDb();
@@ -71,12 +77,25 @@ export const POST = withAuth(async ({ request, user }) => {
       });
     });
     
-    return new Response(JSON.stringify({ 
+    const responseData = {
       success: true,
       data: {
         squares: [...new Set(newSquares)]
       }
-    }), {
+    };
+    
+    // Track performance
+    const dbTime = performance.now() - dbStartTime;
+    const totalTime = performance.now() - startTime;
+    
+    performanceTracker.track('calculate-squares', totalTime, {
+      basePointCount: uniqueBasePoints.length,
+      responseSize: JSON.stringify(responseData).length,
+      dbTime,
+      processingTime: totalTime - dbTime
+    });
+    
+    return new Response(JSON.stringify(responseData), {
       headers: { 'Content-Type': 'application/json' },
       status: 200
     });
