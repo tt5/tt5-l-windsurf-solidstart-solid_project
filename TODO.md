@@ -2,15 +2,24 @@
 
 ## High Priority
 
-1. **Update Game Design Documentation**
-   - Align DESIGN.md with current implementation
-   - Document viewport-based mechanics
-   - Clarify base point placement rules
+1. ✅ **Update Game Design Documentation**
+   - [x] Align DESIGN.md with current implementation
+   - [x] Document viewport-based mechanics
+   - [x] Clarify base point placement rules
 
 2. **Implement Basic Territory Visualization**
-   - Add visual feedback for claimed areas
-   - Show restricted squares
-   - Different colors for different players
+   - **2.1 Player Color Mapping**
+     - [ ] Create utility function for distinct player colors
+     - [ ] Map user IDs to specific colors
+     - [ ] Store color mapping in game state
+   - **2.2 Board Rendering Updates**
+     - [ ] Show base points with player colors
+     - [ ] Add visual indicators for restricted squares
+     - [ ] Implement hover/selection states
+   - **2.3 Visual Feedback System**
+     - [ ] Add CSS classes for territory states
+     - [ ] Implement smooth state transitions
+     - [ ] Distinguish claimed vs restricted areas
 
 3. **Enhance Base Point Placement**
    - Improve validation logic
