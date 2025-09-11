@@ -1,97 +1,98 @@
 import { BOARD_CONFIG } from '../components/Game/Board';
-import { Point, BasePoint } from '../types/board';
+import { createPoint, Point, BasePoint } from '../types/board';
 import type { Accessor, Setter } from 'solid-js';
 
 export const calculateRestrictedSquares = (
   p: Point,
   currentRestrictedSquares: number[]
 ): number[] => {
+  const [x, y] = p; // Destructure the Point tuple
   return [
     ...new Set([
       ...currentRestrictedSquares,
       // Horizontal and vertical lines
-      ...Array(BOARD_CONFIG.GRID_SIZE - p.x - 1).fill(0).map((_, i) => p.x + i + 1 + p.y * BOARD_CONFIG.GRID_SIZE), // Right
-      ...Array(p.x).fill(0).map((_, i) => i + p.y * BOARD_CONFIG.GRID_SIZE), // Left
-      ...Array(BOARD_CONFIG.GRID_SIZE - p.y - 1).fill(0).map((_, i) => p.x + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE), // Down
-      ...Array(p.y).fill(0).map((_, i) => p.x + i * BOARD_CONFIG.GRID_SIZE), // Up
+      ...Array(BOARD_CONFIG.GRID_SIZE - x - 1).fill(0).map((_, i) => x + i + 1 + y * BOARD_CONFIG.GRID_SIZE), // Right
+      ...Array(x).fill(0).map((_, i) => i + y * BOARD_CONFIG.GRID_SIZE), // Left
+      ...Array(BOARD_CONFIG.GRID_SIZE - y - 1).fill(0).map((_, i) => x + (y + i + 1) * BOARD_CONFIG.GRID_SIZE), // Down
+      ...Array(y).fill(0).map((_, i) => x + i * BOARD_CONFIG.GRID_SIZE), // Up
       
       // Diagonal lines (slope 1 and -1)
-      ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, p.y)).fill(0).map((_, i) => 
-        (p.x + i + 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+      ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - x - 1, y)).fill(0).map((_, i) => 
+        (x + i + 1) + (y - i - 1) * BOARD_CONFIG.GRID_SIZE
       ), // Top-right diagonal
-      ...Array(Math.min(p.x, p.y)).fill(0).map((_, i) => 
-        (p.x - i - 1) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+      ...Array(Math.min(x, y)).fill(0).map((_, i) => 
+        (x - i - 1) + (y - i - 1) * BOARD_CONFIG.GRID_SIZE
       ), // Top-left diagonal
-      ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - p.x - 1, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
-        (p.x + i + 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+      ...Array(Math.min(BOARD_CONFIG.GRID_SIZE - x - 1, BOARD_CONFIG.GRID_SIZE - y - 1)).fill(0).map((_, i) => 
+        (x + i + 1) + (y + i + 1) * BOARD_CONFIG.GRID_SIZE
       ), // Bottom-right diagonal
-      ...Array(Math.min(p.x, BOARD_CONFIG.GRID_SIZE - p.y - 1)).fill(0).map((_, i) => 
-        (p.x - i - 1) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+      ...Array(Math.min(x, BOARD_CONFIG.GRID_SIZE - y - 1)).fill(0).map((_, i) => 
+        (x - i - 1) + (y + i + 1) * BOARD_CONFIG.GRID_SIZE
       ), // Bottom-left diagonal
       
       // Prime-numbered slopes
       // Slope 2:1 (up-right)
       ...Array(Math.ceil(Math.min(
-        (BOARD_CONFIG.GRID_SIZE - p.x - 1) / 2,
-        p.y
+        (BOARD_CONFIG.GRID_SIZE - x - 1) / 2,
+        y
       ))).fill(0).map((_, i) => 
-        (p.x + (i + 1) * 2) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+        (x + (i + 1) * 2) + (y - i - 1) * BOARD_CONFIG.GRID_SIZE
       ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
       
       // Slope 2:1 (up-left)
       ...Array(Math.ceil(Math.min(
-        p.x / 2,
-        p.y
+        x / 2,
+        y
       ))).fill(0).map((_, i) => 
-        (p.x - (i + 1) * 2) + (p.y - i - 1) * BOARD_CONFIG.GRID_SIZE
+        (x - (i + 1) * 2) + (y - i - 1) * BOARD_CONFIG.GRID_SIZE
       ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
       
       // Slope 1:2 (up-right)
       ...Array(Math.ceil(Math.min(
-        BOARD_CONFIG.GRID_SIZE - p.x - 1,
-        p.y / 2
+        BOARD_CONFIG.GRID_SIZE - x - 1,
+        y / 2
       ))).fill(0).map((_, i) => 
-        (p.x + i + 1) + (p.y - (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
+        (x + i + 1) + (y - (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
       ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
       
       // Slope 1:2 (up-left)
       ...Array(Math.ceil(Math.min(
-        p.x,
-        p.y / 2
+        x,
+        y / 2
       ))).fill(0).map((_, i) => 
-        (p.x - i - 1) + (p.y - (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
+        (x - i - 1) + (y - (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
       ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
       
       // Slope 2:1 (down-right)
       ...Array(Math.ceil(Math.min(
-        (BOARD_CONFIG.GRID_SIZE - p.x - 1) / 2,
-        BOARD_CONFIG.GRID_SIZE - p.y - 1
+        (BOARD_CONFIG.GRID_SIZE - x - 1) / 2,
+        BOARD_CONFIG.GRID_SIZE - y - 1
       ))).fill(0).map((_, i) => 
-        (p.x + (i + 1) * 2) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+        (x + (i + 1) * 2) + (y + i + 1) * BOARD_CONFIG.GRID_SIZE
       ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
       
       // Slope 2:1 (down-left)
       ...Array(Math.ceil(Math.min(
-        p.x / 2,
-        BOARD_CONFIG.GRID_SIZE - p.y - 1
+        x / 2,
+        BOARD_CONFIG.GRID_SIZE - y - 1
       ))).fill(0).map((_, i) => 
-        (p.x - (i + 1) * 2) + (p.y + i + 1) * BOARD_CONFIG.GRID_SIZE
+        (x - (i + 1) * 2) + (y + i + 1) * BOARD_CONFIG.GRID_SIZE
       ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
       
       // Slope 1:2 (down-right)
       ...Array(Math.ceil(Math.min(
-        BOARD_CONFIG.GRID_SIZE - p.x - 1,
-        (BOARD_CONFIG.GRID_SIZE - p.y - 1) / 2
+        BOARD_CONFIG.GRID_SIZE - x - 1,
+        (BOARD_CONFIG.GRID_SIZE - y - 1) / 2
       ))).fill(0).map((_, i) => 
-        (p.x + i + 1) + (p.y + (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
+        (x + i + 1) + (y + (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
       ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
       
       // Slope 1:2 (down-left)
       ...Array(Math.ceil(Math.min(
-        p.x,
-        (BOARD_CONFIG.GRID_SIZE - p.y - 1) / 2
+        x,
+        (BOARD_CONFIG.GRID_SIZE - y - 1) / 2
       ))).fill(0).map((_, i) => 
-        (p.x - i - 1) + (p.y + (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
+        (x - i - 1) + (y + (i + 1) * 2) * BOARD_CONFIG.GRID_SIZE
       ).filter(square => square >= 0 && square < BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE),
     ])
   ];
@@ -168,7 +169,7 @@ export const fetchBasePoints = async ({
         };
         
         if (p.x < 7 && p.x >= 0 && p.y < 7 && p.y >= 0) {
-          setRestrictedSquares(calculateRestrictedSquares(p, restrictedSquares()));
+          setRestrictedSquares(calculateRestrictedSquares(createPoint(p.x, p.y), restrictedSquares()));
         }
       });
       
