@@ -515,38 +515,38 @@ const Board: Component = () => {
           const validation = validateSquarePlacement(index);
           const isValid = validation.isValid && !isSaving();
           
-          // Check if a point (px,py) is on a restricted line from (bx,by)
-          const isOnLineFromPoint = (px: number, py: number, bx: number, by: number): boolean => {
-            // Calculate relative position to base point
-            const dx = px - bx;
-            const dy = py - by;
+          // Check if two points are on the same restricted line
+          const areOnSameLine = (x1: number, y1: number, x2: number, y2: number): boolean => {
+            // Calculate relative position
+            const dx = x2 - x1;
+            const dy = y2 - y1;
             
-            // If this is the base point itself
+            // If same point
             if (dx === 0 && dy === 0) return false;
             
-            // Check if point is on axes from base point
+            // Check if on same axis
             if (dx === 0 || dy === 0) return true;
             
-            // Check if point is on diagonal from base point
+            // Check if on diagonal
             if (dx === dy || dx === -dy) return true;
             
-            // Check if point is on 2:1 or 1:2 slope from base point
+            // Check if on 2:1 or 1:2 slope
             if (dy === 2 * dx || dx === 2 * dy) return true;
             if (dy === -2 * dx || dx === -2 * dy) return true;
             
             return false;
           };
           
-          // Check if this world coordinate is on any restricted line (from origin or any basepoint)
+          // Check if this basepoint is on a restricted line from any other basepoint or origin
           const isOnRestrictedLine = (x: number, y: number): boolean => {
-            // Check lines from origin (0,0)
-            if (isOnLineFromPoint(x, y, 0, 0)) return true;
+            // First check against origin (0,0)
+            if (areOnSameLine(x, y, 0, 0)) return true;
             
-            // Check lines from all basepoints
+            // Then check against other basepoints
             return basePoints().some(bp => {
-              // Skip the basepoint itself
+              // Skip self
               if (bp.x === x && bp.y === y) return false;
-              return isOnLineFromPoint(x, y, bp.x, bp.y);
+              return areOnSameLine(x, y, bp.x, bp.y);
             });
           };
 
