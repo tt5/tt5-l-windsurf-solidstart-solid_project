@@ -731,18 +731,15 @@ const MapView: Component = () => {
         } else {
           // Fallback to debug rendering if image couldn't be generated
           content = (
-            <div style={{
-              width: '100%',
-              height: '100%',
-              backgroundColor: `hsl(${(tile.x * 13 + tile.y * 7) % 360}, 70%, 80%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '10px',
-              color: '#333',
-              border: '1px solid #ccc'
-            }}>
-              {tile.x},{tile.y}
+            <div 
+              class={styles.fallbackTile}
+              style={{
+                'background-color': `hsl(${(tile.x * 13 + tile.y * 7) % 360}, 70%, 80%`,
+              } as any}
+            >
+              <div class={styles.fallbackTileContent}>
+                {tile.x},{tile.y}
+              </div>
             </div>
           );
         }
