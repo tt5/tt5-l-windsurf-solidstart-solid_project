@@ -214,11 +214,11 @@ const MapView: Component = () => {
         throw new Error(`Invalid response format for tile (${tileX}, ${tileY})`);
       }
       
-      // Convert base64 data back to Uint8Array
-      const binaryString = atob(responseData.data.data);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+      // Convert the comma-separated string to a Uint8Array
+      const byteStrings = responseData.data.data.split(',');
+      const bytes = new Uint8Array(byteStrings.length);
+      for (let i = 0; i < byteStrings.length; i++) {
+        bytes[i] = parseInt(byteStrings[i], 10);
       }
 
       setTiles(prev => ({
