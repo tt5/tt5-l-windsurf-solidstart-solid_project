@@ -901,15 +901,16 @@ const MapView: Component = () => {
     for (let x = startX; x <= endX; x += gridSize) {
       const screenX = (x - vp.x) * vp.zoom;
       const isMajorLine = x % (gridSize * 5) === 0;
-      
+      const isHundredTick = x % 100 === 0;
       const isZeroLine = x === 0;
+      
       lines.push(
         <line 
           x1={screenX} y1="0" 
           x2={screenX} y2={vp.height} 
-          class={`${styles.gridLine} ${isZeroLine ? styles.zeroAxis : ''}`}
-          stroke={isZeroLine ? '#ff0000' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
-          stroke-width={isZeroLine ? 1.5 : isMajorLine ? 1 : 0.5}
+          class={`${styles.gridLine} ${isZeroLine ? styles.zeroAxis : ''} ${isHundredTick ? styles.major : ''}`}
+          stroke={isZeroLine ? '#ff0000' : isHundredTick ? '#888888' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
+          stroke-width={isZeroLine ? 2 : isHundredTick ? 1.2 : isMajorLine ? 1 : 0.5}
         />
       );
       
@@ -940,15 +941,16 @@ const MapView: Component = () => {
     for (let y = startY; y <= endY; y += gridSize) {
       const screenY = (y - vp.y) * vp.zoom;
       const isMajorLine = y % (gridSize * 5) === 0;
-      
+      const isHundredTick = y % 100 === 0;
       const isZeroLine = y === 0;
+      
       lines.push(
         <line 
           x1="0" y1={screenY} 
           x2={vp.width} y2={screenY} 
-          class={`${styles.gridLine} ${isZeroLine ? styles.zeroAxis : ''}`}
-          stroke={isZeroLine ? '#ff0000' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
-          stroke-width={isZeroLine ? 1.5 : isMajorLine ? 1 : 0.5}
+          class={`${styles.gridLine} ${isZeroLine ? styles.zeroAxis : ''} ${isHundredTick ? styles.major : ''}`}
+          stroke={isZeroLine ? '#ff0000' : isHundredTick ? '#888888' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
+          stroke-width={isZeroLine ? 2 : isHundredTick ? 1.2 : isMajorLine ? 1 : 0.5}
         />
       );
       
