@@ -613,7 +613,7 @@ const MapView: Component = () => {
     const tileWorldX = tile.x * TILE_SIZE;
     const tileWorldY = tile.y * TILE_SIZE;
     
-    // Calculate screen coordinates relative to the viewport
+    // Calculate screen coordinates (the transform is handled by the parent)
     const screenX = tileWorldX * zoom;
     const screenY = tileWorldY * zoom;
     
@@ -621,7 +621,7 @@ const MapView: Component = () => {
     const tileEndWorldX = tileWorldX + TILE_SIZE;
     const tileEndWorldY = tileWorldY + TILE_SIZE;
     
-    // Calculate viewport bounds in world coordinates
+    // Calculate viewport bounds in world coordinates (matching grid rendering)
     const viewEndX = vp.x + (vp.width / zoom);
     const viewEndY = vp.y + (vp.height / zoom);
     
@@ -811,10 +811,12 @@ const MapView: Component = () => {
   const renderGrid = () => {
     const vp = viewport();
     const gridSize = 100; // Grid size in world coordinates
-    const startX = Math.floor(vp.x / gridSize) * gridSize;
-    const startY = Math.floor(vp.y / gridSize) * gridSize;
-    const endX = startX + (vp.width / vp.zoom) + gridSize;
-    const endY = startY + (vp.height / vp.zoom) + gridSize;
+    
+    // Calculate grid bounds in world coordinates
+    const startX = -vp.width / vp.zoom / 2;
+    const startY = -vp.height / vp.zoom / 2;
+    const endX = vp.width / vp.zoom / 2;
+    const endY = vp.height / vp.zoom / 2;
     
     const lines = [];
     const labels = [];
