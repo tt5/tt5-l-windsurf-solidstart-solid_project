@@ -40,6 +40,36 @@
   transform: scale(1.02);
 }
 
+/* Grid overlay styles */
+.gridOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.gridLine {
+  stroke-width: 1px;
+  stroke-opacity: 0.5;
+  shape-rendering: crispEdges;
+}
+
+.coordinateLabel {
+  font-size: 10px;
+  font-family: monospace;
+  pointer-events: none;
+  user-select: none;
+  text-shadow: 
+    -1px -1px 0 #fff,  
+     1px -1px 0 #fff,
+    -1px  1px 0 #fff,
+     1px  1px 0 #fff;
+  font-weight: bold;
+}
+
 .tile.loading {
   background-color: #f8f8f8;
   display: flex;

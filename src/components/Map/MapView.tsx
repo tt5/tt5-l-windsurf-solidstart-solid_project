@@ -1,4 +1,4 @@
-import { Component, createEffect, createSignal, onCleanup, onMount } from 'solid-js';
+import { Component, createEffect, createSignal, onCleanup, onMount, batch } from 'solid-js';
 import { useAuth } from '../../contexts/auth';
 import { TileCache } from '../../lib/client/services/tile-cache';
 
@@ -38,20 +38,85 @@ interface Viewport {
 const MapView: Component = () => {
   const { user } = useAuth();
   const [tiles, setTiles] = createSignal<Record<string, Tile>>({});
+  // Initialize viewport to show world coordinates from -1000 to 1000
+  const WORLD_SIZE = 2000; // -1000 to 1000
+  const initialZoom = Math.min(
+    VIEWPORT_WIDTH / WORLD_SIZE,
+    VIEWPORT_HEIGHT / WORLD_SIZE
+  ) * 0.9; // 90% of the maximum zoom to add some padding
+  
   const [viewport, setViewport] = createSignal<Viewport>({ 
-    x: 0, 
-    y: 0,
-    zoom: 1.0,
+    x: -WORLD_SIZE / 2,  // Center on x=0
+    y: -WORLD_SIZE / 2,  // Center on y=0
+    zoom: initialZoom,    // Zoom to fit the world
     width: VIEWPORT_WIDTH,
     height: VIEWPORT_HEIGHT
   });
+  
+  // Clear any existing tiles to force a reload
+  setTiles({});
   const [isDragging, setIsDragging] = createSignal(false);
-  const [dragStart, setDragStart] = createSignal({ x: 0, y: 0 });
+  const [lastMousePosition, setLastMousePosition] = createSignal<{ x: number; y: number } | null>(null);
+  const [dragStart, setDragStart] = createSignal({ 
+    x: 0, 
+    y: 0,
+    startX: 0,
+    startY: 0 
+  });
   const [isLoading, setIsLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [tileCacheState, setTileCache] = createSignal<Record<string, boolean>>({});
   const [tileQueue, setTileQueue] = createSignal<Array<{x: number, y: number}>>([]);
   const [isProcessingQueue, setIsProcessingQueue] = createSignal(false);
+  // Track active operations and state
+  const activeOperations = new Set<AbortController>();
+  let isMounted = true;
+  let processQueueTimeout: number | null = null;
+  let shouldStopProcessing = false;
+  
+  // Cleanup on unmount
+  onCleanup(() => {
+    console.log('[MapView] Cleaning up...');
+    isMounted = false;
+    shouldStopProcessing = true;
+    
+    // Clear any pending timeouts first
+    if (processQueueTimeout !== null) {
+      clearTimeout(processQueueTimeout);
+      processQueueTimeout = null;
+    }
+    
+    // Abort all active operations
+    const operations = Array.from(activeOperations);
+    activeOperations.clear();
+    
+    operations.forEach(controller => {
+      try {
+        controller.abort();
+      } catch (e) {
+        console.warn('Error aborting operation:', e);
+      }
+    });
+    
+    // Clear the queue and tiles in a single batch update
+    batch(() => {
+      setTileQueue([]);
+      setTiles({});
+    });
+  });
+  
+  // Helper to create a cancellable operation
+  const createCancellableOperation = () => {
+    if (!isMounted) throw new Error('Component is not mounted');
+    
+    const controller = new AbortController();
+    activeOperations.add(controller);
+    
+    return {
+      signal: controller.signal,
+      cleanup: () => activeOperations.delete(controller)
+    };
+  };
 
   // Convert world coordinates to tile coordinates
   const worldToTileCoords = (x: number, y: number) => ({
@@ -70,11 +135,23 @@ const MapView: Component = () => {
 
   // Load a single tile
   const loadTile = async (tileX: number, tileY: number) => {
+    if (!isMounted) return null;
+    
+    const { signal, cleanup } = createCancellableOperation();
+    
     const key = getTileKey(tileX, tileY);
     const currentTiles = tiles();
     
+    console.log(`[loadTile] Attempting to load tile (${tileX}, ${tileY})`);
+    
     // Skip if already loading or loaded recently
-    if (currentTiles[key]?.loading || (currentTiles[key] && Date.now() - currentTiles[key].timestamp < 30000)) {
+    if (currentTiles[key]?.loading) {
+      console.log(`[loadTile] Tile (${tileX}, ${tileY}) is already loading`);
+      return;
+    }
+    
+    if (currentTiles[key] && Date.now() - currentTiles[key].timestamp < 30000) {
+      console.log(`[loadTile] Tile (${tileX}, ${tileY}) was loaded recently`);
       return;
     }
 
@@ -113,16 +190,22 @@ const MapView: Component = () => {
       }
       
       // If not in cache, fetch from server
-      const response = await fetch(`/api/map/tile/${tileX}/${tileY}`);
+      console.log(`[loadTile] Fetching tile (${tileX}, ${tileY}) from server`);
+      if (!isMounted) {
+        console.log(`[loadTile] Component unmounted, aborting fetch for tile (${tileX}, ${tileY})`);
+        return null;
+      }
+      
+      const response = await fetch(`/api/map/tile/${tileX}/${tileY}`, { signal });
       if (!response.ok) {
         throw new Error(`Failed to load tile (${tileX}, ${tileY}): ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const responseData = await response.json();
       const etag = response.headers.get('ETag') || undefined;
       
       // Convert base64 data back to Uint8Array
-      const binaryString = atob(data.data.data);
+      const binaryString = atob(responseData.data.data);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
@@ -149,22 +232,40 @@ const MapView: Component = () => {
         }
       }));
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return null;
+      
       console.error(`Error loading tile (${tileX}, ${tileY}):`, err);
-      setTiles(prev => ({
-        ...prev,
-        [key]: {
-          ...(prev[key] || { x: tileX, y: tileY }),
-          loading: false,
-          error: true,
-          timestamp: Date.now()
-        }
-      }));
+      if (isMounted) {
+        setTiles(prev => ({
+          ...prev,
+          [key]: {
+            ...(prev[key] || { x: tileX, y: tileY }),
+            loading: false,
+            error: true,
+            timestamp: Date.now()
+          }
+        }));
+      }
+    } finally {
+      cleanup();
     }
   };
 
   // Process the tile loading queue with priority to visible tiles
   const processTileQueue = async () => {
-    if (isProcessingQueue() || tileQueue().length === 0) return;
+    if (shouldStopProcessing || !isMounted || activeOperations.size > 0) {
+      console.log('[processTileQueue] Skipping - cleanup in progress or operations in progress');
+      return;
+    }
+    
+    const { signal, cleanup } = createCancellableOperation();
+    
+    const currentQueue = tileQueue();
+    if (isProcessingQueue() || currentQueue.length === 0) {
+      return;
+    }
+    
+    console.log(`[processTileQueue] Starting, queue length: ${currentQueue.length}`);
     
     setIsProcessingQueue(true);
     const queue = [...tileQueue()];
@@ -182,32 +283,64 @@ const MapView: Component = () => {
         return distA - distB;
       });
       
-      // Process tiles in batches to avoid UI freezing
+            // Process tiles in batches to avoid UI freezing
       const BATCH_SIZE = 4;
-      for (let i = 0; i < queue.length; i += BATCH_SIZE) {
-        const batch = queue.slice(i, i + BATCH_SIZE);
-        await Promise.all(batch.map(({x, y}) => loadTile(x, y)));
+      console.log(`[processTileQueue] Processing ${queue.length} tiles in batches of ${BATCH_SIZE}`);
+      for (let i = 0; i < queue.length && !shouldStopProcessing; i += BATCH_SIZE) {
+        if (shouldStopProcessing) break;
         
-        // Small delay between batches to keep the UI responsive
-        if (i + BATCH_SIZE < queue.length) {
-          await new Promise(resolve => setTimeout(resolve, 50));
+        const batch = queue.slice(i, i + BATCH_SIZE);
+        console.log(`[processTileQueue] Processing batch:`, batch);
+        
+        try {
+          await Promise.all(batch.map(({x, y}) => shouldStopProcessing ? Promise.resolve() : loadTile(x, y)));
+          
+          // Small delay between batches to keep the UI responsive
+          if (i + BATCH_SIZE < queue.length && !shouldStopProcessing) {
+            await new Promise(resolve => {
+              if (shouldStopProcessing) return resolve(undefined);
+              const timeoutId = setTimeout(resolve, 50);
+              // Store timeout ID for cleanup
+              processQueueTimeout = timeoutId as unknown as number;
+            });
+          }
+        } catch (err) {
+          if (!shouldStopProcessing) {
+            console.error('Error in batch processing:', err);
+          }
+          break;
         }
       }
     } catch (err) {
       console.error('Error processing tile queue:', err);
       setError('Error loading map data');
     } finally {
+      cleanup();
       setIsProcessingQueue(false);
       
-      // If new tiles were added while processing, process them
-      if (tileQueue().length > 0) {
-        setTimeout(processTileQueue, 0);
+      // If new tiles were added while processing and we're still mounted, process them
+      if (isMounted && tileQueue().length > 0) {
+        processQueueTimeout = window.setTimeout(processTileQueue, 0);
       }
     }
   };
   
+  // Effect to process tile queue when it changes
+  createEffect(() => {
+    if (tileQueue().length > 0 && isMounted) {
+      const id = window.setTimeout(() => {
+        if (isMounted) {
+          processTileQueue();
+        }
+      }, 0);
+      
+      return () => clearTimeout(id);
+    }
+  });
+
   // Schedule tiles for loading based on viewport with priority levels
   const scheduleTilesForLoading = () => {
+    console.log('[scheduleTilesForLoading] Scheduling tiles for loading');
     const vp = viewport();
     const zoom = vp.zoom;
     
@@ -216,6 +349,9 @@ const MapView: Component = () => {
     const startY = vp.y;
     const endX = startX + vp.width / zoom;
     const endY = startY + vp.height / zoom;
+    
+    console.log(`[scheduleTilesForLoading] Viewport: x=${vp.x.toFixed(2)}, y=${vp.y.toFixed(2)}, zoom=${zoom.toFixed(2)}`);
+    console.log(`[scheduleTilesForLoading] World bounds: (${startX.toFixed(2)}, ${startY.toFixed(2)}) to (${endX.toFixed(2)}, ${endY.toFixed(2)})`);
     
     // Get tile coordinates for visible area
     const startTile = worldToTileCoords(startX, startY);
@@ -258,12 +394,15 @@ const MapView: Component = () => {
     }
     
     if (tilesToLoad.length > 0) {
+      console.log(`[scheduleTilesForLoading] Scheduling ${tilesToLoad.length} tiles for loading`);
       // Sort by priority and then add to queue
       tilesToLoad.sort((a, b) => a.priority - b.priority);
+      console.log('[scheduleTilesForLoading] Tiles to load:', tilesToLoad);
       setTileQueue(prev => [...prev, ...tilesToLoad]);
       
       // Process the queue if not already processing
       if (!isProcessingQueue()) {
+        console.log('[scheduleTilesForLoading] Starting queue processing');
         setTimeout(processTileQueue, 0);
       }
     }
@@ -302,36 +441,17 @@ const MapView: Component = () => {
   const handleMouseDown = (e: MouseEvent) => {
     if (e.button !== 0) return; // Only left mouse button
     
-    // Skip in SSR
-    if (typeof document === 'undefined') return;
-    
-    // Ignore if clicking on a control element
-    const target = e.target as HTMLElement;
-    if (target.closest('button, input, select, textarea, a')) {
-      return;
-    }
-    
     e.preventDefault();
+    setLastMousePosition({ x: e.clientX, y: e.clientY });
+    const vp = viewport();
     setIsDragging(true);
-    setDragStart({ x: e.clientX, y: e.clientY });
-    document.body.style.cursor = 'grabbing';
-  };
-
-  // Handle mouse move for dragging
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging()) return;
-    
-    const currentDragStart = dragStart();
-    const currentViewport = viewport();
-    const dx = (e.clientX - currentDragStart.x) / currentViewport.zoom;
-    const dy = (e.clientY - currentDragStart.y) / currentViewport.zoom;
-    
-    updateViewport({
-      x: Math.max(0, currentViewport.x - dx),
-      y: Math.max(0, currentViewport.y - dy)
+    setDragStart({ 
+      x: e.clientX, 
+      y: e.clientY,
+      startX: vp.x,
+      startY: vp.y
     });
-    
-    setDragStart({ x: e.clientX, y: e.clientY });
+    document.body.style.cursor = 'grabbing';
   };
 
   // Handle mouse up for dragging
@@ -341,6 +461,23 @@ const MapView: Component = () => {
       if (typeof document !== 'undefined') {
         document.body.style.cursor = '';
       }
+    }
+  };
+
+  // Handle mouse move for dragging
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging() && lastMousePosition()) {
+      e.preventDefault();
+      const dx = e.clientX - lastMousePosition()!.x;
+      const dy = e.clientY - lastMousePosition()!.y;
+      
+      setViewport(prev => ({
+        ...prev,
+        x: prev.x - dx / prev.zoom,
+        y: prev.y - dy / prev.zoom
+      }));
+      
+      setLastMousePosition({ x: e.clientX, y: e.clientY });
     }
   };
 
@@ -356,6 +493,7 @@ const MapView: Component = () => {
 
   // Load initial tiles
   onMount(() => {
+    console.log('[MapView] Component mounted, scheduling initial tile load');
     scheduleTilesForLoading();
     
     // Clean up event listeners
@@ -499,49 +637,39 @@ const MapView: Component = () => {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
       
-      // Draw grid and points
-      const gridSize = 8;
-      const cellSize = TILE_SIZE / gridSize;
-      
-      // Draw grid lines
-      ctx.strokeStyle = '#e0e0e0';
+      // Draw a light grid
+      ctx.strokeStyle = '#f0f0f0';
       ctx.lineWidth = 1;
       
-      // Vertical lines
-      for (let i = 0; i <= gridSize; i++) {
+      // Draw grid lines for every 8 pixels
+      for (let i = 0; i <= TILE_SIZE; i += 8) {
+        // Vertical line
         ctx.beginPath();
-        ctx.moveTo(i * cellSize, 0);
-        ctx.lineTo(i * cellSize, TILE_SIZE);
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, TILE_SIZE);
+        ctx.stroke();
+        
+        // Horizontal line
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(TILE_SIZE, i);
         ctx.stroke();
       }
       
-      // Horizontal lines
-      for (let i = 0; i <= gridSize; i++) {
-        ctx.beginPath();
-        ctx.moveTo(0, i * cellSize);
-        ctx.lineTo(TILE_SIZE, i * cellSize);
-        ctx.stroke();
-      }
-      
-      // Draw points from bitmap data
+      // Draw points from bitmap data (1 bit per pixel)
       ctx.fillStyle = '#1976d2';
       
-      // Process bitmap data (1 bit per coordinate)
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          const bitIndex = y * gridSize + x;
+      // Process bitmap data (1 bit per pixel)
+      for (let y = 0; y < TILE_SIZE; y++) {
+        for (let x = 0; x < TILE_SIZE; x++) {
+          const bitIndex = y * TILE_SIZE + x;
           const byteIndex = Math.floor(bitIndex / 8);
           const bitInByte = bitIndex % 8;
           
-          // Check if the bit is set
-          if (byteIndex < data.length && (data[byteIndex] & (1 << bitInByte))) {
-            const centerX = (x + 0.5) * cellSize;
-            const centerY = (y + 0.5) * cellSize;
-            const radius = cellSize * 0.4;
-            
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-            ctx.fill();
+          // Check if the bit is set (1 = occupied, 0 = empty)
+          if (byteIndex < data.length && (data[byteIndex] & (1 << (7 - bitInByte)))) {
+            // Draw a 1x1 pixel for each point
+            ctx.fillRect(x, y, 1, 1);
           }
         }
       }
@@ -553,9 +681,82 @@ const MapView: Component = () => {
     }
   };
 
+  // Render coordinate grid
+  const renderGrid = () => {
+    const vp = viewport();
+    const gridSize = 100; // Grid size in world coordinates
+    const startX = Math.floor(vp.x / gridSize) * gridSize;
+    const startY = Math.floor(vp.y / gridSize) * gridSize;
+    const endX = startX + (vp.width / vp.zoom) + gridSize;
+    const endY = startY + (vp.height / vp.zoom) + gridSize;
+    
+    const lines = [];
+    const labels = [];
+    
+    // Add grid lines
+    for (let x = startX; x <= endX; x += gridSize) {
+      const screenX = (x - vp.x) * vp.zoom;
+      lines.push(
+        <line 
+          x1={screenX} y1="0" 
+          x2={screenX} y2={vp.height} 
+          class={styles.gridLine}
+          stroke={x === 0 ? '#ff0000' : '#888888'}
+        />
+      );
+      
+      // Add x-axis labels
+      if (x % (gridSize * 5) === 0) {
+        labels.push(
+          <text 
+            x={screenX + 5} 
+            y={15} 
+            class={styles.coordinateLabel}
+            fill={x === 0 ? '#ff0000' : '#000000'}
+          >
+            {x}
+          </text>
+        );
+      }
+    }
+    
+    for (let y = startY; y <= endY; y += gridSize) {
+      const screenY = (y - vp.y) * vp.zoom;
+      lines.push(
+        <line 
+          x1="0" y1={screenY} 
+          x2={vp.width} y2={screenY} 
+          class={styles.gridLine}
+          stroke={y === 0 ? '#ff0000' : '#888888'}
+        />
+      );
+      
+      // Add y-axis labels
+      if (y % (gridSize * 5) === 0 && y !== 0) {
+        labels.push(
+          <text 
+            x={5} 
+            y={screenY - 5} 
+            class={styles.coordinateLabel}
+            fill={y === 0 ? '#ff0000' : '#000000'}
+          >
+            {y}
+          </text>
+        );
+      }
+    }
+    
+    return (
+      <svg class={styles.gridOverlay}>
+        {lines}
+        {labels}
+      </svg>
+    );
+  };
+
   return (
     <div 
-      class={styles.mapContainer} 
+      class={styles.mapContainer}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -570,6 +771,7 @@ const MapView: Component = () => {
         'user-select': 'none'
       }}
     >
+      {renderGrid()}
       <div 
         class={styles.mapViewport}
         style={{
