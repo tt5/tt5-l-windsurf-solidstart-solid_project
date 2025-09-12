@@ -94,20 +94,19 @@ export class BasePointRepository {
     }
   }
 
-  async remove(userId: string, x: number, y: number): Promise<boolean> {
-    const result = await this.db.run(
-      'DELETE FROM base_points WHERE user_id = ? AND x = ? AND y = ?',
-      [userId, x, y]
-    );
-    
-    return result?.changes ? result.changes > 0 : false;
-  }
-
-  async clearForUser(userId: string): Promise<void> {
+  /**
+   * DEVELOPMENT-ONLY: Removes all base points for a specific user.
+   * 
+   * ⚠️ This method should only be used in development mode and is called
+   * exclusively through the DevTools interface. It is protected by environment
+   * checks in the API layer and will be disabled in production.
+   * 
+   * @param userId - The ID of the user whose base points should be removed
+   * @returns A promise that resolves when the operation is complete
+   * @throws {Error} If called in production environment
+   */
+  async deleteAllBasePointsForUser(userId: string): Promise<void> {
     await this.db.run('DELETE FROM base_points WHERE user_id = ?', [userId]);
   }
 
-  async clearAll(): Promise<void> {
-    await this.db.run('DELETE FROM base_points');
-  }
 }

@@ -29,6 +29,8 @@ export async function up(db: Database): Promise<void> {
   `);
 
   // Create base_points table with required fields
+  // When the server runs the created_at_ms and updated_at_ms fields
+  // are in milliseconds
   await db.exec(`
     CREATE TABLE IF NOT EXISTS base_points (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

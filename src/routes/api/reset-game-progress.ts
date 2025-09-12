@@ -14,8 +14,8 @@ export const POST = withAuth(async ({ user }) => {
     const repository = await getBasePointRepository();
     
     // Delete all base points for the current user
-    console.log('Deleting base points for user:', user);
-    await repository.clearForUser(user.userId);
+    console.log('Deleting all base points for user:', user.userId);
+    await repository.deleteAllBasePointsForUser(user.userId);
     
     return createApiResponse(
       { success: true, message: 'Game progress reset successfully' },
