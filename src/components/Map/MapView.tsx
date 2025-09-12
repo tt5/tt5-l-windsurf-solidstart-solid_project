@@ -50,13 +50,19 @@ const MapView: Component = () => {
   const [tiles, setTiles] = createSignal<Record<string, Tile>>({});
   let containerRef: HTMLDivElement | undefined;
   // Initialize viewport to center on the map at 100% zoom
-  const [viewport, setViewport] = createSignal<Viewport>({ 
-    x: -VIEWPORT_WIDTH / 2,  // Center at (0,0) in world coordinates
-    y: -VIEWPORT_HEIGHT / 2,
-    zoom: 1.0,  // 100% zoom
-    width: VIEWPORT_WIDTH,
-    height: VIEWPORT_HEIGHT
-  });
+  const getInitialViewport = (): Viewport => {
+    const width = containerRef?.clientWidth || VIEWPORT_WIDTH;
+    const height = containerRef?.clientHeight || VIEWPORT_HEIGHT;
+    return {
+      x: -width / 2,  // Center at (0,0) in world coordinates
+      y: -height / 2,
+      zoom: 1.0,  // 100% zoom
+      width,
+      height
+    };
+  };
+
+  const [viewport, setViewport] = createSignal<Viewport>(getInitialViewport());
   
   // Clear any existing tiles to force a reload
   setTiles({});
@@ -79,12 +85,47 @@ const MapView: Component = () => {
   let processQueueTimeout: number | null = null;
   let shouldStopProcessing = false;
   
+  // Handle window resize to update viewport dimensions
+  const handleResize = () => {
+    if (containerRef) {
+      const width = containerRef.clientWidth;
+      const height = containerRef.clientHeight;
+      setViewport(prev => ({
+        ...prev,
+        width,
+        height
+      }));
+      // Reschedule tiles after a short delay to avoid excessive updates
+      setTimeout(scheduleTilesForLoading, 100);
+    }
+  };
+
   // Initialize tile loading when component mounts
   onMount(() => {
     console.log('[MapView] Component mounted, scheduling initial tile load');
+    
+    // Set up resize observer
+    if (containerRef) {
+      const resizeObserver = new ResizeObserver(handleResize);
+      resizeObserver.observe(containerRef);
+      
+      // Clean up on unmount
+      onCleanup(() => {
+        resizeObserver.disconnect();
+      });
+    }
+    
     // Schedule initial tile loading after a short delay to ensure the component is fully rendered
     setTimeout(() => {
       console.log('[MapView] Running initial scheduleTilesForLoading');
+      // Update viewport with actual container dimensions
+      if (containerRef) {
+        setViewport(prev => ({
+          ...prev,
+          width: containerRef?.clientWidth || VIEWPORT_WIDTH,
+          height: containerRef?.clientHeight || VIEWPORT_HEIGHT
+        }));
+      }
       scheduleTilesForLoading();
     }, 100);
   });
@@ -548,32 +589,28 @@ const MapView: Component = () => {
   const handleWheel = (e: WheelEvent) => {
     e.preventDefault();
     
-    // Get mouse position relative to viewport
-    const target = e.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    // Get the current viewport state
+    const currentViewport = viewport();
     
     // Calculate zoom factor (zoom in/out based on wheel direction)
     const zoomDelta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
-    const currentViewport = viewport();
     const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentViewport.zoom + zoomDelta));
     
     // If zoom level didn't change, do nothing
     if (newZoom === currentViewport.zoom) return;
     
-    // Calculate mouse position in world coordinates before zoom
-    const worldX = currentViewport.x + mouseX / currentViewport.zoom;
-    const worldY = currentViewport.y + mouseY / currentViewport.zoom;
+    // Calculate the center of the viewport in world coordinates
+    const centerX = currentViewport.x + (currentViewport.width / 2) / currentViewport.zoom;
+    const centerY = currentViewport.y + (currentViewport.height / 2) / currentViewport.zoom;
     
-    // Calculate new viewport position to zoom toward mouse
-    const newX = worldX - (mouseX / newZoom);
-    const newY = worldY - (mouseY / newZoom);
+    // Calculate new viewport position to maintain the same center point
+    const newX = centerX - (currentViewport.width / 2) / newZoom;
+    const newY = centerY - (currentViewport.height / 2) / newZoom;
     
     updateViewport({
       zoom: newZoom,
-      x: Math.max(0, newX),
-      y: Math.max(0, newY)
+      x: newX,
+      y: newY
     });
   };
   
