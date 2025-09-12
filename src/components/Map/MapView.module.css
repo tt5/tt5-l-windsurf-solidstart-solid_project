@@ -80,15 +80,24 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 5;
+  z-index: 10; /* Increased z-index to ensure it's above other elements */
+  transform: translateZ(0); /* Force hardware acceleration */
+  will-change: transform; /* Optimize for animations */
 }
 
 .gridLine {
-  stroke-width: 1px;
-  stroke-opacity: 0.8;
+  stroke-opacity: 0.9;
   shape-rendering: crispEdges;
-  stroke: #666666;
   pointer-events: none;
+  vector-effect: non-scaling-stroke; /* Keep line width consistent when zooming */
+}
+
+/* Style for the zero axis lines */
+.gridLine.zeroAxis {
+  stroke: #ff0000 !important;
+  stroke-width: 1.5px !important;
+  stroke-opacity: 1;
+  z-index: 11; /* Ensure it's above other grid lines */
 }
 
 /* Add a subtle background to make grid lines more visible */

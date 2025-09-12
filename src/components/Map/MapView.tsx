@@ -905,13 +905,14 @@ const MapView: Component = () => {
       const screenX = (x - vp.x) * vp.zoom;
       const isMajorLine = x % (gridSize * 5) === 0;
       
+      const isZeroLine = x === 0;
       lines.push(
         <line 
           x1={screenX} y1="0" 
           x2={screenX} y2={vp.height} 
-          class={styles.gridLine}
-          stroke={x === 0 ? '#ff0000' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
-          stroke-width={x === 0 ? 1.5 : isMajorLine ? 1 : 0.5}
+          class={`${styles.gridLine} ${isZeroLine ? styles.zeroAxis : ''}`}
+          stroke={isZeroLine ? '#ff0000' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
+          stroke-width={isZeroLine ? 1.5 : isMajorLine ? 1 : 0.5}
         />
       );
       
@@ -943,13 +944,14 @@ const MapView: Component = () => {
       const screenY = (y - vp.y) * vp.zoom;
       const isMajorLine = y % (gridSize * 5) === 0;
       
+      const isZeroLine = y === 0;
       lines.push(
         <line 
           x1="0" y1={screenY} 
           x2={vp.width} y2={screenY} 
-          class={styles.gridLine}
-          stroke={y === 0 ? '#ff0000' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
-          stroke-width={y === 0 ? 1.5 : isMajorLine ? 1 : 0.5}
+          class={`${styles.gridLine} ${isZeroLine ? styles.zeroAxis : ''}`}
+          stroke={isZeroLine ? '#ff0000' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
+          stroke-width={isZeroLine ? 1.5 : isMajorLine ? 1 : 0.5}
         />
       );
       
