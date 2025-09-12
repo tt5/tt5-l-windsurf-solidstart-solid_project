@@ -689,25 +689,46 @@ const MapView: Component = () => {
   };
 
   // Convert database tile data to an image data URL
-  const renderBitmap = (tileData: Uint8Array): string => {
+  const renderBitmap = (tileData: Uint8Array | string): string => {
     // Skip in SSR
     if (typeof document === 'undefined') return '';
     
-    console.log('Tile data length:', tileData.length);
-    
     try {
+      // If tileData is a string, it's likely Base64 encoded
+      let data = tileData;
+      if (typeof tileData === 'string') {
+        // Remove data URL prefix if present
+        const base64 = tileData.startsWith('data:') 
+          ? tileData.split(',')[1] 
+          : tileData;
+        // Convert Base64 to Uint8Array
+        const binaryString = atob(base64);
+        data = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          data[i] = binaryString.charCodeAt(i);
+        }
+      }
+      
+      console.log('Processing tile data:', { 
+        type: typeof tileData, 
+        length: data.length,
+        firstBytes: Array.from(data.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')
+      });
+      
       // Check for empty data
-      if (!tileData || tileData.length === 0) {
+      if (!data || data.length === 0) {
         console.log('Empty tile data');
         return '';
       }
 
       // Check if this is our custom format with version byte
-      if (tileData[0] === 0x01) {
+      if (data[0] === 0x01) {
         try {
           console.log('Processing zlib-compressed data with version byte');
           // Skip the first byte (version) and decompress the rest
-          const decompressed = inflate(tileData.subarray(1));
+          const compressedData = data.subarray(1);
+          console.log('Decompressing data, compressed size:', compressedData.length);
+          const decompressed = inflate(compressedData);
           console.log('Decompressed data length:', decompressed.length);
           
           // The decompressed data should be a 1-bit bitmap (1 bit per pixel)
