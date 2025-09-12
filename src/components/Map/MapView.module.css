@@ -4,6 +4,12 @@
   height: 100%;
   overflow: hidden;
   background-color: #f0f0f0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
 }
 
 .mapViewport {
@@ -23,6 +29,14 @@
     linear-gradient(90deg, #ccc 1px, transparent 1px);
   background-size: 32px 32px;
   background-position: center;
+  transform-origin: 0 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform: translate(var(--translate-x, 0), var(--translate-y, 0)) scale(var(--scale, 1));
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .tile {
@@ -31,13 +45,24 @@
   box-sizing: border-box;
   background-color: white;
   overflow: hidden;
-  transition: transform 0.1s ease-out;
+  will-change: transform;
+  transform-origin: 0 0;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: pixelated;
+  pointer-events: none;
+  transform: translate(var(--tile-x, 0), var(--tile-y, 0)) scale(var(--tile-scale, 1));
+  width: var(--tile-base-size, 64px);
+  height: var(--tile-base-size, 64px);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  contain: layout style;
 }
 
 .tile:hover {
   z-index: 10;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  transform: scale(1.02);
+  transform: translate(var(--tile-x, 0), var(--tile-y, 0)) scale(calc(var(--tile-scale, 1) * 1.02));
 }
 
 /* Grid overlay styles */
@@ -86,6 +111,65 @@
   justify-content: center;
   color: #d32f2f;
   font-size: 10px;
+}
+
+.tileImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: pixelated;
+  transform-origin: 0 0;
+}
+
+.tileImageScaled {
+  composes: tileImage;
+  transform: scale(var(--scale, 0.5));
+  width: var(--tile-size, 128px);
+  height: var(--tile-size, 128px);
+}
+
+.mapContainer {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.mapViewport {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.mapViewportDragging {
+  composes: mapViewport;
+  cursor: grabbing;
+}
+
+.mapContent {
+  transform-origin: 0 0;
+  width: 100000px;
+  height: 100000px;
+  transform: translate3d(
+    var(--translate-x, 0),
+    var(--translate-y, 0),
+    0
+  ) scale(var(--scale, 1));
+  will-change: transform;
+}
+
+.tileContainer {
+  position: absolute;
+  will-change: transform;
+  left: var(--tile-x, 0);
+  top: var(--tile-y, 0);
+  width: var(--tile-size, 64px);
+  height: var(--tile-size, 64px);
 }
 
 .tileContent {

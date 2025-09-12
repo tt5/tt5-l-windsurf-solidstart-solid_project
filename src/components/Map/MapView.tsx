@@ -47,17 +47,12 @@ interface Viewport {
 const MapView: Component = () => {
   const { user } = useAuth();
   const [tiles, setTiles] = createSignal<Record<string, Tile>>({});
-  // Initialize viewport to show world coordinates from -1000 to 1000
-  const WORLD_SIZE = 2000; // -1000 to 1000
-  const initialZoom = Math.min(
-    VIEWPORT_WIDTH / WORLD_SIZE,
-    VIEWPORT_HEIGHT / WORLD_SIZE
-  ) * 0.9; // 90% of the maximum zoom to add some padding
-  
+  let containerRef: HTMLDivElement | undefined;
+  // Initialize viewport to center on the map with a reasonable zoom level
   const [viewport, setViewport] = createSignal<Viewport>({ 
-    x: -WORLD_SIZE / 2,  // Center on x=0
-    y: -WORLD_SIZE / 2,  // Center on y=0
-    zoom: initialZoom,    // Zoom to fit the world
+    x: 0,  // Center at (0,0) in world coordinates
+    y: 0,
+    zoom: 0.5,  // Start with a zoomed-out view to see more of the map
     width: VIEWPORT_WIDTH,
     height: VIEWPORT_HEIGHT
   });
@@ -464,25 +459,38 @@ const MapView: Component = () => {
     if (e.button !== 0) return; // Only left mouse button
     
     e.preventDefault();
-    setLastMousePosition({ x: e.clientX, y: e.clientY });
+    e.stopPropagation();
+    
     const vp = viewport();
     setIsDragging(true);
+    setLastMousePosition({ x: e.clientX, y: e.clientY });
     setDragStart({ 
       x: e.clientX, 
       y: e.clientY,
       startX: vp.x,
       startY: vp.y
     });
+    
+    // Prevent text selection during drag
+    document.addEventListener('selectstart', preventDefault);
     document.body.style.cursor = 'grabbing';
   };
 
   // Handle mouse up for dragging
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: MouseEvent) => {
     if (isDragging()) {
+      e.preventDefault();
+      e.stopPropagation();
+      
       setIsDragging(false);
-      if (typeof document !== 'undefined') {
-        document.body.style.cursor = '';
-      }
+      document.removeEventListener('selectstart', preventDefault);
+      document.body.style.cursor = '';
+      
+      // Force a reflow to ensure smooth transition back to normal cursor
+      const element = e.target as HTMLElement;
+      element.style.display = 'none';
+      void element.offsetHeight; // Trigger reflow
+      element.style.display = '';
     }
   };
 
@@ -490,13 +498,16 @@ const MapView: Component = () => {
   const handleMouseMove = (e: MouseEvent) => {
     if (isDragging() && lastMousePosition()) {
       e.preventDefault();
+      e.stopPropagation();
+      
       const dx = e.clientX - lastMousePosition()!.x;
       const dy = e.clientY - lastMousePosition()!.y;
       
+      // Update viewport position
       setViewport(prev => ({
         ...prev,
-        x: prev.x - dx / prev.zoom,
-        y: prev.y - dy / prev.zoom
+        x: Math.max(-10000, Math.min(10000, prev.x - dx / prev.zoom)),
+        y: Math.max(-10000, Math.min(10000, prev.y - dy / prev.zoom))
       }));
       
       setLastMousePosition({ x: e.clientX, y: e.clientY });
@@ -504,13 +515,21 @@ const MapView: Component = () => {
   };
 
   // Handle mouse leave for dragging
-  const handleMouseLeave = () => {
+  const handleMouseLeave = (e: MouseEvent) => {
     if (isDragging()) {
+      e.preventDefault();
+      e.stopPropagation();
+      
       setIsDragging(false);
-      if (typeof document !== 'undefined') {
-        document.body.style.cursor = '';
-      }
+      document.removeEventListener('selectstart', preventDefault);
+      document.body.style.cursor = '';
     }
+  };
+  
+  // Helper function to prevent default behavior
+  const preventDefault = (e: Event) => {
+    e.preventDefault();
+    return false;
   };
 
   // Load initial tiles
@@ -589,14 +608,15 @@ const MapView: Component = () => {
     const vp = viewport();
     const zoom = vp.zoom;
     
-    // Convert tile coordinates to screen coordinates
-    const screenX = (tile.x * TILE_SIZE - vp.x) * zoom;
-    const screenY = (tile.y * TILE_SIZE - vp.y) * zoom;
-    const scaledSize = TILE_SIZE * zoom;
-    
-    // Calculate tile bounds in world coordinates
+    // Calculate tile position in world coordinates
     const tileWorldX = tile.x * TILE_SIZE;
     const tileWorldY = tile.y * TILE_SIZE;
+    
+    // Calculate screen coordinates relative to the viewport
+    const screenX = tileWorldX * zoom;
+    const screenY = tileWorldY * zoom;
+    
+    // Calculate tile bounds in world coordinates
     const tileEndWorldX = tileWorldX + TILE_SIZE;
     const tileEndWorldY = tileWorldY + TILE_SIZE;
     
@@ -617,6 +637,10 @@ const MapView: Component = () => {
       return null;
     }
     
+    // Calculate the scale factor for the image to maintain crisp pixels
+    const pixelRatio = window.devicePixelRatio || 1;
+    const scale = zoom * pixelRatio;
+    
     // Render tile content based on data
     let content;
     if (tile.loading) {
@@ -627,29 +651,36 @@ const MapView: Component = () => {
       const tileImage = renderBitmap(tile.data);
       
       content = (
-        <>
-          <img 
-            src={tileImage}
-            alt={`Tile ${tile.x},${tile.y}`}
-            class={styles.tileImage}
+        <div class={styles.tileContent}>
+          <div
+            class={styles.tileImageScaled}
+            style={{
+              transform: `scale(${1 / pixelRatio})`,
+              '--tile-size': `${TILE_SIZE * pixelRatio}px`
+            } as any}
             draggable={false}
-          />
+          >
+            <img 
+              src={tileImage}
+              alt={`Tile ${tile.x},${tile.y}`}
+            />
+          </div>
           <div class={styles.tileCoords}>
             {tile.x},{tile.y}
           </div>
-        </>
+        </div>
       );
     }
     
     return (
       <div 
-        class={`${styles.tile} ${tile.loading ? styles.loading : ''} ${tile.error ? styles.error : ''}`}
+        class={`${styles.tile} ${styles.tileContainer} ${tile.loading ? styles.loading : ''} ${tile.error ? styles.error : ''}`}
         style={{
-          left: `${screenX}px`,
-          top: `${screenY}px`,
-          width: `${scaledSize}px`,
-          height: `${scaledSize}px`
-        }}
+          '--tile-x': `${screenX}px`,
+          '--tile-y': `${screenY}px`,
+          '--tile-scale': zoom,
+          '--tile-base-size': `${TILE_SIZE}px`
+        } as any}
       >
         {content}
       </div>
@@ -781,41 +812,26 @@ const MapView: Component = () => {
   };
 
   return (
-    <div 
+    <div
       class={styles.mapContainer}
+      ref={containerRef}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onWheel={handleWheel}
-      style={{
-        width: '100%',
-        height: '100%',
-        position: 'relative',
-        overflow: 'hidden',
-        'touch-action': 'none' as const,
-        'user-select': 'none'
-      }}
     >
       {renderGrid()}
       <div 
-        class={styles.mapViewport}
-        style={{
-          width: '100%',
-          height: '100%',
-          cursor: isDragging() ? 'grabbing' : 'grab',
-          position: 'relative',
-          overflow: 'hidden',
-          'touch-action': 'none'
-        }}
+        class={isDragging() ? styles.mapViewportDragging : styles.mapViewport}
       >
         <div 
           class={styles.mapContent}
           style={{
-            transform: `translate(${-viewport().x}px, ${-viewport().y}px) scale(${viewport().zoom})`,
-            width: '100000px', // Large enough to contain the entire map
-            height: '100000px' // Large enough to contain the entire map
-          }}
+            '--translate-x': `${-viewport().x * viewport().zoom}px`,
+            '--translate-y': `${-viewport().y * viewport().zoom}px`,
+            '--scale': viewport().zoom
+          } as any}
         >
           {Object.values(tiles()).map(tile => renderTile(tile))}
         </div>
