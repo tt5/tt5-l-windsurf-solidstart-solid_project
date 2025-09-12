@@ -1,91 +1,264 @@
-# Game Design Document
+# Territory Control Game - Implementation Documentation
 
 ## Table of Contents
-1. [Core Concepts](#core-concepts)
+1. [Core Architecture](#core-architecture)
 2. [Game World](#game-world)
 3. [Game Mechanics](#game-mechanics)
 4. [Technical Implementation](#technical-implementation)
-5. [Performance Optimization](#performance-optimization)
-6. [Multiplayer Features](#multiplayer-features)
-7. [Future Development](#future-development)
-8. [Glossary](#glossary)
+5. [Authentication System](#authentication-system)
+6. [API Endpoints](#api-endpoints)
+7. [Testing Strategy](#testing-strategy)
+8. [Future Development](#future-development)
 
-## Core Concepts
+## Core Architecture
 
-### World Structure
-- **Infinite 2D Grid**: Expansive world with coordinates from (-1000,-1000) to (1000,1000)
-- **Viewport**: 15×15 grid (225 cells) visible at any time
-- **Coordinate System**: 
-  - Player always at (0,0) with viewport moving around them
-  - Grid coordinates: [x, y] tuples (0 to GRID_SIZE-1)
-  - Grid indices: 0 to (GRID_SIZE² - 1)
-  - Conversion between coordinates and indices handled by utility functions
+### Technology Stack
+- **Frontend**: SolidJS with TypeScript
+- **Styling**: CSS Modules
+- **Backend**: Node.js with SQLite
+- **Authentication**: JWT (JSON Web Tokens)
+- **State Management**: SolidJS Context API
+- **Build Tool**: Vite
 
-### Key Entities
-- **User**: The human interacting with the game interface
-- **Player**: In-game entity representing the user, fixed at (0,0)
-- **Base Point**: Significant location that projects influence and creates territory
-- **Viewport**: The 15×15 grid currently visible on screen
-- **World**: 2001×2001 unit grid (±1000 from center) with enforced boundaries
-  - Players cannot move the viewport outside these boundaries
-  - Boundary check occurs before any movement is processed
-  - Visual feedback appears when boundary is reached
+### Project Structure
+```
+src/
+├── components/         # Reusable UI components
+│   ├── Auth/          # Authentication forms and logic
+│   ├── DevTools/      # Development utilities
+│   └── Game/          # Game-specific components
+├── constants/         # Game configuration
+├── contexts/          # Global state management
+├── lib/
+│   └── server/        # Server-side logic
+│       ├── auth/      # Authentication logic
+│       └── db/        # Database operations
+├── routes/            # Application routes
+│   ├── api/           # API endpoints
+│   └── pages/         # Page components
+├── types/             # TypeScript type definitions
+└── utils/             # Utility functions
+```
 
 ## Game World
 
-### Viewport System
-- Fixed 15×15 grid (configured in `BOARD_CONFIG.GRID_SIZE`)
-- Movement handled by `handleDirection` in `boardUtils.ts`
-- Movement process:
-  1. Calculates new position using `getMovementDeltas`
-  2. Updates restricted squares using `moveSquares`
-  3. Handles border squares based on movement direction
-  4. Updates position and loads relevant base points
+### World Structure
+- **Bounded 2D Grid**: World extends from (-1000,-1000) to (1000,1000)
+- **Viewport**: 15×15 grid (225 cells) visible at any time
+- **Coordinate System**:
+  - Player always at (0,0) with viewport moving around them
+  - Grid coordinates are represented as `[x, y]` tuples
+  - World boundaries prevent moving beyond defined limits
 
-### Base Points
-#### Placement Rules
-- Must be within visible viewport
-- Can only be placed on non-restricted squares
-- Each player starts with one base at (0,0)
-- Additional points can be placed during exploration
-- Initial (0,0) base point is permanent and neutral
+### Core Entities
 
-#### Behavior
-- Fixed at world coordinates once placed
-- Visible to all players when in viewport
-- Projects influence in multiple directions
-- Cannot be removed (except through system cleanup)
+#### Base Points
+- Represent player-controlled territory markers
+- Each point has:
+  - Unique ID
+  - World coordinates (x, y)
+  - Owner (user ID)
+  - Creation timestamp
+- Cannot be placed on restricted squares
+- Protected base at (0,0) that cannot be removed
 
 ## Game Mechanics
 
-### Territory Control
-- **Influence System**:
-  - Projects in multiple directions (cardinal, diagonal, and prime-numbered slopes)
-  - Creates restricted areas for other players
-  - Infinite range until another base is encountered
-  - **Pattern Creation**:
-    - Base points create lines in multiple directions
-    - Lines extend until grid boundaries
-    - Intersection logic is calculated but not visually represented
+### Movement System
+- **Controls**: Arrow keys or on-screen buttons
+- **Movement Mechanics**:
+  - Player's avatar is fixed at viewport position (0,0)
+  - World moves in the opposite direction when moving (creating the illusion of movement)
+  - Viewport scrolls to reveal new areas of the world
+- **Speed**: Smooth movement with configurable speed
+- **Collision**: Bounds checking against world limits
+- **Viewport Behavior**:
+  - 15×15 grid centered around the player's world position
+  - Player's avatar remains fixed at viewport (0,0)
+  - World coordinates update as viewport moves
+  - Grid cells outside visible area are not rendered for performance
 
-- **Conflict Resolution**:
-  - Older base points take precedence
-  - Neutral (0,0) base is always protected
-  - First-come-first-served for same-age bases
-  - (0,0) is a protected position
+### Territory Control
+- Players place base points to claim territory
+- Each base point creates restricted areas
+- Cleanup process runs periodically to maintain game balance
+
+### Cleanup Process
+- Runs every 10 seconds asynchronously
+- For each cleanup cycle:
+  1. Selects 2-4 random slopes (including cardinal, diagonal, and prime-numbered slopes)
+  2. Identifies all straight lines where 3 or more base points are collinear along these slopes
+  3. For each identified line, removes all points except the oldest one (by database ID)
+  4. Preserves the protected (0,0) base point in all cases
+- Operates on all base points in the database, not just those in the current viewport
+- Logs all removed points for debugging and audit purposes
+
+## Technical Implementation
+
+### Frontend
+- **Board Component**: Renders the game grid and handles user input
+- **State Management**: Uses SolidJS signals and context for reactive state
+- **Rendering**: Optimized for performance with minimal re-renders
+- **Responsive Design**: Adapts to different screen sizes
+
+### Backend
+- **Database**: SQLite for data persistence
+- **API**: RESTful endpoints for game actions
+- **Authentication**: JWT-based session management
+- **Migrations**: Database schema versioning
+
+### Performance Optimizations
+- Efficient grid rendering
+- Batch updates for state changes
+- Debounced API calls
+- Server-side caching where applicable
+
+## Authentication System
+
+### Features
+- User registration and login
+- JWT-based session management
+- Protected routes
+- Development mode with auto-login
+
+### Security
+- Password hashing with bcrypt
+- Secure HTTP-only cookies
+- CSRF protection
+- Input validation
+
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - Create new account
+- `POST /api/auth/login` - Authenticate user
+- `POST /api/auth/logout` - End session
+
+### Game Actions
+- `GET /api/base-points` - Get visible base points
+- `POST /api/base-points` - Place new base point
+- `POST /api/cleanup-lines` - Trigger manual cleanup process
+- `POST /api/calculate-squares` - Calculate restricted squares
+
+## Testing Strategy
+
+### Unit Tests
+- Core game logic
+- Utility functions
+- State management
+
+### Integration Tests
+- API endpoints
+- Database operations
+- Authentication flow
+
+### E2E Tests
+- User workflows
+- Game mechanics
+- Edge cases
+
+## Future Development
+
+### Planned Features
+1. **Multiplayer Support**
+   - Real-time updates
+   - Player vs Player mechanics
+   - Leaderboards
+
+2. **Enhanced Gameplay**
+   - Special abilities
+   - Resource collection
+   - Base upgrades
+
+3. **UI/UX Improvements**
+   - Animations
+   - Sound effects
+   - Tutorial system
+
+4. **Performance**
+   - Server-side rendering
+   - Lazy loading
+   - Optimized asset delivery
+
+5. **Analytics**
+   - Game metrics
+   - Player behavior tracking
+   - Performance monitoring
+### Territory Control
+
+#### Influence System
+**Purpose**: Controls where new base points can be placed
+
+**Mechanics**:
+- **Influence Lines**: Each base point projects influence in 12 directions:
+  - 4 cardinal (horizontal/vertical)
+  - 4 diagonal (45°)
+  - 4 prime-numbered slopes (26.565° and 63.435°)
+- **Restricted Areas**:
+  - Marks grid squares as unavailable for new base points
+  - Extends to the edge of the visible 15×15 grid
+  - Blocked only by grid edges (not by other base points)
+- **Real-time Operation**:
+  - Updates immediately as players move/place base points
+  - Only affects the current player's visible grid
+  - Prevents placement in influenced areas
+
+#### Cleanup Process
+**Purpose**: Maintains game balance by preventing clustering
+
+**Execution**:
+- **Schedule**: Runs every 10 seconds
+- **Scope**: Global (all base points, not just visible ones)
+- **Protection**: Never removes the neutral (0,0) base point
+
+**Line Detection**:
+- Uses exact line equations with floating-point precision
+- Identifies collinear points with epsilon tolerance
+- Handles all line types (vertical, horizontal, diagonal)
+
+**Cleanup Rules**:
+1. Randomly selects 2-4 slopes (including prime-numbered ones)
+2. For each slope, finds all straight lines with 3+ base points
+3. In each line, keeps only the oldest point (by ID)
+4. Removes all other points in the line
+
+**Conflict Resolution**:
+- Older base points (by ID) take precedence
+- The neutral (0,0) base is always protected
+- First-come-first-served for same-age base points
+
+**Impact on Gameplay**:
+- Reduces clustering of base points in straight lines
+- Encourages strategic placement
+- Maintains game balance by preventing line-based strategies
 
 ### Movement and Border System
 - **Basic Movement**:
-  - Speed: 50 cells/second (20ms cooldown between moves)
-  - 1 action point per cell
-  - 20ms cooldown between moves to prevent rapid successive movements
-  - Movement is blocked at world boundaries (±1000, ±1000)
-  - Visual feedback when attempting to move beyond boundaries
+  - **Movement Mechanics**:
+    - Player's avatar remains fixed at viewport (0,0)
+    - World moves in the opposite direction of movement
+    - Movement is grid-based (1 cell per key press)
+    - Movement is processed synchronously with no queue
+    - `isMoving` flag prevents overlapping movements
+    - Movement is blocked during the current move
+    - Additional cooldown of 20ms after movement
+  
+- **Movement Controls**:
+  - Arrow keys or on-screen buttons for direction
+  - Each key press moves exactly one cell
+  - Smooth animations between positions
+  - No movement queuing - rapid key presses may be ignored during movement
+
+- **World Boundaries**:
+  - World extends from (-1000,-1000) to (1000,1000)
+  - Movement is blocked at world edges
+  - Boundary checking prevents moving outside world limits
 
 - **Border Squares Management**:
-  - Moving reveals a new row or column of squares
+  - Viewport updates to show new areas as player moves
   - New border squares are checked against the server
   - Restricted squares are updated dynamically
+  - Only visible grid cells are rendered for performance
   - Visual feedback for restricted areas
 
 - **Teleportation**:
@@ -107,20 +280,39 @@
 ### System Maintenance
 - **Cleanup Process**:
   - **Server-side Cleanup**:
-    - Runs automatically on a schedule
-    - Selects 2-4 random slopes (including prime-numbered slopes)
-    - For each slope:
-      1. Identifies all points forming straight lines
-      2. Deletes all but the oldest point in each line
-    - Preserves the first point in each line (by ID)
-    - Handles errors gracefully
+    - Automatically runs every 10 seconds via `setInterval`
+    - Managed by the `ServerInitializer` singleton
+    - **Process Flow**:
+      1. Fetches 2-4 random slopes using `getRandomSlopes()`
+      2. Logs the selected slopes for debugging
+      3. Takes a snapshot of all points before cleanup
+      4. Identifies points in straight lines using `getPointsInLines()`
+      5. If points are found, deletes them using `deletePoints()`
+      6. Takes a post-cleanup snapshot for verification
+    - **Error Handling**:
+      - Wrapped in try-catch to prevent unhandled rejections
+      - Logs detailed error information to console
+      - Continues running even if one cleanup cycle fails
+    - **Logging**:
+      - Logs before/after states of points
+      - Logs which points are being deleted
+      - Provides timing information for each cleanup cycle
   - **Admin Endpoint** (`/api/cleanup-lines`):
-    - Manually triggers the cleanup process
-    - Returns cleanup statistics including:
-      - Number of points deleted
-      - List of deleted point IDs
-      - Slopes used for the cleanup
-    - Requires admin privileges
+    - **Method**: POST
+    - **Authentication**: Requires admin role
+    - **Response**:
+      - Success: 200 with deleted points count and IDs
+      - Error: 500 with error details
+    - **Response Example**:
+      ```json
+      {
+        "success": true,
+        "message": "Line cleanup completed",
+        "deletedCount": 5,
+        "deletedPoints": [1, 2, 3, 4, 5],
+        "slopesUsed": [1, 2, 3]
+      }
+      ```
 
 ### Frontend
 - SolidJS for reactive UI
@@ -134,101 +326,41 @@
 
 ## Performance Optimization
 
-### Current Implementation
+### Real-time Metrics
+- **Endpoint**: `/api/admin/performance` (GET)
+  - **Authentication**: Admin access required
+  - **Metrics Tracked**:
+    - `calculate-squares` operation metrics:
+      - Average duration
+      - Maximum base points processed
+      - Average response size
+    - Total request count
+  - **Data Retention**: Last 1,000 metrics
+  - **Response Format**:
+    ```json
+    {
+      "success": true,
+      "data": {
+        "totalRequests": number,
+        "calculateSquares": {
+          "count": number,
+          "averageDuration": number,
+          "maxBasePoints": number,
+          "averageResponseSize": number
+        },
+        "lastUpdated": "ISO timestamp"
+      }
+    }
+    ```
 
-#### Performance Tracker (`/src/utils/performance.ts`)
-- **Metrics Collection**:
-  - Tracks timing and operational data for key game operations
-  - Stores up to 1,000 most recent metrics in memory
-  - Each metric includes:
-    - Timestamp
-    - Operation name
-    - Duration in milliseconds
-    - Custom data payload
-
-#### Admin Endpoint (`/api/admin/performance`)
-- **Access**: Admin authentication required
-- **Metrics Tracked**:
-  - `calculate-squares` operation:
-    - Call count
-    - Average duration
-    - Maximum base points processed
-    - Average response size
-  - Total request count
-  - Last updated timestamp
-
-#### Data Model
-```typescript
-type PerformanceMetric = {
-  timestamp: number;
-  operation: string;
-  duration: number;
-  data: {
-    basePointCount?: number;
-    playerCount?: number;
-    responseSize?: number;
-    dbTime?: number;
-    processingTime?: number;
-  };
-};
-```
-
-#### Response Format
-```json
-{
-  "success": true,
-  "data": {
-    "totalRequests": number,
-    "calculateSquares": {
-      "count": number,
-      "averageDuration": number,
-      "maxBasePoints": number,
-      "averageResponseSize": number
-    },
-    "lastUpdated": "ISO-8601 timestamp"
-  }
-}
-```
-
-### Current Limitations
-1. **In-Memory Storage**:
-   - Metrics are lost on server restart
-   - Limited to last 1,000 metrics
-
-2. **Manual Instrumentation**:
-   - Requires explicit `track()` calls
-   - Not all operations are instrumented
-
-3. **Limited Metrics**:
-   - No memory usage tracking
-   - No CPU utilization data
-   - No network latency measurements
-
-4. **No Alerting**:
-   - No automated alerts for performance issues
-   - No threshold monitoring
-
-### Future Optimization Opportunities
-1. **Automatic Instrumentation**:
-   - Middleware for API endpoints
-   - Database query monitoring
-   - Client-side performance tracking
-
-2. **Enhanced Metrics**:
-   - Memory usage tracking
-   - CPU utilization monitoring
-   - Network latency measurements
-   - Error rate tracking
-
-3. **Persistence Layer**:
-   - Time-series database integration
-   - Long-term metric storage
-   - Data retention policies
-
-4. **Alerting System**:
-   - Performance degradation alerts
-   - Error rate monitoring
-   - Resource utilization thresholds
+### Optimization Strategies
+- **Spatial Indexing**:
+  - Quad-tree for efficient base point queries
+  - Viewport-based culling (20-unit radius)
+  - Cached calculations with 100ms cooldown
+  - Client-side filtering of base points
+  - Simple coordinate-based queries
+  - Basic error handling
 
 ## Multiplayer Features
 - Shared state via database
