@@ -3,6 +3,7 @@ import { Show, createSignal } from 'solid-js';
 import { useAuth } from '~/contexts/auth';
 import Board from '~/components/Game/Board';
 import SidePanel from '~/components/Game/SidePanel';
+import MapView from '~/components/Map/MapView';
 import styles from './game.module.css';
 
 export default function GamePage() {
@@ -35,7 +36,12 @@ export default function GamePage() {
             />
             
             <div class={styles.gameBoard}>
-              <Board />
+              <Show when={activeTab() === 'info'}>
+                <Board />
+              </Show>
+              <Show when={activeTab() === 'settings'}>
+                <MapView />
+              </Show>
             </div>
           </div>
         </Show>

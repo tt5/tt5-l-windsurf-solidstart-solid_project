@@ -19,6 +19,16 @@ export class BasePointRepository {
     return results || [];
   }
 
+  async getPointsInBounds(minX: number, minY: number, maxX: number, maxY: number): Promise<BasePoint[]> {
+    const results = await this.db.all<BasePoint[]>(
+      `SELECT id, user_id as userId, x, y, created_at_ms as createdAtMs 
+       FROM base_points 
+       WHERE x BETWEEN ? AND ? AND y BETWEEN ? AND ?`,
+      [minX, maxX, minY, maxY]
+    );
+    return results || [];
+  }
+
   async add(userId: string, x: number, y: number): Promise<BasePoint> {
     const now = Date.now();
     console.log(`[BasePointRepository] Adding base point - userId: ${userId}, x: ${x}, y: ${y}`);
