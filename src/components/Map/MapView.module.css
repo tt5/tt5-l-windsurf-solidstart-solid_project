@@ -37,22 +37,34 @@
 
 .tile {
   position: absolute;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-sizing: border-box;
-  background-color: white;
+  border: 1px solid rgba(255, 0, 0, 0.3); /* Keep border for debugging */
+  margin: 0;
+  padding: 0;
+  background-color: rgba(0, 255, 0, 0.05); /* Keep background for debugging */
   overflow: hidden;
   will-change: transform;
   transform-origin: 0 0;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: -moz-crisp-edges;
   image-rendering: pixelated;
   pointer-events: none;
-  transform: translate(var(--tile-x, 0), var(--tile-y, 0)) scale(var(--tile-scale, 1));
+  transform: translate(
+    calc(var(--tile-x, 0) * var(--tile-scale, 1)), 
+    calc(var(--tile-y, 0) * var(--tile-scale, 1))
+  ) scale(var(--tile-scale, 1));
   width: var(--tile-base-size, 64px);
   height: var(--tile-base-size, 64px);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   contain: layout style;
+  outline: none;
+  box-sizing: border-box;
+  /* Ensure pixel-perfect rendering */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -o-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
+  -ms-interpolation-mode: nearest-neighbor;
 }
 
 .tile:hover {
@@ -74,21 +86,33 @@
 
 .gridLine {
   stroke-width: 1px;
-  stroke-opacity: 0.5;
+  stroke-opacity: 0.8;
   shape-rendering: crispEdges;
+  stroke: #666666;
+  pointer-events: none;
+}
+
+/* Add a subtle background to make grid lines more visible */
+.mapContent {
+  background-color: rgba(245, 245, 245, 0.1);
 }
 
 .coordinateLabel {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 1px 3px;
+  border-radius: 2px;
   font-size: 10px;
   font-family: monospace;
+  font-weight: bold;
+  color: #333;
   pointer-events: none;
   user-select: none;
-  text-shadow: 
-    -1px -1px 0 #fff,  
-     1px -1px 0 #fff,
-    -1px  1px 0 #fff,
-     1px  1px 0 #fff;
-  font-weight: bold;
+  z-index: 10;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .tile.loading {

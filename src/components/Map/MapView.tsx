@@ -609,13 +609,14 @@ const MapView: Component = () => {
     const vp = viewport();
     const zoom = vp.zoom;
     
-    // Calculate tile position in world coordinates
+    // Calculate tile position in world coordinates (1 unit = 1 pixel)
     const tileWorldX = tile.x * TILE_SIZE;
     const tileWorldY = tile.y * TILE_SIZE;
     
-    // Calculate screen coordinates (the transform is handled by the parent)
-    const screenX = tileWorldX * zoom;
-    const screenY = tileWorldY * zoom;
+    // Calculate screen coordinates with 1:1 pixel mapping
+    // Each tile is exactly 64x64 pixels in screen space
+    const screenX = tile.x * TILE_SIZE * zoom;
+    const screenY = tile.y * TILE_SIZE * zoom;
     
     // Calculate tile bounds in world coordinates
     const tileEndWorldX = tileWorldX + TILE_SIZE;
@@ -644,44 +645,60 @@ const MapView: Component = () => {
     
     // Render tile content based on data
     let content;
+    
+    // Add coordinate label for debugging
+    const coordLabel = `(${tile.x},${tile.y})`;
+    const coordLabelElement = (
+      <div class={styles.coordinateLabel} style={{
+        position: 'absolute',
+        left: '2px',
+        top: '2px',
+        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+        padding: '1px 3px',
+        borderRadius: '2px',
+        fontSize: '10px',
+        fontFamily: 'monospace',
+        pointerEvents: 'none',
+        zIndex: 10
+      }}>
+        {coordLabel}
+      </div>
+    );
+    
     if (tile.loading) {
       content = <div class={styles.loading}>Loading...</div>;
     } else if (tile.error) {
       content = <div class={styles.error}>Error</div>;
     } else if (tile.data) {
       const tileImage = renderBitmap(tile.data);
-      
       content = (
-        <div class={styles.tileContent}>
-          <div
-            class={styles.tileImageScaled}
-            style={{
-              transform: `scale(${1 / pixelRatio})`,
-              '--tile-size': `${TILE_SIZE * pixelRatio}px`
-            } as any}
-            draggable={false}
-          >
-            <img 
-              src={tileImage}
-              alt={`Tile ${tile.x},${tile.y}`}
+        <>
+          {coordLabelElement}
+          <div class={styles.tileContent}>
+            <div
+              class={styles.tileImageScaled}
+              style={{
+                transform: `scale(${1 / pixelRatio})`,
+                '--tile-size': `${TILE_SIZE * pixelRatio}px`
+              } as any}
+              innerHTML={tileImage}
             />
           </div>
-          <div class={styles.tileCoords}>
-            {tile.x},{tile.y}
-          </div>
-        </div>
+        </>
       );
     }
     
     return (
       <div 
-        class={`${styles.tile} ${styles.tileContainer} ${tile.loading ? styles.loading : ''} ${tile.error ? styles.error : ''}`}
+        class={styles.tile}
         style={{
           '--tile-x': `${screenX}px`,
           '--tile-y': `${screenY}px`,
           '--tile-scale': zoom,
           '--tile-base-size': `${TILE_SIZE}px`
-        } as any}
+        }}
+        data-x={tile.x}
+        data-y={tile.y}
       >
         {content}
       </div>
@@ -796,10 +813,7 @@ const MapView: Component = () => {
     const imgData = new ImageData(imageData, TILE_SIZE, TILE_SIZE);
     ctx.putImageData(imgData, 0, 0);
     
-    // Add grid lines
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-    ctx.lineWidth = 0.5;
-    ctx.strokeRect(0, 0, TILE_SIZE, TILE_SIZE);
+    // Don't draw grid lines on individual tiles - they're handled by the grid overlay
     
     // Convert to data URL
     const dataUrl = canvas.toDataURL('image/png');
@@ -812,35 +826,48 @@ const MapView: Component = () => {
     const vp = viewport();
     const gridSize = 100; // Grid size in world coordinates
     
-    // Calculate grid bounds in world coordinates
-    const startX = -vp.width / vp.zoom / 2;
-    const startY = -vp.height / vp.zoom / 2;
-    const endX = vp.width / vp.zoom / 2;
-    const endY = vp.height / vp.zoom / 2;
+    // Calculate grid bounds in world coordinates with some padding
+    const padding = 2; // Extra cells to render outside viewport
+    const startX = Math.floor((vp.x - padding * gridSize) / gridSize) * gridSize;
+    const startY = Math.floor((vp.y - padding * gridSize) / gridSize) * gridSize;
+    const endX = vp.x + (vp.width / vp.zoom) + padding * gridSize;
+    const endY = vp.y + (vp.height / vp.zoom) + padding * gridSize;
     
     const lines = [];
     const labels = [];
     
-    // Add grid lines
+    // Add grid lines and labels
     for (let x = startX; x <= endX; x += gridSize) {
       const screenX = (x - vp.x) * vp.zoom;
+      const isMajorLine = x % (gridSize * 5) === 0;
+      
       lines.push(
         <line 
           x1={screenX} y1="0" 
           x2={screenX} y2={vp.height} 
           class={styles.gridLine}
-          stroke={x === 0 ? '#ff0000' : '#888888'}
+          stroke={x === 0 ? '#ff0000' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
+          stroke-width={x === 0 ? 1.5 : isMajorLine ? 1 : 0.5}
         />
       );
       
-      // Add x-axis labels
-      if (x % (gridSize * 5) === 0) {
+      // Add x-axis labels for major grid lines
+      if (isMajorLine) {
         labels.push(
           <text 
-            x={screenX + 5} 
-            y={15} 
-            class={styles.coordinateLabel}
-            fill={x === 0 ? '#ff0000' : '#000000'}
+            x={screenX + 4} 
+            y={14} 
+            class={styles.gridLabel}
+            text-anchor="start"
+            style={{
+              fontSize: '10px',
+              fill: x === 0 ? '#ff0000' : '#666666',
+              fontFamily: 'monospace',
+              fontWeight: 'bold',
+              pointerEvents: 'none',
+              userSelect: 'none',
+              textShadow: '1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white',
+            }}
           >
             {x}
           </text>
@@ -850,23 +877,35 @@ const MapView: Component = () => {
     
     for (let y = startY; y <= endY; y += gridSize) {
       const screenY = (y - vp.y) * vp.zoom;
+      const isMajorLine = y % (gridSize * 5) === 0;
+      
       lines.push(
         <line 
           x1="0" y1={screenY} 
           x2={vp.width} y2={screenY} 
           class={styles.gridLine}
-          stroke={y === 0 ? '#ff0000' : '#888888'}
+          stroke={y === 0 ? '#ff0000' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
+          stroke-width={y === 0 ? 1.5 : isMajorLine ? 1 : 0.5}
         />
       );
       
-      // Add y-axis labels
-      if (y % (gridSize * 5) === 0 && y !== 0) {
+      // Add y-axis labels for major grid lines
+      if (isMajorLine && y !== 0) {
         labels.push(
           <text 
-            x={5} 
-            y={screenY - 5} 
-            class={styles.coordinateLabel}
-            fill={y === 0 ? '#ff0000' : '#000000'}
+            x={4} 
+            y={screenY - 6} 
+            class={styles.gridLabel}
+            text-anchor="start"
+            style={{
+              fontSize: '10px',
+              fill: y === 0 ? '#ff0000' : '#666666',
+              fontFamily: 'monospace',
+              fontWeight: 'bold',
+              pointerEvents: 'none',
+              userSelect: 'none',
+              textShadow: '1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white',
+            }}
           >
             {y}
           </text>
