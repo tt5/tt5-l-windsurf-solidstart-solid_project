@@ -930,12 +930,15 @@ const MapView: Component = () => {
     const lines = [];
     const labels = [];
     
-    // Add grid lines and labels
+    // Add vertical grid lines and labels
     for (let x = startX; x <= endX; x += gridSize) {
       const screenX = (x - vp.x) * vp.zoom;
       const isMajorLine = x % (gridSize * 5) === 0;
       const isHundredTick = x % 100 === 0;
       const isZeroLine = x === 0;
+      
+      // Skip if this line is outside the viewport (with a small threshold)
+      if (screenX < -10 || screenX > vp.width + 10) continue;
       
       lines.push(
         <line 
@@ -947,35 +950,44 @@ const MapView: Component = () => {
         />
       );
       
-      // Add x-axis labels for major grid lines
-      if (isMajorLine) {
-        labels.push(
-          <text 
-            x={screenX + 4} 
-            y={14} 
-            class={styles.gridLabel}
-            text-anchor="start"
-            style={{
-              'font-size': '10px',
-              'fill': x === 0 ? '#ff0000' : '#666666',
-              'font-family': 'monospace',
-              'font-weight': 'bold',
-              'pointer-events': 'none',
-              'user-select': 'none',
-              'text-shadow': '1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white',
-            } as any}
-          >
-            {x}
-          </text>
-        );
-      }
+      // Add x-axis labels for all grid lines
+      const labelColor = isZeroLine ? '#ff0000' : isHundredTick ? '#000000' : '#666666';
+      const labelWeight = isHundredTick ? 'bold' : 'normal';
+      const labelSize = isHundredTick ? '11px' : '9px';
+      
+      // X-axis labels at bottom of viewport
+      labels.push(
+        <text 
+          x={screenX + 4} 
+          y={vp.height - 4} 
+          class={styles.gridLabel}
+          text-anchor="start"
+          style={{
+            'font-size': labelSize,
+            'fill': labelColor,
+            'font-weight': labelWeight,
+            'paint-order': 'stroke',
+            'stroke': '#ffffff',
+            'stroke-width': '2px',
+            'stroke-linecap': 'butt',
+            'stroke-linejoin': 'miter',
+            'stroke-opacity': 0.7
+          }}
+        >
+          {x}
+        </text>
+      );
     }
     
+    // Add horizontal grid lines and labels
     for (let y = startY; y <= endY; y += gridSize) {
       const screenY = (y - vp.y) * vp.zoom;
       const isMajorLine = y % (gridSize * 5) === 0;
       const isHundredTick = y % 100 === 0;
       const isZeroLine = y === 0;
+      
+      // Skip if this line is outside the viewport (with a small threshold)
+      if (screenY < -10 || screenY > vp.height + 10) continue;
       
       lines.push(
         <line 
@@ -987,28 +999,33 @@ const MapView: Component = () => {
         />
       );
       
-      // Add y-axis labels for major grid lines
-      if (isMajorLine && y !== 0) {
-        labels.push(
-          <text 
-            x={4} 
-            y={screenY - 6} 
-            class={styles.gridLabel}
-            text-anchor="start"
-            style={{
-              'font-size': '10px',
-              'fill': y === 0 ? '#ff0000' : '#666666',
-              'font-family': 'monospace',
-              'font-weight': 'bold',
-              'pointer-events': 'none',
-              'user-select': 'none',
-              'text-shadow': '1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white',
-            } as any}
-          >
-            {y}
-          </text>
-        );
-      }
+      // Add y-axis labels for all grid lines
+      const labelColor = isZeroLine ? '#ff0000' : isHundredTick ? '#000000' : '#666666';
+      const labelWeight = isHundredTick ? 'bold' : 'normal';
+      const labelSize = isHundredTick ? '11px' : '9px';
+      
+      // Y-axis labels at left of viewport
+      labels.push(
+        <text 
+          x={4} 
+          y={screenY - 6} 
+          class={styles.gridLabel}
+          text-anchor="start"
+          style={{
+            'font-size': labelSize,
+            'fill': labelColor,
+            'font-weight': labelWeight,
+            'paint-order': 'stroke',
+            'stroke': '#ffffff',
+            'stroke-width': '2px',
+            'stroke-linecap': 'butt',
+            'stroke-linejoin': 'miter',
+            'stroke-opacity': 0.7
+          }}
+        >
+          {y}
+        </text>
+      );
     }
     
     return (
