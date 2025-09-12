@@ -1,15 +1,15 @@
 # Full Map Implementation Plan
 
 ## Phase 1: Database Setup
-- [ ] Create database migration for `map_tiles` table
-- [ ] Add indexes for spatial queries
-- [ ] Write repository layer for tile data access
+- [x] Create database migration for `map_tiles` table
+- [x] Add indexes for spatial queries
+- [x] Write repository layer for tile data access
 
 ## Phase 2: Server API
-- [ ] Implement GET /api/map/tile/{tileX}/{tileY} endpoint
-- [ ] Add tile generation logic
-- [ ] Implement bitmap compression
-- [ ] Set up tile caching
+- [x] Implement GET /api/map/tile/{tileX}/{tileY} endpoint
+- [x] Add tile generation logic
+- [x] Implement bitmap compression
+- [x] Set up tile caching
 
 ## Phase 3: Client Implementation
 - [ ] Create map view component

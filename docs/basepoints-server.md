@@ -8,7 +8,7 @@ CREATE TABLE base_points (
   user_id TEXT NOT NULL,
   x INTEGER NOT NULL,  -- Integer coordinate (-1000 to 1000)
   y INTEGER NOT NULL,  -- Integer coordinate (-1000 to 1000)
-  created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),  -- Milliseconds since Unix epoch (1970-01-01 00:00:00.000 UTC)
+  created_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),  -- When the server runs: stored in milliseconds since Unix epoch (1970-01-01 00:00:00.000 UTC)
   updated_at_ms INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),  -- Currently unused
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   UNIQUE(user_id, x, y)

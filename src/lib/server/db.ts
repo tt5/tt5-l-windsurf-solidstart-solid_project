@@ -4,6 +4,7 @@ import { promises as fs } from 'fs';
 import { dirname } from 'path';
 import { assertServer } from './utils';
 import { BasePointRepository } from './repositories/base-point.repository';
+import { MapTileRepository } from './repositories/map-tile.repository';
 
 export type SqliteDatabase = Database<sqlite3.Database, sqlite3.Statement>;
 
@@ -13,6 +14,7 @@ const dbPath = '/home/n/data/l/windsurf/solidstart/solid-project/data/app.db';
 // Initialize database
 let db: SqliteDatabase;
 let basePointRepo: BasePointRepository | null = null;
+let mapTileRepo: MapTileRepository | null = null;
 
 async function getDb(): Promise<SqliteDatabase> {
   assertServer();
@@ -93,21 +95,24 @@ async function ensureRepositoriesInitialized() {
   }
 }
 
-async function getBasePointRepository(): Promise<BasePointRepository> {
-  try {
-    await ensureRepositoriesInitialized();
-    if (!basePointRepo) {
-      throw new Error('BasePointRepository not available after initialization');
-    }
-    return basePointRepo;
-  } catch (error) {
-    console.error('Error getting BasePointRepository:', error);
-    throw error;
+export async function getBasePointRepository(): Promise<BasePointRepository> {
+  if (!basePointRepo) {
+    const db = await getDb();
+    basePointRepo = new BasePointRepository(db);
   }
+  return basePointRepo;
+}
+
+export async function getMapTileRepository(): Promise<MapTileRepository> {
+  if (!mapTileRepo) {
+    const db = await getDb();
+    mapTileRepo = new MapTileRepository(db);
+  }
+  return mapTileRepo;
 }
 
 // Initialize repositories when the database is ready
-async function initializeRepositories() {
+export async function initializeRepositories() {
   if (!db) await getDb();
   
   try {
@@ -139,9 +144,12 @@ async function initializeRepositories() {
     throw error;
   }
   
-  // Initialize basePointRepo if not already done
+  // Initialize basePointRepo and mapTileRepo if not already done
   if (!basePointRepo) {
     basePointRepo = new BasePointRepository(db);
+  }
+  if (!mapTileRepo) {
+    mapTileRepo = new MapTileRepository(db);
   }
 }
 
@@ -270,6 +278,7 @@ export {
   getDb,
   ensureUserTable,
   getBasePointRepository,
+  getMapTileRepository,
   initializeRepositories,
   runMigrations
 };

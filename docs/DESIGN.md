@@ -73,9 +73,8 @@ src/
 - **Speed**: Smooth movement with configurable speed
 - **Collision**: Bounds checking against world limits
 - **Viewport Behavior**:
-  - 15×15 grid centered around the player's world position
-  - Player's avatar remains fixed at viewport (0,0)
-  - World coordinates update as viewport moves
+  - 15×15 grid. Left upper corner of the grid is at (0,0) grid coordinates, but world coordinates are realative to (0,0) world coordinates (currentPosition).
+  - Player's avatar remains fixed at world coordinates (0,0)
   - Grid cells outside visible area are not rendered for performance
 
 ### Territory Control
