@@ -650,17 +650,17 @@ const MapView: Component = () => {
     const coordLabel = `(${tile.x},${tile.y})`;
     const coordLabelElement = (
       <div class={styles.coordinateLabel} style={{
-        position: 'absolute',
-        left: '2px',
-        top: '2px',
-        backgroundColor: 'rgba(255, 255, 255, 0.7)',
-        padding: '1px 3px',
-        borderRadius: '2px',
-        fontSize: '10px',
-        fontFamily: 'monospace',
-        pointerEvents: 'none',
-        zIndex: 10
-      }}>
+        'position': 'absolute',
+        'left': '2px',
+        'top': '2px',
+        'background-color': 'rgba(255, 255, 255, 0.7)',
+        'padding': '1px 3px',
+        'border-radius': '2px',
+        'font-size': '10px',
+        'font-family': 'monospace',
+        'pointer-events': 'none',
+        'z-index': '10'
+      } as any}>
         {coordLabel}
       </div>
     );
@@ -678,8 +678,8 @@ const MapView: Component = () => {
             <div
               class={styles.tileImageScaled}
               style={{
-                transform: `scale(${1 / pixelRatio})`,
-                '--tile-size': `${TILE_SIZE * pixelRatio}px`
+                '--tile-size': `${TILE_SIZE * pixelRatio}px`,
+                '--pixel-ratio': pixelRatio.toString()
               } as any}
               innerHTML={tileImage}
             />
@@ -729,7 +729,7 @@ const MapView: Component = () => {
       console.log('Processing tile data:', { 
         type: typeof tileData, 
         length: data.length,
-        firstBytes: Array.from(data.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')
+        firstBytes: Array.from(data as Uint8Array).slice(0, 4).map(b => b.toString(16).padStart(2, '0')).join(' ')
       });
       
       // Check for empty data
@@ -743,7 +743,7 @@ const MapView: Component = () => {
         try {
           console.log('Processing zlib-compressed data with version byte');
           // Skip the first byte (version) and decompress the rest
-          const compressedData = data.subarray(1);
+          const compressedData = (data as Uint8Array).subarray(1);
           console.log('Decompressing data, compressed size:', compressedData.length);
           const decompressed = inflate(compressedData);
           console.log('Decompressed data length:', decompressed.length);
@@ -860,14 +860,14 @@ const MapView: Component = () => {
             class={styles.gridLabel}
             text-anchor="start"
             style={{
-              fontSize: '10px',
-              fill: x === 0 ? '#ff0000' : '#666666',
-              fontFamily: 'monospace',
-              fontWeight: 'bold',
-              pointerEvents: 'none',
-              userSelect: 'none',
-              textShadow: '1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white',
-            }}
+              'font-size': '10px',
+              'fill': x === 0 ? '#ff0000' : '#666666',
+              'font-family': 'monospace',
+              'font-weight': 'bold',
+              'pointer-events': 'none',
+              'user-select': 'none',
+              'text-shadow': '1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white',
+            } as any}
           >
             {x}
           </text>
@@ -898,14 +898,14 @@ const MapView: Component = () => {
             class={styles.gridLabel}
             text-anchor="start"
             style={{
-              fontSize: '10px',
-              fill: y === 0 ? '#ff0000' : '#666666',
-              fontFamily: 'monospace',
-              fontWeight: 'bold',
-              pointerEvents: 'none',
-              userSelect: 'none',
-              textShadow: '1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white',
-            }}
+              'font-size': '10px',
+              'fill': y === 0 ? '#ff0000' : '#666666',
+              'font-family': 'monospace',
+              'font-weight': 'bold',
+              'pointer-events': 'none',
+              'user-select': 'none',
+              'text-shadow': '1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white',
+            } as any}
           >
             {y}
           </text>
