@@ -8,6 +8,15 @@ import styles from './MapView.module.css';
 
 // Constants
 const TILE_SIZE = 64; // pixels
+
+// Tile loading configuration
+const TILE_LOAD_CONFIG = {
+  BATCH_SIZE: 4,                  // Number of tiles to load in one batch
+  SCREEN_BUFFER: 1,               // Number of screens to preload around the viewport
+  MAX_TILES_TO_LOAD: 100,         // Maximum number of tiles to schedule for loading at once
+  BATCH_DELAY: 50                 // Delay between batch processing (ms)
+};
+
 const VIEWPORT_WIDTH = 800; // pixels
 const VIEWPORT_HEIGHT = 600; // pixels
 const TILES_X = Math.ceil(VIEWPORT_WIDTH / TILE_SIZE) + 2; // +2 for buffer tiles
@@ -284,22 +293,21 @@ const MapView: Component = () => {
       });
       
             // Process tiles in batches to avoid UI freezing
-      const BATCH_SIZE = 4;
-      console.log(`[processTileQueue] Processing ${queue.length} tiles in batches of ${BATCH_SIZE}`);
-      for (let i = 0; i < queue.length && !shouldStopProcessing; i += BATCH_SIZE) {
+      console.log(`[processTileQueue] Processing ${queue.length} tiles in batches of ${TILE_LOAD_CONFIG.BATCH_SIZE}`);
+      
+      for (let i = 0; i < queue.length && !shouldStopProcessing; i += TILE_LOAD_CONFIG.BATCH_SIZE) {
         if (shouldStopProcessing) break;
         
-        const batch = queue.slice(i, i + BATCH_SIZE);
-        console.log(`[processTileQueue] Processing batch:`, batch);
+        const batch = queue.slice(i, i + TILE_LOAD_CONFIG.BATCH_SIZE);
         
         try {
           await Promise.all(batch.map(({x, y}) => shouldStopProcessing ? Promise.resolve() : loadTile(x, y)));
           
-          // Small delay between batches to keep the UI responsive
-          if (i + BATCH_SIZE < queue.length && !shouldStopProcessing) {
+          // Add a small delay between batches to keep the UI responsive
+          if (i + TILE_LOAD_CONFIG.BATCH_SIZE < queue.length && !shouldStopProcessing) {
             await new Promise(resolve => {
               if (shouldStopProcessing) return resolve(undefined);
-              const timeoutId = setTimeout(resolve, 50);
+              const timeoutId = setTimeout(resolve, TILE_LOAD_CONFIG.BATCH_DELAY);
               // Store timeout ID for cleanup
               processQueueTimeout = timeoutId as unknown as number;
             });
@@ -340,9 +348,17 @@ const MapView: Component = () => {
 
   // Schedule tiles for loading based on viewport with priority levels
   const scheduleTilesForLoading = () => {
+    if (shouldStopProcessing) return;
+    
     console.log('[scheduleTilesForLoading] Scheduling tiles for loading');
     const vp = viewport();
     const zoom = vp.zoom;
+    
+    // Skip if we already have too many tiles in the queue
+    if (tileQueue().length > TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD) {
+      console.log(`[scheduleTilesForLoading] Too many tiles in queue (${tileQueue().length}), skipping`);
+      return;
+    }
     
     // Calculate visible area in world coordinates
     const startX = vp.x;
@@ -357,15 +373,14 @@ const MapView: Component = () => {
     const startTile = worldToTileCoords(startX, startY);
     const endTile = worldToTileCoords(endX, endY);
     
-    // Define priority areas (inner viewport has higher priority)
-    const priorityAreas = [
-      { padding: 0, priority: 1 },    // Highest priority: visible viewport
-      { padding: 1, priority: 2 },    // Medium priority: one tile outside viewport
-      { padding: 2, priority: 3 }     // Low priority: two tiles outside viewport
-    ];
-    
     const tilesToLoad: Array<{x: number, y: number, priority: number}> = [];
     const currentTiles = tiles();
+    
+    // Define priority areas for loading
+    const priorityAreas = [
+      { padding: 0, priority: 1 },    // Visible area (highest priority)
+      { padding: 1, priority: 2 }     // Buffer area (medium priority)
+    ];
     
     // Process each priority level
     for (const area of priorityAreas) {
@@ -394,11 +409,14 @@ const MapView: Component = () => {
     }
     
     if (tilesToLoad.length > 0) {
-      console.log(`[scheduleTilesForLoading] Scheduling ${tilesToLoad.length} tiles for loading`);
-      // Sort by priority and then add to queue
+      // Sort by priority and limit the number of tiles to load
       tilesToLoad.sort((a, b) => a.priority - b.priority);
-      console.log('[scheduleTilesForLoading] Tiles to load:', tilesToLoad);
-      setTileQueue(prev => [...prev, ...tilesToLoad]);
+      
+      // Limit the number of tiles to load at once
+      const limitedTiles = tilesToLoad.slice(0, TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD);
+      
+      console.log(`[scheduleTilesForLoading] Scheduling ${limitedTiles.length} tiles for loading (out of ${tilesToLoad.length} possible)`);
+      setTileQueue(prev => [...prev, ...limitedTiles]);
       
       // Process the queue if not already processing
       if (!isProcessingQueue()) {
