@@ -118,17 +118,143 @@ const MapView: Component = () => {
     // Schedule initial tile loading after a short delay to ensure the component is fully rendered
     setTimeout(() => {
       console.log('[MapView] Running initial scheduleTilesForLoading');
-      // Update viewport with actual container dimensions
-      if (containerRef) {
-        setViewport(prev => ({
-          ...prev,
-          width: containerRef?.clientWidth || VIEWPORT_WIDTH,
-          height: containerRef?.clientHeight || VIEWPORT_HEIGHT
-        }));
-      }
+      // Update viewport with initial dimensions
+      setViewport(prev => ({
+        ...prev,
+        width: containerRef?.clientWidth || VIEWPORT_WIDTH,
+        height: containerRef?.clientHeight || VIEWPORT_HEIGHT
+      }));
+      
+      // Schedule initial tile loading
       scheduleTilesForLoading();
     }, 100);
   });
+
+  // Update viewport and schedule tiles for loading
+  const updateViewport = (updates: Partial<Viewport>) => {
+    console.log('[updateViewport] Updating viewport with:', JSON.stringify(updates, null, 2));
+    setViewport(prev => {
+      const newViewport = {
+        ...prev,
+        ...updates
+      };
+      
+      // Schedule tiles to update after viewport changes
+      requestAnimationFrame(() => {
+        scheduleTilesForLoading();
+      });
+      
+      return newViewport;
+    });
+  };
+  
+  // Generate coordinates in a spiral pattern around a center point
+  const generateSpiralCoords = (centerX: number, centerY: number, radius: number) => {
+    const result: Array<{x: number, y: number, distance: number}> = [];
+    
+    // Start from the center
+    result.push({ x: centerX, y: centerY, distance: 0 });
+    
+    // Generate spiral coordinates
+    for (let r = 1; r <= radius; r++) {
+      // Start at the top of the square
+      let x = centerX - r;
+      let y = centerY - r;
+      
+      // Right edge
+      for (; y <= centerY + r; y++) {
+        result.push({ x, y, distance: r });
+      }
+      y--;
+      x++;
+      
+      // Bottom edge
+      for (; x <= centerX + r; x++) {
+        result.push({ x, y, distance: r });
+      }
+      x--;
+      y--;
+      
+      // Left edge
+      for (; y >= centerY - r; y--) {
+        result.push({ x, y, distance: r });
+      }
+      y++;
+      x--;
+      
+      // Top edge
+      for (; x > centerX - r; x--) {
+        result.push({ x, y, distance: r });
+      }
+    }
+    
+    return result;
+  };
+  
+  // Schedule tiles for loading in a spiral pattern around the viewport
+  const scheduleTilesForLoading = () => {
+    if (shouldStopProcessing || !isMounted) return;
+    
+    console.log('[scheduleTilesForLoading] Scheduling tiles for loading');
+    const vp = viewport();
+    const zoom = vp.zoom;
+    
+    // Skip if we already have too many tiles in the queue
+    if (tileQueue().length > TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD) {
+      console.log(`[scheduleTilesForLoading] Too many tiles in queue (${tileQueue().length}), skipping`);
+      return;
+    }
+    
+    // Calculate visible area in world coordinates
+    const centerX = vp.x + (vp.width / zoom) / 2;
+    const centerY = vp.y + (vp.height / zoom) / 2;
+    
+    // Get center tile coordinates
+    const centerTile = worldToTileCoords(centerX, centerY);
+    
+    // Calculate how many tiles we need to cover the viewport with some buffer
+    const tilesX = Math.ceil((vp.width / zoom) / TILE_SIZE) + 2; // +2 for buffer
+    const tilesY = Math.ceil((vp.height / zoom) / TILE_SIZE) + 2; // +2 for buffer
+    const spiralRadius = Math.max(tilesX, tilesY);
+    
+    console.log(`[scheduleTilesForLoading] Center tile: (${centerTile.tileX}, ${centerTile.tileY}), radius: ${spiralRadius}`);
+    
+    // Generate spiral coordinates around the center tile
+    const spiralCoords = generateSpiralCoords(centerTile.tileX, centerTile.tileY, spiralRadius);
+    
+    const tilesToLoad: Array<{x: number, y: number, priority: number}> = [];
+    const currentTiles = tiles();
+    
+    // Add tiles to load in spiral order
+    for (const {x, y, distance} of spiralCoords) {
+      // Skip if already loaded or loading
+      const key = getTileKey(x, y);
+      if (currentTiles[key] || tilesToLoad.some(t => t.x === x && t.y === y)) {
+        continue;
+      }
+      
+      // Calculate priority based on distance from center (closer = higher priority)
+      const priority = distance + 1; // +1 because distance starts at 0
+      tilesToLoad.push({ x, y, priority });
+    }
+    
+    if (tilesToLoad.length > 0) {
+      // Sort by priority (closer to center first)
+      tilesToLoad.sort((a, b) => a.priority - b.priority);
+      
+      // Limit the number of tiles to load at once
+      const limitedTiles = tilesToLoad.slice(0, TILE_LOAD_CONFIG.BATCH_SIZE);
+      
+      // Add to queue
+      setTileQueue(prev => [...prev, ...limitedTiles]);
+      
+      // Process the queue if not already processing
+      if (!isProcessingQueue()) {
+        console.log('[scheduleTilesForLoading] Starting queue processing');
+        setTimeout(processTileQueue, 0);
+      }
+    }
+  };
 
   // Cleanup on unmount
   onCleanup(() => {
@@ -363,121 +489,6 @@ const MapView: Component = () => {
     }
   };
   
-  // Generate spiral coordinates around a center point
-  const generateSpiralCoords = (centerX: number, centerY: number, radius: number) => {
-    const coords: {x: number, y: number, distance: number}[] = [];
-    
-    // Add center point first
-    coords.push({x: centerX, y: centerY, distance: 0});
-    
-    // Spiral outwards
-    for (let r = 1; r <= radius; r++) {
-      // Right side
-      for (let y = -r; y <= r; y++) {
-        coords.push({x: centerX + r, y: centerY + y, distance: r});
-      }
-      // Left side
-      for (let y = -r; y <= r; y++) {
-        coords.push({x: centerX - r, y: centerY + y, distance: r});
-      }
-      // Top side (excluding corners already added by left/right)
-      for (let x = -r + 1; x < r; x++) {
-        coords.push({x: centerX + x, y: centerY - r, distance: r});
-      }
-      // Bottom side (excluding corners already added by left/right)
-      for (let x = -r + 1; x < r; x++) {
-        coords.push({x: centerX + x, y: centerY + r, distance: r});
-      }
-    }
-    
-    return coords;
-  };
-
-  // Schedule tiles for loading in a spiral pattern around the viewport
-  const scheduleTilesForLoading = () => {
-    if (shouldStopProcessing || !isMounted) return;
-    
-    console.log('[scheduleTilesForLoading] Scheduling tiles for loading');
-    const vp = viewport();
-    const zoom = vp.zoom;
-    
-    // Skip if we already have too many tiles in the queue
-    if (tileQueue().length > TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD) {
-      console.log(`[scheduleTilesForLoading] Too many tiles in queue (${tileQueue().length}), skipping`);
-      return;
-    }
-    
-    // Calculate visible area in world coordinates
-    const centerX = vp.x + (vp.width / zoom) / 2;
-    const centerY = vp.y + (vp.height / zoom) / 2;
-    
-    // Get center tile coordinates
-    const centerTile = worldToTileCoords(centerX, centerY);
-    
-    // Calculate how many tiles we need to cover the viewport with some buffer
-    const tilesX = Math.ceil((vp.width / zoom) / TILE_SIZE) + 2; // +2 for buffer
-    const tilesY = Math.ceil((vp.height / zoom) / TILE_SIZE) + 2; // +2 for buffer
-    const spiralRadius = Math.max(tilesX, tilesY);
-    
-    console.log(`[scheduleTilesForLoading] Center tile: (${centerTile.tileX}, ${centerTile.tileY}), radius: ${spiralRadius}`);
-    
-    // Generate spiral coordinates around the center tile
-    const spiralCoords = generateSpiralCoords(centerTile.tileX, centerTile.tileY, spiralRadius);
-    
-    const tilesToLoad: Array<{x: number, y: number, priority: number}> = [];
-    const currentTiles = tiles();
-    
-    // Add tiles to load in spiral order
-    for (const {x, y, distance} of spiralCoords) {
-      // Skip if already loaded or loading
-      const key = getTileKey(x, y);
-      if (currentTiles[key] || tilesToLoad.some(t => t.x === x && t.y === y)) {
-        continue;
-      }
-      
-      // Calculate priority based on distance from center (closer = higher priority)
-      const priority = distance + 1; // +1 because distance starts at 0
-      tilesToLoad.push({ x, y, priority });
-    }
-    
-    if (tilesToLoad.length > 0) {
-      // Sort by priority (closer to center first)
-      tilesToLoad.sort((a, b) => a.priority - b.priority);
-      
-      // Limit the number of tiles to load at once
-      const limitedTiles = tilesToLoad.slice(0, TILE_LOAD_CONFIG.BATCH_SIZE);
-      
-      // Add to queue
-      setTileQueue(prev => [...prev, ...limitedTiles]);
-      
-      // Process the queue if not already processing
-      if (!isProcessingQueue()) {
-        console.log('[scheduleTilesForLoading] Starting queue processing');
-        setTimeout(processTileQueue, 0);
-      }
-    }
-  };
-  
-  // Update viewport and schedule tiles for loading
-  const updateViewport = (updates: Partial<Viewport>) => {
-    console.log('[updateViewport] Updating viewport with:', JSON.stringify(updates, null, 2));
-    setViewport(prev => {
-      const newViewport = {
-        ...prev,
-        ...updates
-      };
-      console.log('[updateViewport] New viewport:', JSON.stringify(newViewport, null, 2));
-      return newViewport;
-    });
-    
-    // Schedule tiles for loading on the next tick
-    console.log('[updateViewport] Scheduling tiles for loading');
-    setTimeout(() => {
-      console.log('[updateViewport] Calling scheduleTilesForLoading');
-      scheduleTilesForLoading();
-    }, 0);
-  };
-  
   // Helper to check if a tile is visible in the viewport
   const isTileVisible = (tileX: number, tileY: number, vp: Viewport): boolean => {
     const tileWorldX = tileX * TILE_SIZE;
@@ -604,27 +615,27 @@ const MapView: Component = () => {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     
+    // Get current viewport values
+    const currentVp = viewport();
+    
     // Calculate the mouse position in world coordinates before zoom
-    const worldX = viewport().x + (mouseX / viewport().zoom);
-    const worldY = viewport().y + (mouseY / viewport().zoom);
+    const worldX = currentVp.x + (mouseX / currentVp.zoom);
+    const worldY = currentVp.y + (mouseY / currentVp.zoom);
     
     // Calculate new zoom level with constraints
-    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, viewport().zoom * zoomFactor));
+    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentVp.zoom * zoomFactor));
     
     // Calculate new position to keep the mouse point fixed during zoom
     const newX = worldX - (mouseX / newZoom);
     const newY = worldY - (mouseY / newZoom);
     
-    // Update viewport with new zoom and position in a batch to prevent multiple renders
-    batch(() => {
-      updateViewport({
-        x: newX,
-        y: newY,
-        zoom: newZoom
-      });
-      
-      // Force a re-render of the grid
-      scheduleTilesForLoading();
+    // Update viewport with new zoom and position in a single update
+    updateViewport({
+      x: newX,
+      y: newY,
+      zoom: newZoom,
+      width: currentVp.width,
+      height: currentVp.height
     });
   };
   
