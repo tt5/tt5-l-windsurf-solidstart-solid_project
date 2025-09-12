@@ -322,27 +322,42 @@ const MapView: Component = () => {
     }
   };
   
-  // Effect to process tile queue when it changes
-  createEffect(() => {
-    if (tileQueue().length > 0 && isMounted) {
-      const id = window.setTimeout(() => {
-        if (isMounted) {
-          processTileQueue();
-        }
-      }, 0);
-      
-      return () => clearTimeout(id);
+  // Generate spiral coordinates around a center point
+  const generateSpiralCoords = (centerX: number, centerY: number, radius: number) => {
+    const coords: {x: number, y: number, distance: number}[] = [];
+    
+    // Add center point first
+    coords.push({x: centerX, y: centerY, distance: 0});
+    
+    // Spiral outwards
+    for (let r = 1; r <= radius; r++) {
+      // Right side
+      for (let y = -r; y <= r; y++) {
+        coords.push({x: centerX + r, y: centerY + y, distance: r});
+      }
+      // Left side
+      for (let y = -r; y <= r; y++) {
+        coords.push({x: centerX - r, y: centerY + y, distance: r});
+      }
+      // Top side (excluding corners already added by left/right)
+      for (let x = -r + 1; x < r; x++) {
+        coords.push({x: centerX + x, y: centerY - r, distance: r});
+      }
+      // Bottom side (excluding corners already added by left/right)
+      for (let x = -r + 1; x < r; x++) {
+        coords.push({x: centerX + x, y: centerY + r, distance: r});
+      }
     }
-  });
+    
+    return coords;
+  };
 
-  // Schedule tiles for loading based on viewport with priority levels
+  // Schedule tiles for loading in a spiral pattern around the viewport
   const scheduleTilesForLoading = () => {
-    if (shouldStopProcessing) return;
+    if (shouldStopProcessing || !isMounted) return;
     
     console.log('[scheduleTilesForLoading] Scheduling tiles for loading');
-    console.log('[scheduleTilesForLoading] isMounted:', isMounted, 'shouldStopProcessing:', shouldStopProcessing);
     const vp = viewport();
-    console.log('[scheduleTilesForLoading] Viewport:', JSON.stringify(vp, null, 2));
     const zoom = vp.zoom;
     
     // Skip if we already have too many tiles in the queue
@@ -352,61 +367,46 @@ const MapView: Component = () => {
     }
     
     // Calculate visible area in world coordinates
-    const startX = vp.x;
-    const startY = vp.y;
-    const endX = startX + vp.width / zoom;
-    const endY = startY + vp.height / zoom;
+    const centerX = vp.x + (vp.width / zoom) / 2;
+    const centerY = vp.y + (vp.height / zoom) / 2;
     
-    console.log(`[scheduleTilesForLoading] Viewport: x=${vp.x.toFixed(2)}, y=${vp.y.toFixed(2)}, zoom=${zoom.toFixed(2)}`);
-    console.log(`[scheduleTilesForLoading] World bounds: (${startX.toFixed(2)}, ${startY.toFixed(2)}) to (${endX.toFixed(2)}, ${endY.toFixed(2)})`);
+    // Get center tile coordinates
+    const centerTile = worldToTileCoords(centerX, centerY);
     
-    // Get tile coordinates for visible area
-    const startTile = worldToTileCoords(startX, startY);
-    const endTile = worldToTileCoords(endX, endY);
+    // Calculate how many tiles we need to cover the viewport with some buffer
+    const tilesX = Math.ceil((vp.width / zoom) / TILE_SIZE) + 2; // +2 for buffer
+    const tilesY = Math.ceil((vp.height / zoom) / TILE_SIZE) + 2; // +2 for buffer
+    const spiralRadius = Math.max(tilesX, tilesY);
+    
+    console.log(`[scheduleTilesForLoading] Center tile: (${centerTile.tileX}, ${centerTile.tileY}), radius: ${spiralRadius}`);
+    
+    // Generate spiral coordinates around the center tile
+    const spiralCoords = generateSpiralCoords(centerTile.tileX, centerTile.tileY, spiralRadius);
     
     const tilesToLoad: Array<{x: number, y: number, priority: number}> = [];
     const currentTiles = tiles();
     
-    // Define priority areas for loading
-    const priorityAreas = [
-      { padding: 0, priority: 1 },    // Visible area (highest priority)
-      { padding: 1, priority: 2 }     // Buffer area (medium priority)
-    ];
-    
-    // Process each priority level
-    for (const area of priorityAreas) {
-      const { padding, priority } = area;
-      
-      // Calculate the area for this priority level
-      const areaStartX = startTile.tileX - padding;
-      const areaStartY = startTile.tileY - padding;
-      const areaEndX = endTile.tileX + padding;
-      const areaEndY = endTile.tileY + padding;
-      
-      // Add tiles in this area
-      for (let y = areaStartY; y <= areaEndY; y++) {
-        for (let x = areaStartX; x <= areaEndX; x++) {
-          const key = getTileKey(x, y);
-          const isAlreadyLoaded = currentTiles[key] && !currentTiles[key].loading && !currentTiles[key].error;
-          
-          // Only add if not already loaded, not in queue, and not already added with higher priority
-          if (!isAlreadyLoaded && 
-              !tileQueue().some(t => t.x === x && t.y === y) &&
-              !tilesToLoad.some(t => t.x === x && t.y === y)) {
-            tilesToLoad.push({ x, y, priority });
-          }
-        }
+    // Add tiles to load in spiral order
+    for (const {x, y, distance} of spiralCoords) {
+      // Skip if already loaded or loading
+      const key = getTileKey(x, y);
+      if (currentTiles[key] || tilesToLoad.some(t => t.x === x && t.y === y)) {
+        continue;
       }
+      
+      // Calculate priority based on distance from center (closer = higher priority)
+      const priority = distance + 1; // +1 because distance starts at 0
+      tilesToLoad.push({ x, y, priority });
     }
     
     if (tilesToLoad.length > 0) {
-      // Sort by priority and limit the number of tiles to load
+      // Sort by priority (closer to center first)
       tilesToLoad.sort((a, b) => a.priority - b.priority);
       
       // Limit the number of tiles to load at once
-      const limitedTiles = tilesToLoad.slice(0, TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD);
+      const limitedTiles = tilesToLoad.slice(0, TILE_LOAD_CONFIG.BATCH_SIZE);
       
-      console.log(`[scheduleTilesForLoading] Scheduling ${limitedTiles.length} tiles for loading (out of ${tilesToLoad.length} possible)`);
+      // Add to queue
       setTileQueue(prev => [...prev, ...limitedTiles]);
       
       // Process the queue if not already processing
