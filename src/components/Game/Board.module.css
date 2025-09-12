@@ -136,12 +136,23 @@
   box-shadow: 0 0 0 2px #00897b;
 }
 
+/* Base points on restricted squares */
+.square.restricted.basePoint {
+  background-color: #fff3e0;
+  border-color: #ffa000;
+}
+
+.square.restricted.basePoint .basePointMarker {
+  background: #ffa000;
+}
+
 .basePointMarker {
   width: 70%;
   height: 70%;
   background: var(--color-success);
   border-radius: 50%;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  transition: background 0.2s ease;
 }
 
 /* Error Message */

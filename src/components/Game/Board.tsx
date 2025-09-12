@@ -508,18 +508,60 @@ const Board: Component = () => {
           const worldX = x - offsetX;
           const worldY = y - offsetY;
           const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
-          const isSelected = restrictedSquares().includes(squareIndex);
           const isBP = isBasePoint(worldX, worldY);
+          const isSelected = restrictedSquares().includes(squareIndex);
           const isPlayerPosition = worldX === 0 && worldY === 0;
           const isHovered = hoveredSquare() === index;
           const validation = validateSquarePlacement(index);
           const isValid = validation.isValid && !isSaving();
+          
+          // Check if a point (px,py) is on a restricted line from (bx,by)
+          const isOnLineFromPoint = (px: number, py: number, bx: number, by: number): boolean => {
+            // Calculate relative position to base point
+            const dx = px - bx;
+            const dy = py - by;
+            
+            // If this is the base point itself
+            if (dx === 0 && dy === 0) return false;
+            
+            // Check if point is on axes from base point
+            if (dx === 0 || dy === 0) return true;
+            
+            // Check if point is on diagonal from base point
+            if (dx === dy || dx === -dy) return true;
+            
+            // Check if point is on 2:1 or 1:2 slope from base point
+            if (dy === 2 * dx || dx === 2 * dy) return true;
+            if (dy === -2 * dx || dx === -2 * dy) return true;
+            
+            return false;
+          };
+          
+          // Check if this world coordinate is on any restricted line (from origin or any basepoint)
+          const isOnRestrictedLine = (x: number, y: number): boolean => {
+            // Check lines from origin (0,0)
+            if (isOnLineFromPoint(x, y, 0, 0)) return true;
+            
+            // Check lines from all basepoints
+            return basePoints().some(bp => {
+              // Skip the basepoint itself
+              if (bp.x === x && bp.y === y) return false;
+              return isOnLineFromPoint(x, y, bp.x, bp.y);
+            });
+          };
 
           // Determine the class based on state
           const squareClass = () => {
             const classes = [styles.square];
-            if (isSelected) classes.push(styles.selected);
-            if (isBP) classes.push(styles.basePoint);
+            if (isBP) {
+              classes.push(styles.basePoint);
+              if (isOnRestrictedLine(worldX, worldY)) {
+                classes.push(styles.restricted);
+              }
+            }
+            if (isSelected) {
+              classes.push(styles.selected);
+            }
             if (isPlayerPosition) classes.push(styles.playerPosition);
             if (isSaving() && isHovered) classes.push(styles.loading);
             else if (isHovered) {
