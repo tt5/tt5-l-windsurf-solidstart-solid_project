@@ -707,22 +707,49 @@ const MapView: Component = () => {
     } else if (tile.error) {
       content = <div class={styles.error}>Error</div>;
     } else if (tile.data) {
-      const tileImage = renderBitmap(tile.data);
-      content = (
-        <>
-          {coordLabelElement}
-          <div class={styles.tileContent}>
-            <div
-              class={styles.tileImageScaled}
-              style={{
-                '--tile-size': `${TILE_SIZE * pixelRatio}px`,
-                '--pixel-ratio': pixelRatio.toString()
-              } as any}
-              innerHTML={tileImage}
-            />
-          </div>
-        </>
-      );
+      try {
+        const tileImage = renderBitmap(tile.data);
+        if (tileImage) {
+          content = (
+            <>
+              {coordLabelElement}
+              <div class={styles.tileContent}>
+                <div
+                  class={styles.tileImageScaled}
+                  style={{
+                    '--tile-size': `${TILE_SIZE * pixelRatio}px`,
+                    '--pixel-ratio': pixelRatio.toString(),
+                    'background-image': `url(${tileImage})`,
+                    'background-size': '100% 100%',
+                    'background-repeat': 'no-repeat',
+                    'image-rendering': 'pixelated'
+                  } as any}
+                />
+              </div>
+            </>
+          );
+        } else {
+          // Fallback to debug rendering if image couldn't be generated
+          content = (
+            <div style={{
+              width: '100%',
+              height: '100%',
+              backgroundColor: `hsl(${(tile.x * 13 + tile.y * 7) % 360}, 70%, 80%)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '10px',
+              color: '#333',
+              border: '1px solid #ccc'
+            }}>
+              {tile.x},{tile.y}
+            </div>
+          );
+        }
+      } catch (error) {
+        console.error('Error rendering tile:', error);
+        content = <div class={styles.error}>Error</div>;
+      }
     }
     
     return (
