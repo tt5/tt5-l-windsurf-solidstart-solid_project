@@ -95,7 +95,7 @@ async function ensureRepositoriesInitialized() {
   }
 }
 
-export async function getBasePointRepository(): Promise<BasePointRepository> {
+async function getBasePointRepository(): Promise<BasePointRepository> {
   if (!basePointRepo) {
     const db = await getDb();
     basePointRepo = new BasePointRepository(db);
@@ -103,7 +103,7 @@ export async function getBasePointRepository(): Promise<BasePointRepository> {
   return basePointRepo;
 }
 
-export async function getMapTileRepository(): Promise<MapTileRepository> {
+async function getMapTileRepository(): Promise<MapTileRepository> {
   if (!mapTileRepo) {
     const db = await getDb();
     mapTileRepo = new MapTileRepository(db);
@@ -112,7 +112,7 @@ export async function getMapTileRepository(): Promise<MapTileRepository> {
 }
 
 // Initialize repositories when the database is ready
-export async function initializeRepositories() {
+async function initializeRepositories() {
   if (!db) await getDb();
   
   try {
