@@ -1,4 +1,5 @@
 import { Component, createEffect, createSignal, onCleanup, onMount, batch } from 'solid-js';
+import { inflate } from 'pako';
 import { useAuth } from '../../contexts/auth';
 import { TileCache } from '../../lib/client/services/tile-cache';
 
@@ -687,55 +688,102 @@ const MapView: Component = () => {
     );
   };
 
-  // Convert Uint8Array to an image data URL
-  const renderBitmap = (data: Uint8Array): string => {
+  // Convert database tile data to an image data URL
+  const renderBitmap = (tileData: Uint8Array): string => {
     // Skip in SSR
     if (typeof document === 'undefined') return '';
     
+    console.log('Tile data length:', tileData.length);
+    
     try {
-      const canvas = document.createElement('canvas');
-      canvas.width = TILE_SIZE;
-      canvas.height = TILE_SIZE;
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) return '';
-      
-      // Fill with white background
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
-      
-      // Create an ImageData object to hold the pixel data
-      const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE);
-      
-      // Convert the Uint8Array to RGBA data
-      // Assuming the data is in RGBA format (4 bytes per pixel)
-      for (let i = 0; i < data.length && i < imageData.data.length; i++) {
-        imageData.data[i] = data[i];
+      // Check for empty data
+      if (!tileData || tileData.length === 0) {
+        console.log('Empty tile data');
+        return '';
       }
-      
-      // Fill remaining pixels with a checkerboard pattern if data is incomplete
-      if (data.length < imageData.data.length) {
-        for (let i = data.length; i < imageData.data.length; i += 4) {
-          // RGBA for light gray
-          imageData.data[i] = 200;     // R
-          imageData.data[i + 1] = 200; // G
-          imageData.data[i + 2] = 200; // B
-          imageData.data[i + 3] = 255; // A (fully opaque)
+
+      // Check if this is our custom format with version byte
+      if (tileData[0] === 0x01) {
+        try {
+          console.log('Processing zlib-compressed data with version byte');
+          // Skip the first byte (version) and decompress the rest
+          const decompressed = inflate(tileData.subarray(1));
+          console.log('Decompressed data length:', decompressed.length);
+          
+          // The decompressed data should be a 1-bit bitmap (1 bit per pixel)
+          const expectedSize = Math.ceil((TILE_SIZE * TILE_SIZE) / 8);
+          if (decompressed.length !== expectedSize) {
+            console.warn(`Unexpected decompressed size: ${decompressed.length}, expected ${expectedSize}`);
+          }
+          
+          // Convert 1-bit bitmap to RGBA
+          const imageData = new Uint8ClampedArray(TILE_SIZE * TILE_SIZE * 4);
+          let pixelIndex = 0;
+          
+          for (let i = 0; i < decompressed.length && pixelIndex < TILE_SIZE * TILE_SIZE; i++) {
+            const byte = decompressed[i];
+            
+            // Process each bit in the byte (MSB first)
+            for (let bit = 7; bit >= 0 && pixelIndex < TILE_SIZE * TILE_SIZE; bit--, pixelIndex++) {
+              const bitValue = (byte >> bit) & 1;
+              const pixelOffset = pixelIndex * 4;
+              
+              // Set RGBA values based on the bit value
+              if (bitValue) {
+                // Black pixel
+                imageData[pixelOffset] = 0;     // R
+                imageData[pixelOffset + 1] = 0; // G
+                imageData[pixelOffset + 2] = 0; // B
+                imageData[pixelOffset + 3] = 255; // A (fully opaque)
+              } else {
+                // White pixel (transparent)
+                imageData[pixelOffset] = 255;     // R
+                imageData[pixelOffset + 1] = 255; // G
+                imageData[pixelOffset + 2] = 255; // B
+                imageData[pixelOffset + 3] = 0;   // A (fully transparent)
+              }
+            }
+          }
+          
+          return renderImageData(imageData);
+          
+        } catch (error) {
+          console.error('Failed to process compressed tile data:', error);
+          return '';
         }
+      } else {
+        console.log('Unsupported data format or missing version byte');
+        return '';
       }
-      
-      ctx.putImageData(imageData, 0, 0);
-      
-      // Add grid lines
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-      ctx.lineWidth = 0.5;
-      ctx.strokeRect(0, 0, TILE_SIZE, TILE_SIZE);
-      
-      return canvas.toDataURL('image/png');
+
     } catch (error) {
       console.error('Error rendering bitmap:', error);
       return '';
     }
+  };
+  
+  // Helper function to convert ImageData to a data URL
+  const renderImageData = (imageData: Uint8ClampedArray): string => {
+    const canvas = document.createElement('canvas');
+    canvas.width = TILE_SIZE;
+    canvas.height = TILE_SIZE;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return '';
+    
+    // Create ImageData and draw it
+    const imgData = new ImageData(imageData, TILE_SIZE, TILE_SIZE);
+    ctx.putImageData(imgData, 0, 0);
+    
+    // Add grid lines
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(0, 0, TILE_SIZE, TILE_SIZE);
+    
+    // Convert to data URL
+    const dataUrl = canvas.toDataURL('image/png');
+    console.log('Generated image data URL');
+    return dataUrl;
   };
 
   // Render coordinate grid
