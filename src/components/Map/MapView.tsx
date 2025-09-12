@@ -558,14 +558,25 @@ const MapView: Component = () => {
       const dx = (currentMouse.x - lastMouse.x) / viewport().zoom;
       const dy = (currentMouse.y - lastMouse.y) / viewport().zoom;
       
-      batch(() => {
-        updateViewport({
-          x: viewport().x - dx,
-          y: viewport().y - dy
-        });
-        
-        // Force a re-render of the grid
-        scheduleTilesForLoading();
+      // Update viewport with smooth dragging
+      // Only snap when zoomed in significantly to prevent jitter
+      const zoom = viewport().zoom;
+      let newX = viewport().x - dx;
+      let newY = viewport().y - dy;
+      
+      // Only snap when zoomed in enough to see individual pixels
+      if (zoom > 2) {
+        const pixelSize = 1 / zoom;
+        newX = Math.round(newX / pixelSize) * pixelSize;
+        newY = Math.round(newY / pixelSize) * pixelSize;
+      }
+      
+      updateViewport({
+        x: newX,
+        y: newY,
+        zoom: viewport().zoom,
+        width: viewport().width,
+        height: viewport().height
       });
     }
     
@@ -675,12 +686,12 @@ const MapView: Component = () => {
     const tileWorldX = tile.x * TILE_SIZE;
     const tileWorldY = tile.y * TILE_SIZE;
     
-    // Calculate screen coordinates with 1:1 pixel mapping
-    // Each tile is exactly 64x64 pixels in screen space
-    const screenX = tile.x * TILE_SIZE * zoom;
-    const screenY = tile.y * TILE_SIZE * zoom;
-    
-    // Calculate tile bounds in world coordinates
+    // Calculate screen coordinates with consistent rounding
+    // Use floor for both tiles and grid to ensure perfect alignment
+    const screenX = Math.floor((tileWorldX - vp.x) * zoom + 0.5);
+    const screenY = Math.floor((tileWorldY - vp.y) * zoom + 0.5);
+
+    // Calculate tile bounds with exact size (no overlap)
     const tileEndWorldX = tileWorldX + TILE_SIZE;
     const tileEndWorldY = tileWorldY + TILE_SIZE;
     
