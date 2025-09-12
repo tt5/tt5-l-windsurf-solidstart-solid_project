@@ -538,22 +538,27 @@ const MapView: Component = () => {
 
   // Handle mouse move for dragging
   const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging() && lastMousePosition()) {
-      e.preventDefault();
-      e.stopPropagation();
+    if (!isDragging()) return;
+    
+    const currentMouse = { x: e.clientX, y: e.clientY };
+    const lastMouse = lastMousePosition();
+    
+    if (lastMouse) {
+      const dx = (currentMouse.x - lastMouse.x) / viewport().zoom;
+      const dy = (currentMouse.y - lastMouse.y) / viewport().zoom;
       
-      const dx = e.clientX - lastMousePosition()!.x;
-      const dy = e.clientY - lastMousePosition()!.y;
-      
-      // Update viewport position
-      setViewport(prev => ({
-        ...prev,
-        x: Math.max(-10000, Math.min(10000, prev.x - dx / prev.zoom)),
-        y: Math.max(-10000, Math.min(10000, prev.y - dy / prev.zoom))
-      }));
-      
-      setLastMousePosition({ x: e.clientX, y: e.clientY });
+      batch(() => {
+        updateViewport({
+          x: viewport().x - dx,
+          y: viewport().y - dy
+        });
+        
+        // Force a re-render of the grid
+        scheduleTilesForLoading();
+      });
     }
+    
+    setLastMousePosition(currentMouse);
   };
 
   // Handle mouse leave for dragging
@@ -589,28 +594,37 @@ const MapView: Component = () => {
   const handleWheel = (e: WheelEvent) => {
     e.preventDefault();
     
-    // Get the current viewport state
-    const currentViewport = viewport();
+    // Calculate zoom factor (zoom in on scroll up, zoom out on scroll down)
+    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
     
-    // Calculate zoom factor (zoom in/out based on wheel direction)
-    const zoomDelta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
-    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentViewport.zoom + zoomDelta));
+    // Get mouse position relative to the container
+    const rect = containerRef?.getBoundingClientRect();
+    if (!rect) return;
     
-    // If zoom level didn't change, do nothing
-    if (newZoom === currentViewport.zoom) return;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
     
-    // Calculate the center of the viewport in world coordinates
-    const centerX = currentViewport.x + (currentViewport.width / 2) / currentViewport.zoom;
-    const centerY = currentViewport.y + (currentViewport.height / 2) / currentViewport.zoom;
+    // Calculate the mouse position in world coordinates before zoom
+    const worldX = viewport().x + (mouseX / viewport().zoom);
+    const worldY = viewport().y + (mouseY / viewport().zoom);
     
-    // Calculate new viewport position to maintain the same center point
-    const newX = centerX - (currentViewport.width / 2) / newZoom;
-    const newY = centerY - (currentViewport.height / 2) / newZoom;
+    // Calculate new zoom level with constraints
+    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, viewport().zoom * zoomFactor));
     
-    updateViewport({
-      zoom: newZoom,
-      x: newX,
-      y: newY
+    // Calculate new position to keep the mouse point fixed during zoom
+    const newX = worldX - (mouseX / newZoom);
+    const newY = worldY - (mouseY / newZoom);
+    
+    // Update viewport with new zoom and position in a batch to prevent multiple renders
+    batch(() => {
+      updateViewport({
+        x: newX,
+        y: newY,
+        zoom: newZoom
+      });
+      
+      // Force a re-render of the grid
+      scheduleTilesForLoading();
     });
   };
   
@@ -889,10 +903,18 @@ const MapView: Component = () => {
     
     // Calculate grid bounds in world coordinates with some padding
     const padding = 2; // Extra cells to render outside viewport
-    const startX = Math.floor((vp.x - padding * gridSize) / gridSize) * gridSize;
-    const startY = Math.floor((vp.y - padding * gridSize) / gridSize) * gridSize;
-    const endX = vp.x + (vp.width / vp.zoom) + padding * gridSize;
-    const endY = vp.y + (vp.height / vp.zoom) + padding * gridSize;
+    
+    // Calculate visible area in world coordinates
+    const visibleLeft = vp.x;
+    const visibleTop = vp.y;
+    const visibleRight = vp.x + (vp.width / vp.zoom);
+    const visibleBottom = vp.y + (vp.height / vp.zoom);
+    
+    // Calculate grid boundaries with padding
+    const startX = Math.floor((visibleLeft - padding * gridSize) / gridSize) * gridSize;
+    const startY = Math.floor((visibleTop - padding * gridSize) / gridSize) * gridSize;
+    const endX = Math.ceil((visibleRight + padding * gridSize) / gridSize) * gridSize;
+    const endY = Math.ceil((visibleBottom + padding * gridSize) / gridSize) * gridSize;
     
     const lines = [];
     const labels = [];
