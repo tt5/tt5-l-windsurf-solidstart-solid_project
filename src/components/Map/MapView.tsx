@@ -49,11 +49,11 @@ const MapView: Component = () => {
   const { user } = useAuth();
   const [tiles, setTiles] = createSignal<Record<string, Tile>>({});
   let containerRef: HTMLDivElement | undefined;
-  // Initialize viewport to center on the map with a reasonable zoom level
+  // Initialize viewport to center on the map at 100% zoom
   const [viewport, setViewport] = createSignal<Viewport>({ 
-    x: 0,  // Center at (0,0) in world coordinates
-    y: 0,
-    zoom: 0.5,  // Start with a zoomed-out view to see more of the map
+    x: -VIEWPORT_WIDTH / 2,  // Center at (0,0) in world coordinates
+    y: -VIEWPORT_HEIGHT / 2,
+    zoom: 1.0,  // 100% zoom
     width: VIEWPORT_WIDTH,
     height: VIEWPORT_HEIGHT
   });
