@@ -83,6 +83,16 @@ const MapView: Component = () => {
   let processQueueTimeout: number | null = null;
   let shouldStopProcessing = false;
   
+  // Initialize tile loading when component mounts
+  onMount(() => {
+    console.log('[MapView] Component mounted, scheduling initial tile load');
+    // Schedule initial tile loading after a short delay to ensure the component is fully rendered
+    setTimeout(() => {
+      console.log('[MapView] Running initial scheduleTilesForLoading');
+      scheduleTilesForLoading();
+    }, 100);
+  });
+
   // Cleanup on unmount
   onCleanup(() => {
     console.log('[MapView] Cleaning up...');
@@ -178,54 +188,37 @@ const MapView: Component = () => {
     }));
 
     try {
-      // Try to get the tile from cache first
-      const cachedTile = await tileCache.getTile(tileX, tileY);
-      
-      if (cachedTile) {
-        // Use cached tile
-        setTiles(prev => ({
-          ...prev,
-          [key]: {
-            x: tileX,
-            y: tileY,
-            data: cachedTile.data,
-            loading: false,
-            error: false,
-            timestamp: cachedTile.timestamp,
-            fromCache: true
-          }
-        }));
-        return;
-      }
-      
-      // If not in cache, fetch from server
+      // Always fetch from server first
       console.log(`[loadTile] Fetching tile (${tileX}, ${tileY}) from server`);
       if (!isMounted) {
         console.log(`[loadTile] Component unmounted, aborting fetch for tile (${tileX}, ${tileY})`);
         return null;
       }
       
-      const response = await fetch(`/api/map/tile/${tileX}/${tileY}`, { signal });
+      const response = await fetch(`/api/map/tile/${tileX}/${tileY}`, { 
+        signal,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
       if (!response.ok) {
         throw new Error(`Failed to load tile (${tileX}, ${tileY}): ${response.statusText}`);
       }
 
       const responseData = await response.json();
-      const etag = response.headers.get('ETag') || undefined;
+      console.log(`[loadTile] Response for tile (${tileX}, ${tileY}):`, responseData);
+      
+      if (!responseData.success || !responseData.data) {
+        console.error(`[loadTile] Invalid response format for tile (${tileX}, ${tileY}):`, responseData);
+        throw new Error(`Invalid response format for tile (${tileX}, ${tileY})`);
+      }
       
       // Convert base64 data back to Uint8Array
       const binaryString = atob(responseData.data.data);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
-      }
-      
-      // Cache the tile
-      try {
-        await tileCache.setTile(tileX, tileY, bytes, etag);
-      } catch (cacheError) {
-        console.error('Error caching tile:', cacheError);
-        // Continue even if caching fails
       }
 
       setTiles(prev => ({
@@ -351,7 +344,9 @@ const MapView: Component = () => {
     if (shouldStopProcessing) return;
     
     console.log('[scheduleTilesForLoading] Scheduling tiles for loading');
+    console.log('[scheduleTilesForLoading] isMounted:', isMounted, 'shouldStopProcessing:', shouldStopProcessing);
     const vp = viewport();
+    console.log('[scheduleTilesForLoading] Viewport:', JSON.stringify(vp, null, 2));
     const zoom = vp.zoom;
     
     // Skip if we already have too many tiles in the queue
@@ -428,13 +423,22 @@ const MapView: Component = () => {
   
   // Update viewport and schedule tiles for loading
   const updateViewport = (updates: Partial<Viewport>) => {
-    setViewport(prev => ({
-      ...prev,
-      ...updates
-    }));
+    console.log('[updateViewport] Updating viewport with:', JSON.stringify(updates, null, 2));
+    setViewport(prev => {
+      const newViewport = {
+        ...prev,
+        ...updates
+      };
+      console.log('[updateViewport] New viewport:', JSON.stringify(newViewport, null, 2));
+      return newViewport;
+    });
     
     // Schedule tiles for loading on the next tick
-    setTimeout(scheduleTilesForLoading, 0);
+    console.log('[updateViewport] Scheduling tiles for loading');
+    setTimeout(() => {
+      console.log('[updateViewport] Calling scheduleTilesForLoading');
+      scheduleTilesForLoading();
+    }, 0);
   };
   
   // Helper to check if a tile is visible in the viewport
@@ -590,12 +594,26 @@ const MapView: Component = () => {
     const screenY = (tile.y * TILE_SIZE - vp.y) * zoom;
     const scaledSize = TILE_SIZE * zoom;
     
+    // Calculate tile bounds in world coordinates
+    const tileWorldX = tile.x * TILE_SIZE;
+    const tileWorldY = tile.y * TILE_SIZE;
+    const tileEndWorldX = tileWorldX + TILE_SIZE;
+    const tileEndWorldY = tileWorldY + TILE_SIZE;
+    
+    // Calculate viewport bounds in world coordinates
+    const viewEndX = vp.x + (vp.width / zoom);
+    const viewEndY = vp.y + (vp.height / zoom);
+    
     // Skip rendering if tile is outside viewport with some padding
     const padding = TILE_SIZE * 2; // Render tiles slightly outside viewport
-    if (screenX + scaledSize + padding < 0 || 
-        screenX - padding > vp.width ||
-        screenY + scaledSize + padding < 0 || 
-        screenY - padding > vp.height) {
+    const isVisible = !(
+      tileEndWorldX < vp.x - padding ||
+      tileWorldX > viewEndX + padding ||
+      tileEndWorldY < vp.y - padding ||
+      tileWorldY > viewEndY + padding
+    );
+    
+    if (!isVisible) {
       return null;
     }
     
@@ -655,44 +673,34 @@ const MapView: Component = () => {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
       
-      // Draw a light grid
-      ctx.strokeStyle = '#f0f0f0';
-      ctx.lineWidth = 1;
+      // Create an ImageData object to hold the pixel data
+      const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE);
       
-      // Draw grid lines for every 8 pixels
-      for (let i = 0; i <= TILE_SIZE; i += 8) {
-        // Vertical line
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i, TILE_SIZE);
-        ctx.stroke();
-        
-        // Horizontal line
-        ctx.beginPath();
-        ctx.moveTo(0, i);
-        ctx.lineTo(TILE_SIZE, i);
-        ctx.stroke();
+      // Convert the Uint8Array to RGBA data
+      // Assuming the data is in RGBA format (4 bytes per pixel)
+      for (let i = 0; i < data.length && i < imageData.data.length; i++) {
+        imageData.data[i] = data[i];
       }
       
-      // Draw points from bitmap data (1 bit per pixel)
-      ctx.fillStyle = '#1976d2';
-      
-      // Process bitmap data (1 bit per pixel)
-      for (let y = 0; y < TILE_SIZE; y++) {
-        for (let x = 0; x < TILE_SIZE; x++) {
-          const bitIndex = y * TILE_SIZE + x;
-          const byteIndex = Math.floor(bitIndex / 8);
-          const bitInByte = bitIndex % 8;
-          
-          // Check if the bit is set (1 = occupied, 0 = empty)
-          if (byteIndex < data.length && (data[byteIndex] & (1 << (7 - bitInByte)))) {
-            // Draw a 1x1 pixel for each point
-            ctx.fillRect(x, y, 1, 1);
-          }
+      // Fill remaining pixels with a checkerboard pattern if data is incomplete
+      if (data.length < imageData.data.length) {
+        for (let i = data.length; i < imageData.data.length; i += 4) {
+          // RGBA for light gray
+          imageData.data[i] = 200;     // R
+          imageData.data[i + 1] = 200; // G
+          imageData.data[i + 2] = 200; // B
+          imageData.data[i + 3] = 255; // A (fully opaque)
         }
       }
       
-      return canvas.toDataURL();
+      ctx.putImageData(imageData, 0, 0);
+      
+      // Add grid lines
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(0, 0, TILE_SIZE, TILE_SIZE);
+      
+      return canvas.toDataURL('image/png');
     } catch (error) {
       console.error('Error rendering bitmap:', error);
       return '';
