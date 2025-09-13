@@ -695,20 +695,19 @@ const MapView: Component = () => {
     const tileWorldX = tile.x * TILE_SIZE;
     const tileWorldY = tile.y * TILE_SIZE;
     
-    // Calculate screen coordinates in world space, ensuring pixel-perfect alignment
-    const screenX = Math.floor((tileWorldX - vp.x) * zoom);
-    const screenY = Math.floor((tileWorldY - vp.y) * zoom);
+    // Calculate position relative to the transform container
+    // The transform container handles the viewport translation and scaling
+    const posX = tileWorldX;
+    const posY = tileWorldY;
     
     // Debug logging for (0,0) tile
     if (tile.x === 0 && tile.y === 0) {
       console.log('(0,0) Tile Position:', { 
-        screenX, 
-        screenY, 
+        posX, 
+        posY,
         viewportX: vp.x, 
         viewportY: vp.y, 
-        zoom,
-        expectedX: Math.floor(-vp.x * zoom),
-        expectedY: Math.floor(-vp.y * zoom)
+        zoom
       });
     }
 
@@ -721,43 +720,19 @@ const MapView: Component = () => {
     const viewEndY = vp.y + (vp.height / zoom);
     
     // Skip rendering if tile is outside viewport with some padding
-    const padding = TILE_SIZE * 2; // Render tiles slightly outside viewport
-    const isVisible = !(
-      tileEndWorldX < vp.x - padding ||
+    const padding = TILE_SIZE * 2;
+    if (
       tileWorldX > viewEndX + padding ||
-      tileEndWorldY < vp.y - padding ||
-      tileWorldY > viewEndY + padding
-    );
-    
-    if (!isVisible) {
+      tileWorldX + TILE_SIZE < vp.x - padding ||
+      tileWorldY > viewEndY + padding ||
+      tileWorldY + TILE_SIZE < vp.y - padding
+    ) {
       return null;
     }
-    
-    // Calculate the scale factor for the image to maintain crisp pixels
-    const pixelRatio = window.devicePixelRatio || 1;
-    const scale = zoom * pixelRatio;
-    
-    // Render tile content based on data
+
+    // Calculate tile size after zoom (handled by the container's transform)
+    const tileSize = TILE_SIZE;
     let content;
-    
-    // Add coordinate label for debugging
-    const coordLabel = `(${tile.x},${tile.y})`;
-    const coordLabelElement = (
-      <div class={styles.coordinateLabel} style={{
-        'position': 'absolute',
-        'left': '2px',
-        'top': '2px',
-        'background-color': 'rgba(255, 255, 255, 0.7)',
-        'padding': '1px 3px',
-        'border-radius': '2px',
-        'font-size': '10px',
-        'font-family': 'monospace',
-        'pointer-events': 'none',
-        'z-index': '10'
-      } as any}>
-        {coordLabel}
-      </div>
-    );
     
     if (tile.loading) {
       content = <div class={styles.loading}>Loading...</div>;
@@ -768,22 +743,19 @@ const MapView: Component = () => {
         const tileImage = renderBitmap(tile.data);
         if (tileImage) {
           content = (
-            <>
-              {coordLabelElement}
-              <div class={styles.tileContent}>
-                <div
-                  class={styles.tileImageScaled}
-                  style={{
-                    '--tile-size': `${TILE_SIZE * pixelRatio}px`,
-                    '--pixel-ratio': pixelRatio.toString(),
-                    'background-image': `url(${tileImage})`,
-                    'background-size': '100% 100%',
-                    'background-repeat': 'no-repeat',
-                    'image-rendering': 'pixelated'
-                  } as any}
-                />
-              </div>
-            </>
+            <div class={styles.tileContent}>
+              <img
+                src={tileImage}
+                alt={`Tile ${tile.x},${tile.y}`}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'block',
+                  imageRendering: 'pixelated',
+                  pointerEvents: 'none'
+                }}
+              />
+            </div>
           );
         } else {
           // Fallback to debug rendering if image couldn't be generated
@@ -810,10 +782,14 @@ const MapView: Component = () => {
       <div 
         class={styles.tile}
         style={{
-          '--scale': viewport().zoom,
-          '--tile-base-size': `${TILE_SIZE}px`,
-          'left': `${screenX}px`,
-          'top': `${screenY}px`
+          left: `${posX}px`,
+          top: `${posY}px`,
+          width: `${tileSize}px`,
+          height: `${tileSize}px`,
+          position: 'absolute',
+          pointerEvents: 'none',
+          willChange: 'transform',
+          transform: 'translateZ(0)'
         }}
         data-x={tile.x}
         data-y={tile.y}
@@ -1089,18 +1065,16 @@ const MapView: Component = () => {
       onMouseLeave={handleMouseLeave}
       onWheel={handleWheel}
     >
-      {renderGrid()}
-      <div 
-        class={isDragging() ? styles.mapViewportDragging : styles.mapViewport}
-      >
+      <div class={isDragging() ? styles.mapViewportDragging : styles.mapViewport}>
         <div 
           class={styles.mapContent}
           style={{
-            '--translate-x': '0',
-            '--translate-y': '0',
+            '--translate-x': `${-viewport().x * viewport().zoom}px`,
+            '--translate-y': `${-viewport().y * viewport().zoom}px`,
             '--scale': viewport().zoom
           } as any}
         >
+          {renderGrid()}
           {Object.values(tiles()).map(tile => renderTile(tile))}
         </div>
       </div>
