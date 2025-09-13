@@ -84,7 +84,6 @@ const MapView: Component = () => {
   const [isProcessingQueue, setIsProcessingQueue] = createSignal(false);
   // Track active operations and state
   const activeOperations = new Set<AbortController>();
-  const [mountId, setMountId] = createSignal(0);
   let processQueueTimeout: number | null = null;
   let shouldStopProcessing = false;
   
@@ -103,8 +102,9 @@ const MapView: Component = () => {
     }
   };
 
-  // Track mount state to prevent multiple initializations
+  // Track mount state and mount ID
   const [isMounted, setIsMounted] = createSignal(false);
+  const currentMountId = Math.floor(Math.random() * 1000000);
   
   // Initialize component
   onMount(() => {
@@ -114,6 +114,7 @@ const MapView: Component = () => {
     }
     
     console.log('[MapView] Component mounting, initializing...');
+    console.log(`[MapView] Mount ID: ${currentMountId}`);
     setIsMounted(true);
     
     // Set up resize observer
@@ -523,12 +524,11 @@ const MapView: Component = () => {
 
   // Load a single tile
   const loadTile = async (tileX: number, tileY: number): Promise<void> => {
-    const currentMountId = mountId();
     const key = getTileKey(tileX, tileY);
     
     // Skip if component is unmounting
-    if (!isMounted() || currentMountId === 0) {
-      console.log(`[loadTile] Component unmounting, skipping tile (${tileX}, ${tileY})`);
+    if (!isMounted()) {
+      console.log(`[loadTile] Component not mounted, skipping tile (${tileX}, ${tileY})`);
       return;
     }
 
