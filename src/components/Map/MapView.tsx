@@ -364,9 +364,15 @@ const MapView: Component = () => {
     const controller = new AbortController();
     activeOperations.add(controller);
     
+    const cleanup = () => {
+      if (activeOperations.has(controller)) {
+        activeOperations.delete(controller);
+      }
+    };
+    
     return {
       signal: controller.signal,
-      cleanup: () => activeOperations.delete(controller)
+      cleanup
     };
   };
 
@@ -530,8 +536,16 @@ const MapView: Component = () => {
 
   // Process the tile loading queue with priority to visible tiles
   const processTileQueue = async () => {
-    if (shouldStopProcessing || mountId() === 0 || activeOperations.size > 0) {
-      console.log('[processTileQueue] Skipping - cleanup in progress or operations in progress');
+    const currentMountId = mountId();
+    if (shouldStopProcessing || currentMountId === 0) {
+      console.log('[processTileQueue] Skipping - component unmounting or stopped');
+      return;
+    }
+    
+    if (activeOperations.size > 0) {
+      console.log(`[processTileQueue] Active operations (${activeOperations.size}), will retry`);
+      // Schedule a retry after a short delay
+      setTimeout(processTileQueue, 100);
       return;
     }
     
