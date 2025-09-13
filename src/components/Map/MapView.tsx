@@ -424,19 +424,48 @@ const MapView: Component = () => {
       }
 
       const responseData = await response.json();
-      console.log(`[loadTile] Response for tile (${tileX}, ${tileY}):`, responseData);
+      console.log(`[loadTile] Response for tile (${tileX}, ${tileY}):`, {
+        success: responseData.success,
+        data: {
+          ...responseData.data,
+          data: typeof responseData.data?.data === 'string' 
+            ? `${responseData.data.data.substring(0, 30)}...` 
+            : responseData.data?.data
+        },
+        requestId: responseData.requestId
+      });
       
       if (!responseData.success || !responseData.data) {
         console.error(`[loadTile] Invalid response format for tile (${tileX}, ${tileY}):`, responseData);
         throw new Error(`Invalid response format for tile (${tileX}, ${tileY})`);
       }
       
-      // Convert the comma-separated string to a Uint8Array
-      const byteStrings = responseData.data.data.split(',');
-      const bytes = new Uint8Array(byteStrings.length);
-      for (let i = 0; i < byteStrings.length; i++) {
-        bytes[i] = parseInt(byteStrings[i], 10);
+      // The API returns the tile data in responseData.data
+      const tileData = responseData.data;
+      
+      // Convert the data to a Uint8Array based on its type
+      let bytes;
+      
+      if (Array.isArray(tileData.data)) {
+        // If it's already an array of numbers, convert directly to Uint8Array
+        bytes = new Uint8Array(tileData.data);
+      } else if (typeof tileData.data === 'string') {
+        // Handle comma-separated string of numbers
+        try {
+          const numbers = tileData.data.split(',').map(Number);
+          if (numbers.some(isNaN)) {
+            throw new Error('Invalid number in tile data');
+          }
+          bytes = new Uint8Array(numbers);
+        } catch (error) {
+          console.error('Error parsing tile data:', error);
+          throw new Error('Failed to parse tile data');
+        }
+      } else {
+        throw new Error('Unexpected tile data format');
       }
+      
+      console.log(`[loadTile] Successfully processed tile (${tileX}, ${tileY}), data length:`, bytes.length);
 
       setTiles(prev => ({
         ...prev,
@@ -876,26 +905,19 @@ const MapView: Component = () => {
     );
   };
 
-  // Convert database tile data to an image data URL
+  // Convert tile data to an image data URL
   const renderBitmap = (tileData: Uint8Array | string): string => {
     // Skip in SSR
     if (typeof document === 'undefined') return '';
     
+    // If tileData is already a data URL, return it directly
+    if (typeof tileData === 'string' && tileData.startsWith('data:image/')) {
+      return tileData;
+    }
+    
     try {
-      // If tileData is a string, it's likely Base64 encoded
-      let data = tileData;
-      if (typeof tileData === 'string') {
-        // Remove data URL prefix if present
-        const base64 = tileData.startsWith('data:') 
-          ? tileData.split(',')[1] 
-          : tileData;
-        // Convert Base64 to Uint8Array
-        const binaryString = atob(base64);
-        data = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          data[i] = binaryString.charCodeAt(i);
-        }
-      }
+      // The tile data should already be a Uint8Array at this point
+      const data = tileData as Uint8Array;
       
       console.log('Processing tile data:', { 
         type: typeof tileData, 
@@ -909,7 +931,7 @@ const MapView: Component = () => {
         return '';
       }
 
-      // Check if this is our custom format with version byte
+      // The first byte is a version byte (0x01 for our format)
       if (data[0] === 0x01) {
         try {
           console.log('Processing zlib-compressed data with version byte');
