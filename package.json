@@ -1,5 +1,6 @@
 {
   "name": "superstar",
+  "version": "0.0.2",
   "type": "module",
   "bin": {
     "db": "./scripts/cli.ts"
