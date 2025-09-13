@@ -1,6 +1,7 @@
 import { getBasePointRepository } from '~/lib/server/db';
 import { withAuth } from '~/middleware/auth';
 import { createApiResponse, createErrorResponse, generateRequestId, type ApiResponse } from '~/utils/api';
+import { basePointEventService } from '~/lib/server/events/base-point-events';
 
 type BasePointResponse = ApiResponse<{
   id: number;
@@ -90,6 +91,9 @@ export const POST = withAuth(async ({ request, user }) => {
       data.x,
       data.y
     );
+    
+    // Emit event after successful creation
+    basePointEventService.emitCreated(basePoint);
     
     return createApiResponse({ basePoint }, { status: 201, requestId });
   } catch (error) {

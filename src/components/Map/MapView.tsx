@@ -2,6 +2,7 @@ import { Component, createEffect, createSignal, onCleanup, onMount, batch } from
 import { inflate } from 'pako';
 import { useAuth } from '../../contexts/auth';
 import { TileCache } from '../../lib/client/services/tile-cache';
+import { getAffectedTiles } from '../../lib/server/utils/coordinate-utils';
 
 // Initialize the tile cache
 const tileCache = new TileCache();
@@ -191,8 +192,28 @@ const MapView: Component = () => {
     return result;
   };
   
-  // Schedule tiles for loading in a spiral pattern around the viewport
-  const scheduleTilesForLoading = () => {
+  // Schedule tiles for loading based on current viewport
+  const scheduleTilesForLoading = (specificTiles?: Array<{x: number, y: number}>) => {
+    // If specific tiles are provided, just process those
+    if (specificTiles && specificTiles.length > 0) {
+      setTileQueue(prev => {
+        const newQueue = [...prev];
+        // Add only tiles that aren't already in the queue
+        specificTiles.forEach(tile => {
+          const exists = newQueue.some(t => t.x === tile.x && t.y === tile.y);
+          if (!exists) {
+            newQueue.push(tile);
+          }
+        });
+        return newQueue;
+      });
+      
+      // Process the queue if not already doing so
+      if (!isProcessingQueue()) {
+        processTileQueue();
+      }
+      return;
+    }
     if (shouldStopProcessing || !isMounted) return;
     
     const currentQueue = tileQueue();
