@@ -16,7 +16,8 @@ const TILE_LOAD_CONFIG = {
   BATCH_SIZE: 2,                  // Reduced to load fewer tiles at once
   SCREEN_BUFFER: 1,               // Number of screens to preload around the viewport
   MAX_TILES_TO_LOAD: 50,          // Reduced maximum queue size
-  BATCH_DELAY: 50                 // Slightly increased delay between batches
+  BATCH_DELAY: 50,                // Delay between batch processing in ms
+  BATCH_TIMEOUT: 5000             // Timeout for batch tile loading in ms
 };
 
 const VIEWPORT_WIDTH = 800; // pixels
@@ -410,8 +411,23 @@ const MapView: Component = () => {
       return;
     }
     
+    // Clear any existing timeout
+    if (processQueueTimeout) {
+      clearTimeout(processQueueTimeout);
+      processQueueTimeout = null;
+    }
+    
+    // Create a reference to track if this process is still valid
+    const currentMountId = mountId();
+    
     try {
       setIsProcessingQueue(true);
+      
+      // Check mount state after async operations
+      if (!isMounted() || currentMountId !== mountId()) {
+        console.log('[processTileQueue] Component unmounted during processing');
+        return;
+      }
       
       // Get current queue and check if it's empty
       const currentQueue = tileQueue();
@@ -439,16 +455,27 @@ const MapView: Component = () => {
       
       console.log(`[processTileQueue] Loading batch of ${batch.length} tiles`);
       
-      // Process each tile in the batch
+      // Process each tile in the batch with mount checks
       const tilePromises = batch.map(({ x, y }) => 
         loadTile(x, y).catch(error => {
-          console.error(`[processTileQueue] Error loading tile (${x},${y}):`, error);
+          if (isMounted() && currentMountId === mountId()) {
+            console.error(`[processTileQueue] Error loading tile (${x},${y}):`, error);
+          }
           return null;
         })
       );
       
-      // Wait for all tiles in the batch to complete
-      await Promise.all(tilePromises);
+      // Wait for all tiles in the batch to complete with a timeout
+      await Promise.race([
+        Promise.all(tilePromises),
+        new Promise(resolve => setTimeout(resolve, TILE_LOAD_CONFIG.BATCH_TIMEOUT || 5000))
+      ]);
+      
+      // Check mount state before updating state
+      if (!isMounted() || currentMountId !== mountId()) {
+        console.log('[processTileQueue] Component unmounted during tile loading');
+        return;
+      }
       
       // Remove processed tiles from the queue
       setTileQueue(prev => {
@@ -458,10 +485,10 @@ const MapView: Component = () => {
       
       // If there are more tiles to process, schedule the next batch
       const remainingTiles = tileQueue().length;
-      if (remainingTiles > 0 && isMounted()) {
+      if (remainingTiles > 0 && isMounted() && currentMountId === mountId()) {
         console.log(`[processTileQueue] Scheduling next batch (${remainingTiles} tiles remaining)`);
         processQueueTimeout = window.setTimeout(() => {
-          if (isMounted()) {
+          if (isMounted() && currentMountId === mountId()) {
             processTileQueue();
           }
         }, TILE_LOAD_CONFIG.BATCH_DELAY);
@@ -469,9 +496,13 @@ const MapView: Component = () => {
         console.log('[processTileQueue] Queue processing complete');
       }
     } catch (error) {
-      console.error('[processTileQueue] Error in queue processing:', error);
+      if (isMounted() && currentMountId === mountId()) {
+        console.error('[processTileQueue] Error in queue processing:', error);
+      }
     } finally {
-      setIsProcessingQueue(false);
+      if (isMounted() && currentMountId === mountId()) {
+        setIsProcessingQueue(false);
+      }
     }
   };
 
