@@ -35,6 +35,7 @@ interface Tile {
   loading: boolean;
   error: boolean;
   timestamp: number;
+  mountId: number;
   fromCache?: boolean;
 }
 
@@ -82,7 +83,7 @@ const MapView: Component = () => {
   const [isProcessingQueue, setIsProcessingQueue] = createSignal(false);
   // Track active operations and state
   const activeOperations = new Set<AbortController>();
-  let isMounted = true;
+  const [mountId, setMountId] = createSignal(0);
   let processQueueTimeout: number | null = null;
   let shouldStopProcessing = false;
   
@@ -214,7 +215,7 @@ const MapView: Component = () => {
       }
       return;
     }
-    if (shouldStopProcessing || !isMounted) return;
+    if (shouldStopProcessing || mountId() === 0) return;
     
     const currentQueue = tileQueue();
     const queueLength = currentQueue.length;
@@ -313,8 +314,8 @@ const MapView: Component = () => {
   // Cleanup on unmount
   onCleanup(() => {
     console.log('[MapView] Cleaning up...');
-    isMounted = false;
     shouldStopProcessing = true;
+    setMountId(prev => prev + 1);
     
     // Clear any pending timeouts first
     if (processQueueTimeout !== null) {
@@ -343,7 +344,8 @@ const MapView: Component = () => {
   
   // Helper to create a cancellable operation
   const createCancellableOperation = () => {
-    if (!isMounted) throw new Error('Component is not mounted');
+    const currentMountId = mountId();
+    if (currentMountId === 0) throw new Error('Component is not mounted');
     
     const controller = new AbortController();
     activeOperations.add(controller);
@@ -371,25 +373,36 @@ const MapView: Component = () => {
 
   // Load a single tile
   const loadTile = async (tileX: number, tileY: number) => {
-    if (!isMounted) return null;
-    
-    const { signal, cleanup } = createCancellableOperation();
+    const currentMountId = mountId();
     
     const key = getTileKey(tileX, tileY);
     const currentTiles = tiles();
     
     console.log(`[loadTile] Attempting to load tile (${tileX}, ${tileY})`);
     
-    // Skip if already loading or loaded recently
+    // Skip if already loading
     if (currentTiles[key]?.loading) {
       console.log(`[loadTile] Tile (${tileX}, ${tileY}) is already loading`);
       return;
     }
     
-    if (currentTiles[key] && Date.now() - currentTiles[key].timestamp < 30000) {
-      console.log(`[loadTile] Tile (${tileX}, ${tileY}) was loaded recently`);
-      return;
+    // Check if we need to load fresh data
+    const currentTile = currentTiles[key];
+    if (currentTile?.data) {
+      // If tile was loaded in a previous mount or is stale, reload it
+      const isStale = Date.now() - currentTile.timestamp >= 30000;
+      const isFromPreviousMount = currentTile.mountId !== currentMountId;
+      
+      if (!isStale && !isFromPreviousMount) {
+        console.log(`[loadTile] Tile (${tileX}, ${tileY}) is up to date`);
+        return;
+      }
+      
+      console.log(`[loadTile] Tile (${tileX}, ${tileY}) needs refresh:`, 
+        { isStale, isFromPreviousMount });
     }
+    
+    const { signal, cleanup } = createCancellableOperation();
 
     // Mark as loading
     setTiles(prev => ({
@@ -400,15 +413,16 @@ const MapView: Component = () => {
         data: null,
         loading: true,
         error: false,
-        timestamp: 0
+        timestamp: 0,
+        mountId: currentMountId
       }
     }));
 
     try {
       // Always fetch from server first
       console.log(`[loadTile] Fetching tile (${tileX}, ${tileY}) from server`);
-      if (!isMounted) {
-        console.log(`[loadTile] Component unmounted, aborting fetch for tile (${tileX}, ${tileY})`);
+      if (mountId() !== currentMountId) {
+        console.log(`[loadTile] Component remounted, aborting fetch for tile (${tileX}, ${tileY})`);
         return null;
       }
       
@@ -476,6 +490,7 @@ const MapView: Component = () => {
           loading: false,
           error: false,
           timestamp: Date.now(),
+          mountId: currentMountId,
           fromCache: false
         }
       }));
@@ -483,7 +498,7 @@ const MapView: Component = () => {
       if (err instanceof Error && err.name === 'AbortError') return null;
       
       console.error(`Error loading tile (${tileX}, ${tileY}):`, err);
-      if (isMounted) {
+      if (mountId() === currentMountId) {
         setTiles(prev => ({
           ...prev,
           [key]: {
@@ -501,7 +516,7 @@ const MapView: Component = () => {
 
   // Process the tile loading queue with priority to visible tiles
   const processTileQueue = async () => {
-    if (shouldStopProcessing || !isMounted || activeOperations.size > 0) {
+    if (shouldStopProcessing || mountId() === 0 || activeOperations.size > 0) {
       console.log('[processTileQueue] Skipping - cleanup in progress or operations in progress');
       return;
     }
@@ -582,7 +597,7 @@ const MapView: Component = () => {
       setIsProcessingQueue(false);
       
       // Check if we have more tiles to process
-      if (isMounted) {
+      if (mountId() > 0) {
         const remainingTiles = tileQueue();
         if (remainingTiles.length > 0) {
           console.log(`[processTileQueue] Processing remaining ${remainingTiles.length} tiles`);
