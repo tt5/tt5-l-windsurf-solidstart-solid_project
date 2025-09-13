@@ -11,7 +11,7 @@ export class TileCacheService {
   private maxSize: number;
   private defaultTTL: number; // in milliseconds
 
-  constructor(maxSize = 1000, defaultTTL = 5 * 60 * 1000) { // 5 minutes default TTL
+  constructor(maxSize = 1000, defaultTTL = 10000) { // 10 seconds default TTL
     this.cache = new Map();
     this.maxSize = maxSize;
     this.defaultTTL = defaultTTL;
@@ -45,7 +45,10 @@ export class TileCacheService {
   /**
    * Store a tile in cache
    */
-  set(tile: MapTile, ttl?: number): void {
+  set(tile: MapTile, ttl: number = this.defaultTTL): void {
+    if (!tile || !tile.tileX || !tile.tileY || !tile.data) {
+      throw new Error('Invalid tile data');
+    }
     // If cache is full, remove the oldest entry
     if (this.cache.size >= this.maxSize) {
       const oldestKey = this.cache.keys().next().value;

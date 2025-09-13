@@ -1,6 +1,7 @@
 import { getDb } from './db';
 import { getRandomSlopes } from '~/utils/randomSlopes';
 import { getPointsInLines, deletePoints } from '~/utils/sqlQueries';
+import { tileInvalidationService } from './services/tile-invalidation.service';
 
 class ServerInitializer {
   private static instance: ServerInitializer;
@@ -28,6 +29,9 @@ class ServerInitializer {
     try {
       const { runDatabaseMigrations } = await import('./migrate');
       await runDatabaseMigrations();
+      
+      // Initialize tile invalidation service
+      tileInvalidationService.initialize();
       console.log('Migrations completed successfully');
 
       this.setupCleanupInterval();

@@ -3,6 +3,7 @@ import { withAuth } from '~/middleware/auth';
 import { createApiResponse, createErrorResponse, generateRequestId } from '~/utils/api';
 import type { MapTile } from '~/lib/server/repositories/map-tile.repository';
 import { tileGenerationService } from '~/lib/server/services/tile-generation.service';
+import { tileCacheService } from '~/lib/server/services/tile-cache.service';
 
 // Maximum tile coordinates to prevent abuse
 const MAX_TILE_COORD = 10000;
@@ -48,14 +49,21 @@ export const GET = withAuth(async (event) => {
     const tileY = parseInt(tileYStr, 10);
     validateTileCoords(tileX, tileY);
     
-    // Always generate a fresh tile
-    const tileRepo = await getMapTileRepository();
-    const tile = await tileGenerationService.generateTile(tileX, tileY);
-    await tileRepo.saveTile(tile);
-    // fromCache is not used anymore, but keeping it for now to avoid breaking the response
+    // Try to get tile from cache first
+    let tile = tileCacheService.get(tileX, tileY);
+    let fromCache = true;
+
+    // If not in cache, generate and cache it
+    if (!tile) {
+      const tileRepo = await getMapTileRepository();
+      tile = await tileGenerationService.generateTile(tileX, tileY);
+      await tileRepo.saveTile(tile);
+      tileCacheService.set(tile);
+      fromCache = false;
+    }
     
-    // Return the tile data with appropriate headers
-    return new Response(JSON.stringify({
+    // Prepare response data
+    const responseData = {
       success: true,
       data: {
         tileX: tile.tileX,
@@ -63,6 +71,7 @@ export const GET = withAuth(async (event) => {
         data: Array.from(tile.data).join(','), // Convert Uint8Array to comma-separated string for JSON
         version: tile.version,
         lastUpdatedMs: tile.lastUpdatedMs,
+        fromCache,
         // Add tile bounds for client-side convenience
         bounds: {
           minX: tile.tileX * 64,
@@ -72,14 +81,19 @@ export const GET = withAuth(async (event) => {
         }
       },
       requestId
-    }), {
+    };
+
+    // Set cache headers (10 seconds client cache, 10 seconds CDN cache)
+    const headers = new Headers({
+      'Content-Type': 'application/json',
+      'Cache-Control': 'public, max-age=10, s-maxage=10',
+      'ETag': `"${tile.lastUpdatedMs}"`,
+      'Last-Modified': new Date(tile.lastUpdatedMs).toUTCString()
+    });
+
+    return new Response(JSON.stringify(responseData), {
       status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
-        'ETag': `"${tile.version}"`,
-        'X-Tile-Generated': String(tile.version === 1)
-      }
+      headers
     });
     
   } catch (error) {
