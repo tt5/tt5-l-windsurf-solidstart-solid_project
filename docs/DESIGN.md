@@ -7,8 +7,6 @@
 4. [Technical Implementation](#technical-implementation)
 5. [Authentication System](#authentication-system)
 6. [API Endpoints](#api-endpoints)
-7. [Testing Strategy](#testing-strategy)
-8. [Future Development](#future-development)
 
 ## Core Architecture
 
@@ -19,26 +17,6 @@
 - **Authentication**: JWT (JSON Web Tokens)
 - **State Management**: SolidJS Context API
 - **Build Tool**: Vite
-
-### Project Structure
-```
-src/
-├── components/         # Reusable UI components
-│   ├── Auth/          # Authentication forms and logic
-│   ├── DevTools/      # Development utilities
-│   └── Game/          # Game-specific components
-├── constants/         # Game configuration
-├── contexts/          # Global state management
-├── lib/
-│   └── server/        # Server-side logic
-│       ├── auth/      # Authentication logic
-│       └── db/        # Database operations
-├── routes/            # Application routes
-│   ├── api/           # API endpoints
-│   └── pages/         # Page components
-├── types/             # TypeScript type definitions
-└── utils/             # Utility functions
-```
 
 ## Game World
 
@@ -97,8 +75,6 @@ src/
 ### Frontend
 - **Board Component**: Renders the game grid and handles user input
 - **State Management**: Uses SolidJS signals and context for reactive state
-- **Rendering**: Optimized for performance with minimal re-renders
-- **Responsive Design**: Adapts to different screen sizes
 
 ### Backend
 - **Database**: SQLite for data persistence
@@ -121,7 +97,7 @@ src/
 - Development mode with auto-login
 
 ### Security
-- Password hashing with bcrypt
+- Password hashing with bcrypt (not implemented)
 - Secure HTTP-only cookies
 - CSRF protection
 - Input validation
@@ -138,41 +114,6 @@ src/
 - `POST /api/base-points` - Place new base point
 - `POST /api/cleanup-lines` - Trigger manual cleanup process
 - `POST /api/calculate-squares` - Calculate restricted squares
-
-## Testing Strategy
-
-### Unit Tests
-- Core game logic
-- Utility functions
-- State management
-
-### Integration Tests
-- API endpoints
-- Database operations
-- Authentication flow
-
-### E2E Tests
-- User workflows
-- Game mechanics
-- Edge cases
-
-## Future Development
-
-### Planned Features
-1. **Multiplayer Support**
-   - Real-time updates
-   - Player vs Player mechanics
-   - Leaderboards
-
-2. **Enhanced Gameplay**
-   - Special abilities
-   - Resource collection
-   - Base upgrades
-
-3. **UI/UX Improvements**
-   - Animations
-   - Sound effects
-   - Tutorial system
 
 4. **Performance**
    - Server-side rendering
@@ -229,7 +170,6 @@ src/
 **Impact on Gameplay**:
 - Reduces clustering of base points in straight lines
 - Encourages strategic placement
-- Maintains game balance by preventing line-based strategies
 
 ### Movement and Border System
 - **Basic Movement**:
@@ -260,21 +200,8 @@ src/
   - Only visible grid cells are rendered for performance
   - Visual feedback for restricted areas
 
-- **Teleportation**:
-  - **New Players**:
-    - 1 one-time unlimited-range teleport
-    - Must be used in first session
-  - **Standard**:
-    - Up to 50 units
-    - 5-minute cooldown
-    - Must target explored areas
-
-## Technical Implementation
-
-### World Management
-- **Instances**:
-  - **Splitting**: At 1000 base points (k-means clustering)
-  - **Merging**: Below 25% capacity (24h grace period)
+- **Map**:
+  - Shows all base point in the world as dots.
 
 ### System Maintenance
 - **Cleanup Process**:
@@ -353,10 +280,7 @@ src/
     ```
 
 ### Optimization Strategies
-- **Spatial Indexing**:
-  - Quad-tree for efficient base point queries
   - Viewport-based culling (20-unit radius)
-  - Cached calculations with 100ms cooldown
   - Client-side filtering of base points
   - Simple coordinate-based queries
   - Basic error handling
@@ -370,31 +294,3 @@ src/
 - Pull-based updates (no automatic refresh)
 - No real-time synchronization
 - Basic conflict resolution
-
-## Future Development
-
-### Gameplay
-- Territory abilities
-- Resource generation
-- Dynamic events
-- Team mechanics
-- Environmental obstacles and barriers
-  - Natural terrain features
-  - Player-created structures
-  - Temporary zone effects
-
-### Technical
-- Improved algorithms
-- Client prediction
-- Enhanced networking
-- Analytics integration
-- Dynamic influence range based on point age
-- Temporary alliances for territory sharing
-- Specialized base points with unique influence patterns
-- Visual indicators for contested areas
-- Auto-resolves conflicts (older points preserved)
-- Anti-fragmentation measures
-- World visitation system with cooldowns
-
-## Glossary
-*Terms and definitions will be added here as needed*

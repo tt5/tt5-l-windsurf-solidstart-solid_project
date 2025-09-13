@@ -5,3 +5,5 @@ Run one long running full cleanup. Shedulded runs (currently 10 or 30 s) only ch
 When the full cleanup is finished inform all players. Show a progress bar to the players.
 
 (or random only (?))
+
+sound

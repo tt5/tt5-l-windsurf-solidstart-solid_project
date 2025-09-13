@@ -48,14 +48,13 @@ GET /api/map/tile/{tileX}/{tileY}
 ### Tile System
 - **Size**: 64x64 coordinates per tile
 - **Data**: 1 bit per coordinate (0 = empty, 1 = has base point)
-- **Updates**: Tiles are updated when base points are added/removed
+- **Updates**: Tiles are updated when client loads map the first time and no data is in the database and when client misses the client cache.
 
 ### Data Flow
-1. Client requests visible tiles based on viewport
+1. Client requests visible tiles based on (0,0) world coordinate and map viewport
 2. Server returns tile data with point coordinates
 3. Client renders occupied coordinates on a grid
 
 ## Performance
 - **Efficient Storage**: Bitmap compression (1 bit per coordinate)
-- **Caching**: Tiles are cached until updated
-- **Minimal Bandwidth**: Only changed tiles are sent
+- **Caching**: Tiles are cached for 30 s
