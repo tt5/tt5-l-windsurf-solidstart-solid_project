@@ -43,48 +43,94 @@
   perspective: 1000px;
 }
 
-/* Grid container with dynamic viewBox */
-.gridContainer {
+/* Grid styles */
+svg {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
-  transform: 
-    translateX(var(--translate-x, 0))
-    translateY(var(--translate-y, 0))
-    scale(var(--scale, 1));
-  transform-origin: 0 0;
-  will-change: transform;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  overflow: visible;
+  z-index: 1;
 }
 
-.gridLines line {
+line {
   shape-rendering: crispEdges;
   vector-effect: non-scaling-stroke;
+  stroke: #e0e0e0;
+  stroke-width: 0.5px;
 }
 
-.gridLines .gridLine {
+line.major {
+  stroke: #aaaaaa;
+  stroke-width: 1px;
+}
+
+line.hundredTick {
+  stroke: #888888;
+  stroke-width: 1.2px;
+}
+
+line.zeroAxis {
+  stroke: #ff0000;
+  stroke-width: 2px;
+  stroke-opacity: 0.8;
+}
+
+text {
+  fill: #000000;
+  font-size: 10px;
+  font-family: Arial, sans-serif;
+  pointer-events: none;
+  user-select: none;
+  text-shadow: 
+    -1px -1px 0 #fff, 
+    1px -1px 0 #fff,
+    -1px 1px 0 #fff,
+    1px 1px 0 #fff;
+}
+
+/* Grid container */
+.grid-lines line {
+  shape-rendering: crispEdges;
+  vector-effect: non-scaling-stroke;
   stroke: #e0e0e0;
   stroke-width: 0.5;
 }
 
-.gridLines .major {
+.grid-lines .major {
   stroke: #aaaaaa;
   stroke-width: 1;
 }
 
-.gridLines .hundredTick {
+.grid-lines .hundredTick {
   stroke: #888888;
   stroke-width: 1.2;
 }
 
-.gridLines .zeroAxis {
+.grid-lines .zeroAxis {
   stroke: #ff0000;
   stroke-width: 2;
+  stroke-opacity: 0.8;
+}
+
+/* Grid labels */
+.grid-labels text {
+  fill: #666;
+  font-size: 10px;
+  font-family: Arial, sans-serif;
+  pointer-events: none;
+  user-select: none;
+}
+
+.grid-labels .major {
+  font-weight: bold;
+  fill: #000;
+}
+
+.grid-labels .zero {
+  fill: #ff0000;
+  font-weight: bold;
 }
 
 .mapViewport {
@@ -401,6 +447,33 @@
 /* Add a subtle background to make grid lines more visible */
 .mapContent {
   background-color: rgba(245, 245, 245, 0.1);
+}
+
+/* Test Grid Styles */
+.testGrid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(#333333 1px, transparent 1px), 
+                   linear-gradient(90deg, #333333 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.8;
+}
+
+.testGridLabel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 0, 0, 0.5);
+  padding: 10px;
+  color: white;
+  font-weight: bold;
+  z-index: 1001;
 }
 
 .coordinateLabel {

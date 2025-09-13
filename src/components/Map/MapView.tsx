@@ -905,9 +905,9 @@ const MapView: Component = () => {
   // Render coordinate grid
   const renderGrid = () => {
     const vp = viewport();
-    const gridSize = 100; // Grid size in world coordinates
+    const gridSize = 50; // Grid size in world coordinates
     
-    // Calculate grid bounds in world coordinates with some padding
+    // Calculate visible area in world coordinates with padding
     const padding = 2; // Extra cells to render outside viewport
     
     // Calculate visible area in world coordinates
@@ -917,80 +917,76 @@ const MapView: Component = () => {
     const visibleBottom = vp.y + (vp.height / vp.zoom);
     
     // Calculate grid boundaries with padding
-    const startX = Math.floor((visibleLeft - padding * gridSize) / gridSize) * gridSize;
-    const startY = Math.floor((visibleTop - padding * gridSize) / gridSize) * gridSize;
-    const endX = Math.ceil((visibleRight + padding * gridSize) / gridSize) * gridSize;
-    const endY = Math.ceil((visibleBottom + padding * gridSize) / gridSize) * gridSize;
+    const startX = Math.floor(visibleLeft / gridSize) * gridSize - padding * gridSize;
+    const startY = Math.floor(visibleTop / gridSize) * gridSize - padding * gridSize;
+    const endX = Math.ceil(visibleRight / gridSize) * gridSize + padding * gridSize;
+    const endY = Math.ceil(visibleBottom / gridSize) * gridSize + padding * gridSize;
     
     const lines = [];
-    const labels = [];
     
-    // Add vertical grid lines and labels
+    // Add vertical grid lines
     for (let x = startX; x <= endX; x += gridSize) {
-      const isMajorLine = x % (gridSize * 5) === 0;
-      const isHundredTick = x % 100 === 0;
-      const isZeroLine = x === 0;
+      const isMajor = x % (gridSize * 5) === 0;
+      const isHundred = x % 100 === 0;
+      const isZero = x === 0;
       
       lines.push(
         <line 
-          x1={x} y1={startY}
-          x2={x} y2={endY}
-          class={`${styles.gridLine} ${isZeroLine ? styles.zeroAxis : ''} ${isHundredTick ? styles.major : ''}`}
-          stroke={isZeroLine ? '#ff0000' : isHundredTick ? '#888888' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
-          stroke-width={isZeroLine ? 2 : isHundredTick ? 1.2 : isMajorLine ? 1 : 0.5}
+          x1={x} 
+          y1={startY}
+          x2={x} 
+          y2={endY}
+          stroke={isZero ? '#ff0000' : isHundred ? '#888888' : isMajor ? '#aaaaaa' : '#e0e0e0'}
+          stroke-width={isZero ? '2' : isHundred ? '1.2' : isMajor ? '1' : '0.5'}
           vector-effect="non-scaling-stroke"
         />
       );
       
-      // Add x-axis labels for all grid lines
-      const labelColor = isZeroLine ? '#ff0000' : isHundredTick ? '#000000' : '#666666';
-      const labelWeight = isHundredTick ? 'bold' : 'normal';
-      const labelSize = isHundredTick ? '11px' : '9px';
-      
-      // X-axis labels
-      labels.push(
+      // Add x-axis labels for major lines
+      if (isHundred || isZero) {
+        lines.push(
           <text 
-            x={x + 4} 
-            y={-4}
-            class={`${styles.gridLabel} ${isHundredTick ? styles.major : ''} ${isZeroLine ? styles.zero : ''}`}
+            x={x + 2}
+            y={-2}
+            fill={isZero ? '#ff0000' : '#000000'}
+            font-size="10"
             text-anchor="start"
+            style={{ 'font-family': 'Arial, sans-serif', 'pointer-events': 'none' }}
           >
-          {x}
-        </text>
-      );
+            {x}
+          </text>
+        );
+      }
     }
     
-    // Add horizontal grid lines and labels
+    // Add horizontal grid lines
     for (let y = startY; y <= endY; y += gridSize) {
-      const isMajorLine = y % (gridSize * 5) === 0;
-      const isHundredTick = y % 100 === 0;
-      const isZeroLine = y === 0;
+      const isMajor = y % (gridSize * 5) === 0;
+      const isHundred = y % 100 === 0;
+      const isZero = y === 0;
       
       lines.push(
         <line 
-          x1={startX} y1={y}
-          x2={endX} y2={y}
-          class={`${styles.gridLine} ${isZeroLine ? styles.zeroAxis : ''} ${isHundredTick ? styles.major : ''}`}
-          stroke={isZeroLine ? '#ff0000' : isHundredTick ? '#888888' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
-          stroke-width={isZeroLine ? 2 : isHundredTick ? 1.2 : isMajorLine ? 1 : 0.5}
+          x1={startX} 
+          y1={y}
+          x2={endX} 
+          y2={y}
+          stroke={isZero ? '#ff0000' : isHundred ? '#888888' : isMajor ? '#aaaaaa' : '#e0e0e0'}
+          stroke-width={isZero ? '2' : isHundred ? '1.2' : isMajor ? '1' : '0.5'}
           vector-effect="non-scaling-stroke"
         />
       );
       
-      // Add y-axis labels for all grid lines
-      const labelColor = isZeroLine ? '#ff0000' : isHundredTick ? '#000000' : '#666666';
-      const labelWeight = isHundredTick ? 'bold' : 'normal';
-      const labelSize = isHundredTick ? '11px' : '9px';
-      
-      // Only add labels for non-zero lines and hundred ticks
-      if (isHundredTick || isZeroLine) {
-        // Y-axis labels
-        labels.push(
+      // Add y-axis labels for major lines
+      if (y !== 0 && (isHundred || isZero)) {
+        lines.push(
           <text 
-            x="4" 
-            y={y - 4}
-            class={`${styles.gridLabel} ${isHundredTick ? styles.major : ''} ${isZeroLine ? styles.zero : ''}`}
+            x={2}
+            y={y - 2}
+            fill={isZero ? '#ff0000' : '#000000'}
+            font-size="10"
             text-anchor="start"
+            style={{ 'font-family': 'Arial, sans-serif', 'pointer-events': 'none' }}
           >
             {y}
           </text>
@@ -1000,21 +996,34 @@ const MapView: Component = () => {
     
     return (
       <svg 
-        class={styles.gridContainer}
-        width="100%" 
-        height="100%"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          'transform-origin': '0 0',
+          transform: `translate(${-vp.x * vp.zoom}px, ${-vp.y * vp.zoom}px) scale(${vp.zoom})`,
+          'will-change': 'transform',
+          'pointer-events': 'none',
+          'z-index': 1
+        }}
         viewBox={`${startX} ${startY} ${endX - startX} ${endY - startY}`}
         preserveAspectRatio="none"
       >
-        <g class={styles.gridLines}>
-          {lines}
-        </g>
-        <g class={styles.gridLabels}>
-          {labels}
-        </g>
+        {lines}
       </svg>
     );
   };
+
+  // Debug: Add a test grid to verify rendering
+  const renderTestGrid = () => (
+    <div class={styles.testGrid}>
+      <div class={styles.testGridLabel}>
+        Grid Test - This should be visible
+      </div>
+    </div>
+  );
 
   return (
     <div
@@ -1031,7 +1040,7 @@ const MapView: Component = () => {
           class={styles.mapContent}
           style={`--translate-x: ${-viewport().x * viewport().zoom}px; --translate-y: ${-viewport().y * viewport().zoom}px; --scale: ${viewport().zoom}`}
         >
-          {renderGrid()}
+          {renderTestGrid()}
           {Object.values(tiles()).map(tile => renderTile(tile))}
         </div>
       </div>
