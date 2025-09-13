@@ -781,7 +781,7 @@ const MapView: Component = () => {
           '--tile-pos-x': `${pixelAlignedX}px`,
           '--tile-pos-y': `${pixelAlignedY}px`,
           '--tile-scale': zoom.toString(),
-          '--tile-size': `${TILE_SIZE * zoom}px`,
+          '--tile-size': `${TILE_SIZE / zoom}px`,
           '--tile-base-size': `${TILE_SIZE}px`
         }}
         data-tile-x={tile.x}
