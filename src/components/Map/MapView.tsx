@@ -756,9 +756,7 @@ const MapView: Component = () => {
           content = (
             <div 
               class={styles.fallbackTile}
-              style={{
-                '--tile-bg-color': `hsl(${(tile.x * 13 + tile.y * 7) % 360}, 70%, 80%`,
-              } as any}
+              style={`--tile-bg-color: hsl(${(tile.x * 13 + tile.y * 7) % 360}, 70%, 80%)`}
             >
               <div class={styles.fallbackTileContent}>
                 {tile.x},{tile.y}
@@ -775,11 +773,7 @@ const MapView: Component = () => {
     return (
       <div 
         class={styles.tile}
-        style={{
-          '--tile-pos-x': `${posX}px`,
-          '--tile-pos-y': `${posY}px`,
-          '--tile-size': `${tileSize}px`
-        } as any}
+        style={`--tile-pos-x: ${posX}px; --tile-pos-y: ${posY}px; --tile-size: ${tileSize}px`}
         data-x={tile.x}
         data-y={tile.y}
       >
@@ -951,24 +945,12 @@ const MapView: Component = () => {
       
       // X-axis labels
       labels.push(
-        <text 
-          x={x + 4} 
-          y={-4}
-          class={styles.gridLabel}
-          text-anchor="start"
-          style={{
-            'font-size': labelSize,
-            'fill': labelColor,
-            'font-weight': labelWeight,
-            'paint-order': 'stroke',
-            'stroke': '#ffffff',
-            'stroke-width': '2px',
-            'stroke-linecap': 'butt',
-            'stroke-linejoin': 'miter',
-            'stroke-opacity': 0.7,
-            'vector-effect': 'non-scaling-stroke'
-          }}
-        >
+          <text 
+            x={x + 4} 
+            y={-4}
+            class={`${styles.gridLabel} ${isHundredTick ? styles.major : ''} ${isZeroLine ? styles.zero : ''}`}
+            text-anchor="start"
+          >
           {x}
         </text>
       );
@@ -1003,20 +985,8 @@ const MapView: Component = () => {
           <text 
             x="4" 
             y={y - 4}
-            class={styles.gridLabel}
+            class={`${styles.gridLabel} ${isHundredTick ? styles.major : ''} ${isZeroLine ? styles.zero : ''}`}
             text-anchor="start"
-            style={{
-              'font-size': labelSize,
-              'fill': labelColor,
-              'font-weight': labelWeight,
-              'paint-order': 'stroke',
-              'stroke': '#ffffff',
-              'stroke-width': '2px',
-              'stroke-linecap': 'butt',
-              'stroke-linejoin': 'miter',
-              'stroke-opacity': 0.7,
-              'vector-effect': 'non-scaling-stroke'
-            }}
           >
             {y}
           </text>
@@ -1031,15 +1001,6 @@ const MapView: Component = () => {
         height="100%"
         viewBox={`${startX} ${startY} ${endX - startX} ${endY - startY}`}
         preserveAspectRatio="none"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-          overflow: 'visible',
-        }}
       >
         <g class={styles.gridLines}>
           {lines}
@@ -1064,11 +1025,7 @@ const MapView: Component = () => {
       <div class={isDragging() ? styles.mapViewportDragging : styles.mapViewport}>
         <div 
           class={styles.mapContent}
-          style={{
-            '--translate-x': `${-viewport().x * viewport().zoom}px`,
-            '--translate-y': `${-viewport().y * viewport().zoom}px`,
-            '--scale': viewport().zoom
-          } as any}
+          style={`--translate-x: ${-viewport().x * viewport().zoom}px; --translate-y: ${-viewport().y * viewport().zoom}px; --scale: ${viewport().zoom}`}
         >
           {renderGrid()}
           {Object.values(tiles()).map(tile => renderTile(tile))}

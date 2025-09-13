@@ -43,6 +43,50 @@
   perspective: 1000px;
 }
 
+/* Grid container with dynamic viewBox */
+.gridContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform: 
+    translateX(var(--translate-x, 0))
+    translateY(var(--translate-y, 0))
+    scale(var(--scale, 1));
+  transform-origin: 0 0;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: visible;
+}
+
+.gridLines line {
+  shape-rendering: crispEdges;
+  vector-effect: non-scaling-stroke;
+}
+
+.gridLines .gridLine {
+  stroke: #e0e0e0;
+  stroke-width: 0.5;
+}
+
+.gridLines .major {
+  stroke: #aaaaaa;
+  stroke-width: 1;
+}
+
+.gridLines .hundredTick {
+  stroke: #888888;
+  stroke-width: 1.2;
+}
+
+.gridLines .zeroAxis {
+  stroke: #ff0000;
+  stroke-width: 2;
+}
+
 .mapViewport {
   position: relative;
   width: 100%;
@@ -86,6 +130,58 @@
   pointer-events: none;
   dominant-baseline: hanging;
   text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+}
+
+/* Tile styles */
+.tile {
+  --tile-pos-x: 0;
+  --tile-pos-y: 0;
+  --tile-size: 64px;
+  --translate-x: 0;
+  --translate-y: 0;
+  --scale: 1;
+  --tile-bg-color: transparent;
+}
+
+.fallbackTile {
+  width: 100%;
+  height: 100%;
+  background-color: var(--tile-bg-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 10px;
+  text-align: center;
+  word-break: break-all;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+/* Grid styles */
+.gridLabel {
+  font-family: Arial, sans-serif;
+  font-size: 9px;
+  fill: #666666;
+  font-weight: normal;
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 2px;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+  stroke-opacity: 0.7;
+  vector-effect: non-scaling-stroke;
+  text-anchor: start;
+}
+
+.gridLabel.major {
+  font-size: 11px;
+  font-weight: bold;
+  fill: #000000;
+}
+
+.gridLabel.zero {
+  fill: #ff0000;
 }
 
 /* Tile container */
