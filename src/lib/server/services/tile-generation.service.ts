@@ -27,10 +27,17 @@ export class TileGenerationService {
     
     // Create the tile
     const now = Date.now();
+    // Create a compressed version of the data for storage
+    const compressedData = Buffer.concat([
+      Buffer.from([0x01]), // Version 1
+      Buffer.from(deflate(bitmap, { level: COMPRESSION_LEVEL }))
+    ]);
+    
     return {
       tileX,
       tileY,
       data: bitmap,
+      compressedData,
       version: 1,
       lastUpdatedMs: now
     };

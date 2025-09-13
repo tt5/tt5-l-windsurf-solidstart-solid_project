@@ -37,7 +37,8 @@ const handleApiError = (error: unknown, requestId: string, endpoint: string) => 
   return createErrorResponse('An unknown error occurred', 500, undefined, { requestId });
 };
 
-export const GET = withAuth(async ({ request, params }) => {
+export const GET = withAuth(async (event) => {
+  const { params } = event;
   const requestId = generateRequestId();
   const { tileX: tileXStr, tileY: tileYStr } = params;
   
@@ -59,7 +60,7 @@ export const GET = withAuth(async ({ request, params }) => {
       data: {
         tileX: tile.tileX,
         tileY: tile.tileY,
-        data: tile.data.toString('base64'), // Convert binary to base64 for JSON
+        data: Buffer.from(tile.data).toString('base64'), // Convert Uint8Array to base64 for JSON
         version: tile.version,
         lastUpdatedMs: tile.lastUpdatedMs,
         // Add tile bounds for client-side convenience
