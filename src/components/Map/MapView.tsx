@@ -49,13 +49,13 @@ const MapView: Component = () => {
   const { user } = useAuth();
   const [tiles, setTiles] = createSignal<Record<string, Tile>>({});
   let containerRef: HTMLDivElement | undefined;
-  // Initialize viewport to center on the map at 100% zoom
+  // Initialize viewport with (0,0) at top-left
   const getInitialViewport = (): Viewport => {
     const width = containerRef?.clientWidth || VIEWPORT_WIDTH;
     const height = containerRef?.clientHeight || VIEWPORT_HEIGHT;
     return {
-      x: -width / 2,  // Center at (0,0) in world coordinates
-      y: -height / 2,
+      x: 0,  // Start exactly at (0,0)
+      y: 0,
       zoom: 1.0,  // 100% zoom
       width,
       height
@@ -559,19 +559,15 @@ const MapView: Component = () => {
       const dx = currentMouse.x - lastMouse.x;
       const dy = currentMouse.y - lastMouse.y;
       
+      if (dx === 0 && dy === 0) return; // No movement
+      
       // Get current viewport state
       const vp = viewport();
       
       // Calculate new position in world space
-      let newX = vp.x - (dx / vp.zoom);
-      let newY = vp.y - (dy / vp.zoom);
-      
-      // Only snap when zoomed in enough to see individual pixels
-      if (vp.zoom > 2) {
-        const pixelSize = 1 / vp.zoom;
-        newX = Math.round(newX / pixelSize) * pixelSize;
-        newY = Math.round(newY / pixelSize) * pixelSize;
-      }
+      // Convert screen movement to world movement based on zoom
+      const newX = vp.x - (dx / vp.zoom);
+      const newY = vp.y - (dy / vp.zoom);
       
       // Update viewport with new position
       updateViewport({
@@ -696,8 +692,13 @@ const MapView: Component = () => {
     const tileWorldY = tile.y * TILE_SIZE;
     
     // Calculate position relative to the viewport
-    const posX = (tileWorldX - vp.x) * vp.zoom;
-    const posY = (tileWorldY - vp.y) * vp.zoom;
+    // Since the viewport is centered, we need to adjust the position
+    const posX = Math.round(tileWorldX);
+    const posY = Math.round(tileWorldY);
+    
+    // Use the calculated positions
+    const pixelAlignedX = posX;
+    const pixelAlignedY = posY;
     
     // Debug logging for (0,0) tile
     if (tile.x === 0 && tile.y === 0) {
@@ -772,17 +773,24 @@ const MapView: Component = () => {
       }
     }
     
+    // Render the tile with pixel-aligned positions using CSS modules
     return (
-      <div 
-        class={styles.tile}
-        style={`
-          left: ${posX}px;
-          top: ${posY}px;
-          width: ${tileSize * vp.zoom}px;
-          height: ${tileSize * vp.zoom}px;
-        `}
-        data-x={tile.x}
-        data-y={tile.y}
+      <div
+        class={`${styles.tileContainer} ${styles.tile}`}
+        style={{
+          '--tile-pos-x': `${pixelAlignedX}px`,
+          '--tile-pos-y': `${pixelAlignedY}px`,
+          '--tile-scale': zoom.toString(),
+          '--tile-size': `${TILE_SIZE * zoom}px`,
+          '--tile-base-size': `${TILE_SIZE}px`
+        }}
+        data-tile-x={tile.x}
+        data-tile-y={tile.y}
+        data-world-x={tileWorldX}
+        data-world-y={tileWorldY}
+        data-pos-x={pixelAlignedX}
+        data-pos-y={pixelAlignedY}
+        data-zoom={zoom}
       >
         {content}
       </div>
@@ -1006,10 +1014,10 @@ const MapView: Component = () => {
         <div 
           class={styles.mapContent}
           style={{
-            '--translate-x': `${-viewport().x * viewport().zoom}px`,
-            '--translate-y': `${-viewport().y * viewport().zoom}px`,
+            '--translate-x': '0px',
+            '--translate-y': '0px',
             '--scale': viewport().zoom,
-            'transform': `translate(var(--translate-x, 0), var(--translate-y, 0)) scale(var(--scale, 1))`
+            'transform': `scale(${viewport().zoom}) translate(${-viewport().x}px, ${-viewport().y}px)`
           }}
         >
           <div style={{

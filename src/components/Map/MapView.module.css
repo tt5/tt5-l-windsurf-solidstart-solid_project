@@ -31,16 +31,16 @@
   pointer-events: none;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  left: 0;
-  top: 0;
+  left: 50%;
+  top: 50%;
   contain: layout style paint;
   overflow: visible;
   transform-style: preserve-3d;
   perspective: 1000px;
   transform: 
-    translateX(var(--translate-x, 0))
-    translateY(var(--translate-y, 0))
-    scale(var(--scale, 1));
+    translate(-50%, -50%) 
+    scale(var(--scale, 1)) 
+    translate(var(--translate-x, 0), var(--translate-y, 0));
 }
 
 /* Grid styles */
@@ -265,17 +265,17 @@ text {
   margin: 0;
   padding: 0;
   background-color: rgba(245, 245, 245, 0.3);
-  overflow: visible;
+  overflow: hidden;
   will-change: transform;
   pointer-events: none;
   width: var(--tile-base-size, 64px);
   height: var(--tile-base-size, 64px);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1) inset;
-  transition: all 0.2s ease;
+  transition: transform 0.1s linear;
   transform-origin: 0 0;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  contain: layout style;
+  contain: strict;
   outline: none;
   box-sizing: border-box;
   /* Ensure pixel-perfect rendering */
@@ -286,11 +286,12 @@ text {
   image-rendering: -webkit-optimize-contrast;
   image-rendering: pixelated;
   -ms-interpolation-mode: nearest-neighbor;
-  left: var(--tile-pos-x, 0);
-  top: var(--tile-pos-y, 0);
-  width: var(--tile-size, 64px);
-  height: var(--tile-size, 64px);
-  transform: translateZ(0);
+  left: 0;
+  top: 0;
+  transform: 
+    translateX(var(--tile-pos-x, 0)) 
+    translateY(var(--tile-pos-y, 0)) 
+    scale(var(--tile-scale, 1));
 }
 
 /* Tile content container */
@@ -318,6 +319,50 @@ text {
   border: 1px solid rgba(0, 0, 0, 0.1);
   overflow: visible;
   box-shadow: 0 0 0 1px rgba(0, 0, 255, 0.2);
+}
+
+.tileContainer {
+  --tile-pos-x: 0;
+  --tile-pos-y: 0;
+  --tile-size: 64px;
+  --tile-base-size: 64px;
+  --tile-scale: 1;
+  --tile-offset-x: 0px;
+  --tile-offset-y: 0px;
+  --tile-z-index: 1;
+  --tile-opacity: 1;
+  
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--tile-base-size);
+  height: var(--tile-base-size);
+  transform: 
+    translateX(var(--tile-pos-x)) 
+    translateY(var(--tile-pos-y)) 
+    scale(var(--tile-scale));
+  transform-origin: 0 0;
+  will-change: transform;
+  border: 1px solid rgba(255, 0, 0, 0.3);
+  margin: 0;
+  padding: 0;
+  background-color: rgba(245, 245, 245, 0.3);
+  overflow: hidden;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1) inset;
+  transition: transform 0.1s linear;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  contain: strict;
+  outline: none;
+  box-sizing: border-box;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -o-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
+  -ms-interpolation-mode: nearest-neighbor;
 }
 
 /* Tile image with enhanced visibility */
