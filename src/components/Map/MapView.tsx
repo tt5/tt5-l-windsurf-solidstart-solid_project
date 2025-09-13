@@ -555,28 +555,28 @@ const MapView: Component = () => {
     const lastMouse = lastMousePosition();
     
     if (lastMouse) {
-      const dx = (currentMouse.x - lastMouse.x) / viewport().zoom;
-      const dy = (currentMouse.y - lastMouse.y) / viewport().zoom;
+      // Calculate movement in screen space
+      const dx = currentMouse.x - lastMouse.x;
+      const dy = currentMouse.y - lastMouse.y;
       
-      // Update viewport with smooth dragging
-      // Only snap when zoomed in significantly to prevent jitter
-      const zoom = viewport().zoom;
-      let newX = viewport().x - dx;
-      let newY = viewport().y - dy;
+      // Get current viewport state
+      const vp = viewport();
+      
+      // Calculate new position in world space
+      let newX = vp.x - (dx / vp.zoom);
+      let newY = vp.y - (dy / vp.zoom);
       
       // Only snap when zoomed in enough to see individual pixels
-      if (zoom > 2) {
-        const pixelSize = 1 / zoom;
+      if (vp.zoom > 2) {
+        const pixelSize = 1 / vp.zoom;
         newX = Math.round(newX / pixelSize) * pixelSize;
         newY = Math.round(newY / pixelSize) * pixelSize;
       }
       
+      // Update viewport with new position
       updateViewport({
         x: newX,
-        y: newY,
-        zoom: viewport().zoom,
-        width: viewport().width,
-        height: viewport().height
+        y: newY
       });
     }
     
@@ -686,10 +686,9 @@ const MapView: Component = () => {
     const tileWorldX = tile.x * TILE_SIZE;
     const tileWorldY = tile.y * TILE_SIZE;
     
-    // Calculate screen coordinates with consistent rounding
-    // Use floor for both tiles and grid to ensure perfect alignment
-    const screenX = Math.floor((tileWorldX - vp.x) * zoom + 0.5);
-    const screenY = Math.floor((tileWorldY - vp.y) * zoom + 0.5);
+    // Calculate screen coordinates in world space
+    const screenX = Math.floor((tileWorldX - vp.x) * vp.zoom + 0.5);
+    const screenY = Math.floor((tileWorldY - vp.y) * vp.zoom + 0.5);
 
     // Calculate tile bounds with exact size (no overlap)
     const tileEndWorldX = tileWorldX + TILE_SIZE;
@@ -789,10 +788,10 @@ const MapView: Component = () => {
       <div 
         class={styles.tile}
         style={{
-          '--tile-x': `${screenX}px`,
-          '--tile-y': `${screenY}px`,
-          '--tile-scale': zoom,
-          '--tile-base-size': `${TILE_SIZE}px`
+          '--scale': viewport().zoom,
+          '--tile-base-size': `${TILE_SIZE}px`,
+          'left': `${screenX}px`,
+          'top': `${screenY}px`
         }}
         data-x={tile.x}
         data-y={tile.y}
@@ -1064,8 +1063,8 @@ const MapView: Component = () => {
         <div 
           class={styles.mapContent}
           style={{
-            '--translate-x': `${-viewport().x * viewport().zoom}px`,
-            '--translate-y': `${-viewport().y * viewport().zoom}px`,
+            '--translate-x': '0',
+            '--translate-y': '0',
             '--scale': viewport().zoom
           } as any}
         >

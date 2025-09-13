@@ -30,9 +30,11 @@
   background-position: center;
   transform-origin: 0 0;
   pointer-events: none;
-  transform: translate(var(--translate-x, 0), var(--translate-y, 0)) scale(var(--scale, 1));
+  transform: scale(var(--scale, 1));
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  left: 0;
+  top: 0;
 }
 
 .tile {
@@ -43,14 +45,11 @@
   background-color: rgba(245, 245, 245, 0.1); /* Light background for empty tiles */
   overflow: hidden;
   will-change: transform;
-  transform-origin: 0 0;
   pointer-events: none;
-  transform: translate(
-    calc(var(--tile-x, 0) * var(--tile-scale, 1)), 
-    calc(var(--tile-y, 0) * var(--tile-scale, 1))
-  ) scale(var(--tile-scale, 1));
   width: var(--tile-base-size, 64px);
   height: var(--tile-base-size, 64px);
+  transform: scale(var(--scale, 1));
+  transform-origin: 0 0;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   contain: layout style;
@@ -86,7 +85,7 @@
 .tile:hover {
   z-index: 10;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  transform: translate(var(--tile-x, 0), var(--tile-y, 0)) scale(calc(var(--tile-scale, 1) * 1.02));
+  transform: scale(calc(var(--tile-scale, 1) * 1.02));
 }
 
 /* Grid overlay styles */
