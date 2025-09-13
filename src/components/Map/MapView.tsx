@@ -12,10 +12,10 @@ const TILE_SIZE = 64; // pixels
 
 // Tile loading configuration
 const TILE_LOAD_CONFIG = {
-  BATCH_SIZE: 4,                  // Number of tiles to load in one batch
+  BATCH_SIZE: 2,                  // Reduced to load fewer tiles at once
   SCREEN_BUFFER: 1,               // Number of screens to preload around the viewport
-  MAX_TILES_TO_LOAD: 100,         // Maximum number of tiles to schedule for loading at once
-  BATCH_DELAY: 50                 // Delay between batch processing (ms)
+  MAX_TILES_TO_LOAD: 50,          // Reduced maximum queue size
+  BATCH_DELAY: 50                 // Slightly increased delay between batches
 };
 
 const VIEWPORT_WIDTH = 800; // pixels
@@ -195,13 +195,22 @@ const MapView: Component = () => {
   const scheduleTilesForLoading = () => {
     if (shouldStopProcessing || !isMounted) return;
     
-    console.log('[scheduleTilesForLoading] Scheduling tiles for loading');
+    const currentQueue = tileQueue();
+    const queueLength = currentQueue.length;
+    
+    // If queue is getting full, only add high priority tiles
+    const isQueueAlmostFull = queueLength > TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD * 0.8;
+    
+    if (isQueueAlmostFull) {
+      console.log(`[scheduleTilesForLoading] Queue is almost full (${queueLength}/${TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD}), only adding high priority tiles`);
+    }
+    
     const vp = viewport();
     const zoom = vp.zoom;
     
-    // Skip if we already have too many tiles in the queue
-    if (tileQueue().length > TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD) {
-      console.log(`[scheduleTilesForLoading] Too many tiles in queue (${tileQueue().length}), skipping`);
+    // If queue is full, skip scheduling more tiles
+    if (queueLength >= TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD) {
+      console.log(`[scheduleTilesForLoading] Queue full (${queueLength}), skipping`);
       return;
     }
     
@@ -212,9 +221,9 @@ const MapView: Component = () => {
     // Get center tile coordinates
     const centerTile = worldToTileCoords(centerX, centerY);
     
-    // Calculate how many tiles we need to cover the viewport with some buffer
-    const tilesX = Math.ceil((vp.width / zoom) / TILE_SIZE) + 2; // +2 for buffer
-    const tilesY = Math.ceil((vp.height / zoom) / TILE_SIZE) + 2; // +2 for buffer
+    // Calculate how many tiles we need to cover the viewport
+    const tilesX = Math.ceil((vp.width / zoom) / TILE_SIZE) + 2; // +2 for buffer tiles
+    const tilesY = Math.ceil((vp.height / zoom) / TILE_SIZE) + 2; // +2 for buffer tiles
     const spiralRadius = Math.max(tilesX, tilesY);
     
     console.log(`[scheduleTilesForLoading] Center tile: (${centerTile.tileX}, ${centerTile.tileY}), radius: ${spiralRadius}`);
@@ -222,31 +231,60 @@ const MapView: Component = () => {
     // Generate spiral coordinates around the center tile
     const spiralCoords = generateSpiralCoords(centerTile.tileX, centerTile.tileY, spiralRadius);
     
-    const tilesToLoad: Array<{x: number, y: number, priority: number}> = [];
-    const currentTiles = tiles();
+    // Filter and prioritize tiles
+    const visibleTiles: Array<{x: number, y: number, priority: number}> = [];
+    const queueSet = new Set(currentQueue.map(t => `${t.x},${t.y}`));
     
-    // Add tiles to load in spiral order
-    for (const {x, y, distance} of spiralCoords) {
-      // Skip if already loaded or loading
-      const key = getTileKey(x, y);
-      if (currentTiles[key] || tilesToLoad.some(t => t.x === x && t.y === y)) {
-        continue;
-      }
+    for (const {x, y} of spiralCoords) {
+      const key = `${x},${y}`;
+      const existingTile = tiles()[key];
       
-      // Calculate priority based on distance from center (closer = higher priority)
-      const priority = distance + 1; // +1 because distance starts at 0
-      tilesToLoad.push({ x, y, priority });
+      // Skip if already loaded or loading
+      if (existingTile?.data || existingTile?.loading) continue;
+      
+      // Skip if already in queue
+      if (queueSet.has(key)) continue;
+      
+      // Calculate distance from center for priority
+      const dx = x - centerTile.tileX;
+      const dy = y - centerTile.tileY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Only add tiles that are within the visible area plus a small buffer
+      if (distance <= spiralRadius * 1.5) {
+        visibleTiles.push({
+          x, y,
+          priority: distance // Closer tiles have higher priority (lower number)
+        });
+      }
     }
     
+    // Sort by priority (closest first)
+    visibleTiles.sort((a, b) => a.priority - b.priority);
+    
+    // Limit the number of tiles to add based on queue capacity
+    const maxTilesToAdd = Math.max(0, TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD - queueLength);
+    const tilesToLoad = visibleTiles.slice(0, maxTilesToAdd);
+    
+    // Add to queue if we have tiles to load
     if (tilesToLoad.length > 0) {
-      // Sort by priority (closer to center first)
-      tilesToLoad.sort((a, b) => a.priority - b.priority);
+      console.log(`[scheduleTilesForLoading] Adding ${tilesToLoad.length} tiles to queue`);
       
-      // Limit the number of tiles to load at once
-      const limitedTiles = tilesToLoad.slice(0, TILE_LOAD_CONFIG.BATCH_SIZE);
-      
-      // Add to queue
-      setTileQueue(prev => [...prev, ...limitedTiles]);
+      setTileQueue(prev => {
+        const newQueue = [...prev];
+        const existingSet = new Set(newQueue.map(t => `${t.x},${t.y}`));
+        
+        // Only add tiles that aren't already in the queue
+        for (const tile of tilesToLoad) {
+          const key = `${tile.x},${tile.y}`;
+          if (!existingSet.has(key)) {
+            newQueue.push({x: tile.x, y: tile.y});
+            existingSet.add(key);
+          }
+        }
+        
+        return newQueue;
+      });
       
       // Process the queue if not already processing
       if (!isProcessingQueue()) {
@@ -425,16 +463,22 @@ const MapView: Component = () => {
     
     const { signal, cleanup } = createCancellableOperation();
     
+    if (isProcessingQueue()) {
+      return;
+    }
+    
     const currentQueue = tileQueue();
-    if (isProcessingQueue() || currentQueue.length === 0) {
+    if (currentQueue.length === 0) {
       return;
     }
     
     console.log(`[processTileQueue] Starting, queue length: ${currentQueue.length}`);
     
     setIsProcessingQueue(true);
-    const queue = [...tileQueue()];
-    setTileQueue([]);
+    // Create a copy of the queue to work with and clear the main queue
+    const queue = [...currentQueue];
+    const processedTiles = new Set<string>();
+    setTileQueue([]); // Clear the queue immediately to prevent duplicates
     
     try {
       const vp = viewport();
@@ -451,13 +495,23 @@ const MapView: Component = () => {
             // Process tiles in batches to avoid UI freezing
       console.log(`[processTileQueue] Processing ${queue.length} tiles in batches of ${TILE_LOAD_CONFIG.BATCH_SIZE}`);
       
+      // Process all batches
       for (let i = 0; i < queue.length && !shouldStopProcessing; i += TILE_LOAD_CONFIG.BATCH_SIZE) {
         if (shouldStopProcessing) break;
         
         const batch = queue.slice(i, i + TILE_LOAD_CONFIG.BATCH_SIZE);
+        console.log(`[processTileQueue] Processing batch of ${batch.length} tiles`);
         
         try {
-          await Promise.all(batch.map(({x, y}) => shouldStopProcessing ? Promise.resolve() : loadTile(x, y)));
+          // Mark these tiles as processed
+          batch.forEach(({x, y}) => processedTiles.add(`${x},${y}`));
+          
+          // Load all tiles in parallel
+          await Promise.all(batch.map(({x, y}) => {
+            if (shouldStopProcessing) return Promise.resolve();
+            console.log(`[processTileQueue] Loading tile (${x}, ${y})`);
+            return loadTile(x, y);
+          }));
           
           // Add a small delay between batches to keep the UI responsive
           if (i + TILE_LOAD_CONFIG.BATCH_SIZE < queue.length && !shouldStopProcessing) {
@@ -482,9 +536,18 @@ const MapView: Component = () => {
       cleanup();
       setIsProcessingQueue(false);
       
-      // If new tiles were added while processing and we're still mounted, process them
-      if (isMounted && tileQueue().length > 0) {
-        processQueueTimeout = window.setTimeout(processTileQueue, 0);
+      // Check if we have more tiles to process
+      if (isMounted) {
+        const remainingTiles = tileQueue();
+        if (remainingTiles.length > 0) {
+          console.log(`[processTileQueue] Processing remaining ${remainingTiles.length} tiles`);
+          // Use requestAnimationFrame for better scheduling
+          requestAnimationFrame(() => {
+            processQueueTimeout = window.setTimeout(processTileQueue, 0);
+          });
+        } else {
+          console.log('[processTileQueue] Queue is empty, all tiles processed');
+        }
       }
     }
   };
