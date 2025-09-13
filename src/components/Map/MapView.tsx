@@ -148,42 +148,42 @@ const MapView: Component = () => {
     });
   };
   
-  // Generate coordinates in a spiral pattern around a center point
+  // Generate coordinates in a spiral pattern starting from (0,0)
   const generateSpiralCoords = (centerX: number, centerY: number, radius: number) => {
     const result: Array<{x: number, y: number, distance: number}> = [];
     
-    // Start from the center
-    result.push({ x: centerX, y: centerY, distance: 0 });
+    // Start from (0,0)
+    result.push({ x: 0, y: 0, distance: 0 });
     
-    // Generate spiral coordinates
+    // Generate spiral coordinates starting from (0,0)
     for (let r = 1; r <= radius; r++) {
-      // Start at the top of the square
-      let x = centerX - r;
-      let y = centerY - r;
+      // Start at the top-right corner of the square
+      let x = r;
+      let y = -r;
       
-      // Right edge
-      for (; y <= centerY + r; y++) {
+      // Top edge (right to left)
+      for (; x >= -r; x--) {
+        result.push({ x, y, distance: r });
+      }
+      x++;
+      y++;
+      
+      // Left edge (top to bottom)
+      for (; y <= r; y++) {
         result.push({ x, y, distance: r });
       }
       y--;
       x++;
       
-      // Bottom edge
-      for (; x <= centerX + r; x++) {
+      // Bottom edge (left to right)
+      for (; x <= r; x++) {
         result.push({ x, y, distance: r });
       }
       x--;
       y--;
       
-      // Left edge
-      for (; y >= centerY - r; y--) {
-        result.push({ x, y, distance: r });
-      }
-      y++;
-      x--;
-      
-      // Top edge
-      for (; x > centerX - r; x--) {
+      // Right edge (bottom to top)
+      for (; y > -r; y--) {
         result.push({ x, y, distance: r });
       }
     }
@@ -218,18 +218,15 @@ const MapView: Component = () => {
     const centerX = vp.x + (vp.width / zoom) / 2;
     const centerY = vp.y + (vp.height / zoom) / 2;
     
-    // Get center tile coordinates
-    const centerTile = worldToTileCoords(centerX, centerY);
-    
     // Calculate how many tiles we need to cover the viewport
     const tilesX = Math.ceil((vp.width / zoom) / TILE_SIZE) + 2; // +2 for buffer tiles
     const tilesY = Math.ceil((vp.height / zoom) / TILE_SIZE) + 2; // +2 for buffer tiles
     const spiralRadius = Math.max(tilesX, tilesY);
     
-    console.log(`[scheduleTilesForLoading] Center tile: (${centerTile.tileX}, ${centerTile.tileY}), radius: ${spiralRadius}`);
+    console.log(`[scheduleTilesForLoading] Starting spiral from (0,0) with radius: ${spiralRadius}`);
     
-    // Generate spiral coordinates around the center tile
-    const spiralCoords = generateSpiralCoords(centerTile.tileX, centerTile.tileY, spiralRadius);
+    // Generate spiral coordinates starting from (0,0)
+    const spiralCoords = generateSpiralCoords(0, 0, spiralRadius);
     
     // Filter and prioritize tiles
     const visibleTiles: Array<{x: number, y: number, priority: number}> = [];
@@ -245,10 +242,8 @@ const MapView: Component = () => {
       // Skip if already in queue
       if (queueSet.has(key)) continue;
       
-      // Calculate distance from center for priority
-      const dx = x - centerTile.tileX;
-      const dy = y - centerTile.tileY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+      // Calculate distance from (0,0) for priority
+      const distance = Math.sqrt(x * x + y * y);
       
       // Only add tiles that are within the visible area plus a small buffer
       if (distance <= spiralRadius * 1.5) {
