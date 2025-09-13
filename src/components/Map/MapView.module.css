@@ -258,25 +258,20 @@ text {
 }
 
 /* Tile container */
-/* Tile container with enhanced debugging styles */
+/* Tile container */
 .tile {
   position: absolute;
-  border: 1px solid rgba(255, 0, 0, 0.3);
   margin: 0;
   padding: 0;
-  background-color: rgba(245, 245, 245, 0.3);
   overflow: hidden;
   will-change: transform;
   pointer-events: none;
   width: var(--tile-base-size, 64px);
   height: var(--tile-base-size, 64px);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1) inset;
-  transition: transform 0.1s linear;
   transform-origin: 0 0;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   contain: strict;
-  outline: none;
   box-sizing: border-box;
   /* Ensure pixel-perfect rendering */
   -webkit-font-smoothing: none;
@@ -302,23 +297,7 @@ text {
 }
 
 .tileLabel {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  background-color: rgba(255, 255, 255, 0.8);
-  padding: 1px 4px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-family: monospace;
-  color: #333;
-  pointer-events: none;
-  user-select: none;
-  z-index: 10;
-  line-height: 1.2;
-  text-shadow: 0 0 2px white;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  overflow: visible;
-  box-shadow: 0 0 0 1px rgba(0, 0, 255, 0.2);
+  display: none;
 }
 
 .tileContainer {
@@ -343,14 +322,10 @@ text {
     scale(var(--tile-scale));
   transform-origin: 0 0;
   will-change: transform;
-  border: 1px solid rgba(255, 0, 0, 0.3);
   margin: 0;
   padding: 0;
-  background-color: rgba(245, 245, 245, 0.3);
   overflow: hidden;
   pointer-events: none;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1) inset;
-  transition: transform 0.1s linear;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   contain: strict;
