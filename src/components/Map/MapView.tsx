@@ -695,10 +695,9 @@ const MapView: Component = () => {
     const tileWorldX = tile.x * TILE_SIZE;
     const tileWorldY = tile.y * TILE_SIZE;
     
-    // Calculate position relative to the transform container
-    // The transform container handles the viewport translation and scaling
-    const posX = tileWorldX;
-    const posY = tileWorldY;
+    // Calculate position relative to the viewport
+    const posX = (tileWorldX - vp.x) * vp.zoom;
+    const posY = (tileWorldY - vp.y) * vp.zoom;
     
     // Debug logging for (0,0) tile
     if (tile.x === 0 && tile.y === 0) {
@@ -773,7 +772,12 @@ const MapView: Component = () => {
     return (
       <div 
         class={styles.tile}
-        style={`--tile-pos-x: ${posX}px; --tile-pos-y: ${posY}px; --tile-size: ${tileSize}px`}
+        style={`
+          left: ${posX}px;
+          top: ${posY}px;
+          width: ${tileSize * vp.zoom}px;
+          height: ${tileSize * vp.zoom}px;
+        `}
         data-x={tile.x}
         data-y={tile.y}
       >
