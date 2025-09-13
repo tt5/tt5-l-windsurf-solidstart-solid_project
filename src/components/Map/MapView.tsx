@@ -747,13 +747,7 @@ const MapView: Component = () => {
               <img
                 src={tileImage}
                 alt={`Tile ${tile.x},${tile.y}`}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'block',
-                  imageRendering: 'pixelated',
-                  pointerEvents: 'none'
-                }}
+                class={styles.tileImage}
               />
             </div>
           );
@@ -763,7 +757,7 @@ const MapView: Component = () => {
             <div 
               class={styles.fallbackTile}
               style={{
-                'background-color': `hsl(${(tile.x * 13 + tile.y * 7) % 360}, 70%, 80%`,
+                '--tile-bg-color': `hsl(${(tile.x * 13 + tile.y * 7) % 360}, 70%, 80%`,
               } as any}
             >
               <div class={styles.fallbackTileContent}>
@@ -782,15 +776,10 @@ const MapView: Component = () => {
       <div 
         class={styles.tile}
         style={{
-          left: `${posX}px`,
-          top: `${posY}px`,
-          width: `${tileSize}px`,
-          height: `${tileSize}px`,
-          position: 'absolute',
-          pointerEvents: 'none',
-          willChange: 'transform',
-          transform: 'translateZ(0)'
-        }}
+          '--tile-pos-x': `${posX}px`,
+          '--tile-pos-y': `${posY}px`,
+          '--tile-size': `${tileSize}px`
+        } as any}
         data-x={tile.x}
         data-y={tile.y}
       >
@@ -920,17 +909,6 @@ const MapView: Component = () => {
     const vp = viewport();
     const gridSize = 100; // Grid size in world coordinates
     
-    // Debug: Log crosshair position
-    const crosshairScreenX = Math.floor(-vp.x * vp.zoom + vp.width/2);
-    const crosshairScreenY = Math.floor(-vp.y * vp.zoom + vp.height/2);
-    console.log('Crosshair Position:', { 
-      screenX: crosshairScreenX, 
-      screenY: crosshairScreenY,
-      viewportX: vp.x,
-      viewportY: vp.y,
-      zoom: vp.zoom
-    });
-    
     // Calculate grid bounds in world coordinates with some padding
     const padding = 2; // Extra cells to render outside viewport
     
@@ -951,21 +929,18 @@ const MapView: Component = () => {
     
     // Add vertical grid lines and labels
     for (let x = startX; x <= endX; x += gridSize) {
-      const screenX = (x - vp.x) * vp.zoom;
       const isMajorLine = x % (gridSize * 5) === 0;
       const isHundredTick = x % 100 === 0;
       const isZeroLine = x === 0;
       
-      // Skip if this line is outside the viewport (with a small threshold)
-      if (screenX < -10 || screenX > vp.width + 10) continue;
-      
       lines.push(
         <line 
-          x1={screenX} y1="0" 
-          x2={screenX} y2={vp.height} 
+          x1={x} y1={startY}
+          x2={x} y2={endY}
           class={`${styles.gridLine} ${isZeroLine ? styles.zeroAxis : ''} ${isHundredTick ? styles.major : ''}`}
           stroke={isZeroLine ? '#ff0000' : isHundredTick ? '#888888' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
           stroke-width={isZeroLine ? 2 : isHundredTick ? 1.2 : isMajorLine ? 1 : 0.5}
+          vector-effect="non-scaling-stroke"
         />
       );
       
@@ -974,11 +949,11 @@ const MapView: Component = () => {
       const labelWeight = isHundredTick ? 'bold' : 'normal';
       const labelSize = isHundredTick ? '11px' : '9px';
       
-      // X-axis labels at bottom of viewport
+      // X-axis labels
       labels.push(
         <text 
-          x={screenX + 4} 
-          y={vp.height - 4} 
+          x={x + 4} 
+          y={-4}
           class={styles.gridLabel}
           text-anchor="start"
           style={{
@@ -990,7 +965,8 @@ const MapView: Component = () => {
             'stroke-width': '2px',
             'stroke-linecap': 'butt',
             'stroke-linejoin': 'miter',
-            'stroke-opacity': 0.7
+            'stroke-opacity': 0.7,
+            'vector-effect': 'non-scaling-stroke'
           }}
         >
           {x}
@@ -1000,21 +976,18 @@ const MapView: Component = () => {
     
     // Add horizontal grid lines and labels
     for (let y = startY; y <= endY; y += gridSize) {
-      const screenY = (y - vp.y) * vp.zoom;
       const isMajorLine = y % (gridSize * 5) === 0;
       const isHundredTick = y % 100 === 0;
       const isZeroLine = y === 0;
       
-      // Skip if this line is outside the viewport (with a small threshold)
-      if (screenY < -10 || screenY > vp.height + 10) continue;
-      
       lines.push(
         <line 
-          x1="0" y1={screenY} 
-          x2={vp.width} y2={screenY} 
+          x1={startX} y1={y}
+          x2={endX} y2={y}
           class={`${styles.gridLine} ${isZeroLine ? styles.zeroAxis : ''} ${isHundredTick ? styles.major : ''}`}
           stroke={isZeroLine ? '#ff0000' : isHundredTick ? '#888888' : isMajorLine ? '#aaaaaa' : '#e0e0e0'}
           stroke-width={isZeroLine ? 2 : isHundredTick ? 1.2 : isMajorLine ? 1 : 0.5}
+          vector-effect="non-scaling-stroke"
         />
       );
       
@@ -1023,34 +996,57 @@ const MapView: Component = () => {
       const labelWeight = isHundredTick ? 'bold' : 'normal';
       const labelSize = isHundredTick ? '11px' : '9px';
       
-      // Y-axis labels at left of viewport
-      labels.push(
-        <text 
-          x={4} 
-          y={screenY - 6} 
-          class={styles.gridLabel}
-          text-anchor="start"
-          style={{
-            'font-size': labelSize,
-            'fill': labelColor,
-            'font-weight': labelWeight,
-            'paint-order': 'stroke',
-            'stroke': '#ffffff',
-            'stroke-width': '2px',
-            'stroke-linecap': 'butt',
-            'stroke-linejoin': 'miter',
-            'stroke-opacity': 0.7
-          }}
-        >
-          {y}
-        </text>
-      );
+      // Only add labels for non-zero lines and hundred ticks
+      if (isHundredTick || isZeroLine) {
+        // Y-axis labels
+        labels.push(
+          <text 
+            x="4" 
+            y={y - 4}
+            class={styles.gridLabel}
+            text-anchor="start"
+            style={{
+              'font-size': labelSize,
+              'fill': labelColor,
+              'font-weight': labelWeight,
+              'paint-order': 'stroke',
+              'stroke': '#ffffff',
+              'stroke-width': '2px',
+              'stroke-linecap': 'butt',
+              'stroke-linejoin': 'miter',
+              'stroke-opacity': 0.7,
+              'vector-effect': 'non-scaling-stroke'
+            }}
+          >
+            {y}
+          </text>
+        );
+      }
     }
     
     return (
-      <svg class={styles.gridOverlay}>
-        {lines}
-        {labels}
+      <svg 
+        class={styles.gridContainer}
+        width="100%" 
+        height="100%"
+        viewBox={`${startX} ${startY} ${endX - startX} ${endY - startY}`}
+        preserveAspectRatio="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          overflow: 'visible',
+        }}
+      >
+        <g class={styles.gridLines}>
+          {lines}
+        </g>
+        <g class={styles.gridLabels}>
+          {labels}
+        </g>
       </svg>
     );
   };
