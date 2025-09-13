@@ -902,43 +902,51 @@ const MapView: Component = () => {
     return dataUrl;
   };
 
-  // Simple test grid
+  // Grid rendering with CSS modules
   const renderGrid = () => {
     const vp = viewport();
-    const gridSize = 20; // Reduced from 50px to 20px
+    const gridSize = 20;
     const width = vp.width / vp.zoom;
     const height = vp.height / vp.zoom;
     
-    // Create a test pattern that covers the viewport
-    const testPattern = [
-      // Red border around the viewport
+    // Create grid lines
+    const gridLines = [
+      // Viewport border
       <rect 
-        x={vp.x} y={vp.y} 
-        width={width} height={height} 
+        x={vp.x} 
+        y={vp.y} 
+        width={width} 
+        height={height} 
         fill="none" 
-        stroke="red" 
-        stroke-width="4"
+        class={styles.gridAxis}
       />,
-      // Grid lines
+      // Vertical lines
       ...Array.from({length: Math.ceil(width / gridSize) + 1}).map((_, i) => {
         const x = vp.x + (i * gridSize);
+        const isAxis = x === 0;
+        const isMajor = x % 100 === 0;
         return (
           <line 
-            x1={x} y1={vp.y} 
-            x2={x} y2={vp.y + height} 
-            stroke={x === 0 ? 'red' : '#000000'}
-            stroke-width={x % 100 === 0 ? '2' : '1'}
+            x1={x} 
+            y1={vp.y} 
+            x2={x} 
+            y2={vp.y + height} 
+            class={`${styles.gridLine} ${isAxis ? styles.gridAxis : isMajor ? styles.gridMajor : styles.gridMinor}`}
           />
         );
       }),
+      // Horizontal lines
       ...Array.from({length: Math.ceil(height / gridSize) + 1}).map((_, i) => {
         const y = vp.y + (i * gridSize);
+        const isAxis = y === 0;
+        const isMajor = y % 100 === 0;
         return (
           <line 
-            x1={vp.x} y1={y} 
-            x2={vp.x + width} y2={y} 
-            stroke={y === 0 ? 'red' : '#000000'}
-            stroke-width={y % 100 === 0 ? '2' : '1'}
+            x1={vp.x} 
+            y1={y} 
+            x2={vp.x + width} 
+            y2={y} 
+            class={`${styles.gridLine} ${isAxis ? styles.gridAxis : isMajor ? styles.gridMajor : styles.gridMinor}`}
           />
         );
       })
@@ -947,17 +955,15 @@ const MapView: Component = () => {
     return (
       <div class={styles.testGridContainer}>
         <svg 
-          class={styles.testGridSvg}
+          class={styles.gridSvg}
           viewBox={`${vp.x} ${vp.y} ${width} ${height}`}
           preserveAspectRatio="none"
         >
-          {testPattern}
+          {gridLines}
           <text 
             x={vp.x + 10} 
             y={vp.y + 20} 
-            fill="red" 
-            fontSize="16"
-            style={{fontWeight: 'bold'}}
+            class={styles.gridText}
           >
             Viewport: {vp.x.toFixed(0)},{vp.y.toFixed(0)} to {(vp.x + width).toFixed(0)},{(vp.y + height).toFixed(0)}
           </text>
