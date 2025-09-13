@@ -250,7 +250,7 @@ const MapView: Component = () => {
       processTileQueue();
       return;
     }
-    if (shouldStopProcessing || mountId() === 0) return;
+    if (shouldStopProcessing) return;
     
     const currentQueue = tileQueue();
     const queueLength = currentQueue.length;
@@ -382,8 +382,6 @@ const MapView: Component = () => {
       setTiles({});
     });
     
-    // Reset mount ID to force new operations to be created on next mount
-    setMountId(prev => prev + 1);
     console.log('[MapView] Cleanup complete');
   });
   
@@ -418,14 +416,11 @@ const MapView: Component = () => {
       processQueueTimeout = null;
     }
     
-    // Create a reference to track if this process is still valid
-    const currentMountId = mountId();
-    
     try {
       setIsProcessingQueue(true);
       
       // Check mount state after async operations
-      if (!isMounted() || currentMountId !== mountId()) {
+      if (!isMounted()) {
         console.log('[processTileQueue] Component unmounted during processing');
         return;
       }
@@ -459,7 +454,7 @@ const MapView: Component = () => {
       // Process each tile in the batch with mount checks
       const tilePromises = batch.map(({ x, y }) => 
         loadTile(x, y).catch(error => {
-          if (isMounted() && currentMountId === mountId()) {
+          if (isMounted()) {
             console.error(`[processTileQueue] Error loading tile (${x},${y}):`, error);
           }
           return null;
@@ -473,7 +468,7 @@ const MapView: Component = () => {
       ]);
       
       // Check mount state before updating state
-      if (!isMounted() || currentMountId !== mountId()) {
+      if (!isMounted()) {
         console.log('[processTileQueue] Component unmounted during tile loading');
         return;
       }
@@ -486,10 +481,10 @@ const MapView: Component = () => {
       
       // If there are more tiles to process, schedule the next batch
       const remainingTiles = tileQueue().length;
-      if (remainingTiles > 0 && isMounted() && currentMountId === mountId()) {
+      if (remainingTiles > 0 && isMounted()) {
         console.log(`[processTileQueue] Scheduling next batch (${remainingTiles} tiles remaining)`);
         processQueueTimeout = window.setTimeout(() => {
-          if (isMounted() && currentMountId === mountId()) {
+          if (isMounted()) {
             processTileQueue();
           }
         }, TILE_LOAD_CONFIG.BATCH_DELAY);
@@ -497,11 +492,11 @@ const MapView: Component = () => {
         console.log('[processTileQueue] Queue processing complete');
       }
     } catch (error) {
-      if (isMounted() && currentMountId === mountId()) {
+      if (isMounted()) {
         console.error('[processTileQueue] Error in queue processing:', error);
       }
     } finally {
-      if (isMounted() && currentMountId === mountId()) {
+      if (isMounted()) {
         setIsProcessingQueue(false);
       }
     }
@@ -590,7 +585,7 @@ const MapView: Component = () => {
 
       const responseData = await response.json();
       
-      if (!isMounted() || mountId() !== currentMountId) {
+      if (!isMounted()) {
         console.log(`[loadTile] Component unmounted during fetch for tile (${tileX}, ${tileY})`);
         return;
       }
@@ -623,8 +618,8 @@ const MapView: Component = () => {
       
       console.log(`[loadTile] Successfully loaded tile (${tileX}, ${tileY}), data length:`, bytes.length);
 
-      // Only update state if we're still mounted and the mount ID hasn't changed
-      if (isMounted() && mountId() === currentMountId) {
+      // Only update state if we're still mounted
+      if (isMounted()) {
         setTiles(prev => ({
           ...prev,
           [key]: {
@@ -648,8 +643,8 @@ const MapView: Component = () => {
       
       console.error(`[loadTile] Error loading tile (${tileX}, ${tileY}):`, err);
       
-      // Only update error state if we're still mounted and the mount ID hasn't changed
-      if (isMounted() && mountId() === currentMountId) {
+      // Only update error state if we're still mounted
+      if (isMounted()) {
         setTiles(prev => ({
           ...prev,
           [key]: {
