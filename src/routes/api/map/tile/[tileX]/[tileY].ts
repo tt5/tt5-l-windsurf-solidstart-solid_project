@@ -3,7 +3,6 @@ import { withAuth } from '~/middleware/auth';
 import { createApiResponse, createErrorResponse, generateRequestId } from '~/utils/api';
 import type { MapTile } from '~/lib/server/repositories/map-tile.repository';
 import { tileGenerationService } from '~/lib/server/services/tile-generation.service';
-import { tileCacheService } from '~/lib/server/services/tile-cache.service';
 
 // Maximum tile coordinates to prevent abuse
 const MAX_TILE_COORD = 10000;
@@ -48,24 +47,11 @@ export const GET = withAuth(async ({ request, params }) => {
     const tileY = parseInt(tileYStr, 10);
     validateTileCoords(tileX, tileY);
     
-    // Try to get the tile from cache first
-    let tile = tileCacheService.get(tileX, tileY);
-    let fromCache = true;
-    
-    // If not in cache, generate a new tile
-    if (!tile) {
-      fromCache = false;
-      const tileRepo = await getMapTileRepository();
-      
-      // Always generate a new tile when not in cache
-      tile = await tileGenerationService.generateTile(tileX, tileY);
-      await tileRepo.saveTile(tile);
-      
-      // Store in cache
-      if (tile) {
-        tileCacheService.set(tile);
-      }
-    }
+    // Always generate a fresh tile
+    const tileRepo = await getMapTileRepository();
+    const tile = await tileGenerationService.generateTile(tileX, tileY);
+    await tileRepo.saveTile(tile);
+    const fromCache = false;
     
     // Return the tile data with appropriate headers
     return new Response(JSON.stringify({
@@ -92,7 +78,7 @@ export const GET = withAuth(async ({ request, params }) => {
         'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
         'ETag': `"${tile.version}"`,
         'X-Tile-Generated': tile.version === 1 ? 'true' : 'false',
-        'X-Tile-Cache': fromCache ? 'hit' : 'miss'
+        'X-Tile-Cache': 'generated'
       }
     });
     
