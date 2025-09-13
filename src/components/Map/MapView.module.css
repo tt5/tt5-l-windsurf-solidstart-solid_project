@@ -30,11 +30,12 @@
   background-position: center;
   transform-origin: 0 0;
   pointer-events: none;
-  transform: scale(var(--scale, 1));
+  transform: translateZ(0) scale(var(--scale, 1));
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   left: 0;
   top: 0;
+  contain: layout style paint;
 }
 
 .tile {

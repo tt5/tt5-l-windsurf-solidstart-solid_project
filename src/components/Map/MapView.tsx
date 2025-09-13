@@ -677,18 +677,40 @@ const MapView: Component = () => {
     return () => clearTimeout(debounceTimer);
   });
 
+  // Debug: Track last zoom to detect changes
+  let lastZoom = viewport().zoom;
+  
   // Render a single tile
   const renderTile = (tile: Tile) => {
     const vp = viewport();
     const zoom = vp.zoom;
     
+    // Log zoom changes
+    if (zoom !== lastZoom) {
+      console.log(`Zoom changed from ${lastZoom} to ${zoom}`);
+      lastZoom = zoom;
+    }
+    
     // Calculate tile position in world coordinates (1 unit = 1 pixel)
     const tileWorldX = tile.x * TILE_SIZE;
     const tileWorldY = tile.y * TILE_SIZE;
     
-    // Calculate screen coordinates in world space
-    const screenX = Math.floor((tileWorldX - vp.x) * vp.zoom + 0.5);
-    const screenY = Math.floor((tileWorldY - vp.y) * vp.zoom + 0.5);
+    // Calculate screen coordinates in world space, ensuring pixel-perfect alignment
+    const screenX = Math.floor((tileWorldX - vp.x) * zoom);
+    const screenY = Math.floor((tileWorldY - vp.y) * zoom);
+    
+    // Debug logging for (0,0) tile
+    if (tile.x === 0 && tile.y === 0) {
+      console.log('(0,0) Tile Position:', { 
+        screenX, 
+        screenY, 
+        viewportX: vp.x, 
+        viewportY: vp.y, 
+        zoom,
+        expectedX: Math.floor(-vp.x * zoom),
+        expectedY: Math.floor(-vp.y * zoom)
+      });
+    }
 
     // Calculate tile bounds with exact size (no overlap)
     const tileEndWorldX = tileWorldX + TILE_SIZE;
@@ -922,6 +944,17 @@ const MapView: Component = () => {
     const vp = viewport();
     const gridSize = 100; // Grid size in world coordinates
     
+    // Debug: Log crosshair position
+    const crosshairScreenX = Math.floor(-vp.x * vp.zoom + vp.width/2);
+    const crosshairScreenY = Math.floor(-vp.y * vp.zoom + vp.height/2);
+    console.log('Crosshair Position:', { 
+      screenX: crosshairScreenX, 
+      screenY: crosshairScreenY,
+      viewportX: vp.x,
+      viewportY: vp.y,
+      zoom: vp.zoom
+    });
+    
     // Calculate grid bounds in world coordinates with some padding
     const padding = 2; // Extra cells to render outside viewport
     
@@ -1087,17 +1120,35 @@ const MapView: Component = () => {
       <div class={styles.controls}>
         <div class={styles.zoomControls}>
           <button 
-            onClick={() => updateViewport({
-              zoom: Math.min(MAX_ZOOM, viewport().zoom + ZOOM_STEP)
-            })}
+            onClick={() => {
+              const vp = viewport();
+              const newZoom = Math.min(MAX_ZOOM, vp.zoom * 1.2);
+              // Calculate the new position to keep (0,0) fixed
+              const dx = (vp.width / 2) * (1 - newZoom / vp.zoom);
+              const dy = (vp.height / 2) * (1 - newZoom / vp.zoom);
+              updateViewport({
+                zoom: newZoom,
+                x: vp.x - dx,
+                y: vp.y - dy
+              });
+            }}
             disabled={viewport().zoom >= MAX_ZOOM}
           >
             +
           </button>
           <button 
-            onClick={() => updateViewport({
-              zoom: Math.max(MIN_ZOOM, viewport().zoom - ZOOM_STEP)
-            })}
+            onClick={() => {
+              const vp = viewport();
+              const newZoom = Math.max(MIN_ZOOM, vp.zoom / 1.2);
+              // Calculate the new position to keep (0,0) fixed
+              const dx = (vp.width / 2) * (1 - newZoom / vp.zoom);
+              const dy = (vp.height / 2) * (1 - newZoom / vp.zoom);
+              updateViewport({
+                zoom: newZoom,
+                x: vp.x - dx,
+                y: vp.y - dy
+              });
+            }}
             disabled={viewport().zoom <= MIN_ZOOM}
           >
             -
