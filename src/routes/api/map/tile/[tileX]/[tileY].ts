@@ -60,7 +60,7 @@ export const GET = withAuth(async (event) => {
       data: {
         tileX: tile.tileX,
         tileY: tile.tileY,
-        data: Buffer.from(tile.data).toString('base64'), // Convert Uint8Array to base64 for JSON
+        data: Array.from(tile.data).join(','), // Convert Uint8Array to comma-separated string for JSON
         version: tile.version,
         lastUpdatedMs: tile.lastUpdatedMs,
         // Add tile bounds for client-side convenience
