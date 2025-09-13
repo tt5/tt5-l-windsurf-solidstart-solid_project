@@ -297,7 +297,8 @@ text {
 }
 
 .tileLabel {
-  display: none;
+  display: visible;
+  z-index: 3;
 }
 
 .tileContainer {
@@ -684,7 +685,7 @@ text {
 }
 
 .mapContent {
-  transform-origin: 0 0;
+  transform-origin: 10 10;
   width: 200vw;
   height: 200vh;
   transform: translate3d(

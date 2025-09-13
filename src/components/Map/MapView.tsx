@@ -843,8 +843,9 @@ const MapView: Component = () => {
     }
     
     // Calculate tile position in world coordinates (1 unit = 1 pixel)
-    const tileWorldX = tile.x * TILE_SIZE;
-    const tileWorldY = tile.y * TILE_SIZE;
+    // tile.x+t tile.y+t also change TAG-t
+    const tileWorldX = (tile.x+5) * TILE_SIZE;
+    const tileWorldY = (tile.y+5) * TILE_SIZE;
     
     // Calculate position relative to the viewport
     // Since the viewport is centered, we need to adjust the position
@@ -1165,7 +1166,8 @@ const MapView: Component = () => {
             '--translate-x': '0px',
             '--translate-y': '0px',
             '--scale': viewport().zoom,
-            'transform': `scale(${viewport().zoom}) translate(${-viewport().x}px, ${-viewport().y}px)`
+            // t*64 (also change TAG-t
+            'transform': `scale(${viewport().zoom}) translate(${-viewport().x - (5*64) - 100}px, ${-viewport().y - (2*64) - 350}px)`
           }}
         >
           <div style={{
