@@ -37,16 +37,9 @@
   - [ ] Map base point coordinates to affected tiles
     - [ ] Convert world coordinates to tile coordinates
     - [ ] Identify all tiles affected by each base point change
-  - [ ] Update map_tiles table:
-    - [ ] 1. For each affected tile:
-      - [ ] Fetch current tile data from map_tiles
-      - [ ] Decompress tile data if needed
-      - [ ] Apply base point changes to tile bitmap
-      - [ ] Recompress updated tile data
-      - [ ] Update last_updated_ms timestamp
-      - [ ] Store updated tile in map_tiles
-    - [ ] 2. Use database transactions for atomic updates
-    - [ ] 3. Implement batch processing for multiple tile updates
+  - [ ] Invalidate affected tiles in cache
+    - [ ] Mark affected tiles as stale in the cache
+    - [ ] Next request will trigger regeneration from base points
   - [ ] Handle offline scenarios with queued updates
 
 - [ ] Implement tile invalidation on changes
