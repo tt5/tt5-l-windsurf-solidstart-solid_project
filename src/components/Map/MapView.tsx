@@ -118,18 +118,33 @@ const MapView: Component = () => {
     }
     
     // Schedule initial tile loading after a short delay to ensure the component is fully rendered
-    setTimeout(() => {
+    console.log('[MapView] Scheduling initial tile load');
+    const initialLoad = () => {
       console.log('[MapView] Running initial scheduleTilesForLoading');
       // Update viewport with initial dimensions
+      const width = containerRef?.clientWidth || VIEWPORT_WIDTH;
+      const height = containerRef?.clientHeight || VIEWPORT_HEIGHT;
+      
+      console.log(`[MapView] Initial viewport dimensions: ${width}x${height}`);
+      
       setViewport(prev => ({
         ...prev,
-        width: containerRef?.clientWidth || VIEWPORT_WIDTH,
-        height: containerRef?.clientHeight || VIEWPORT_HEIGHT
+        width,
+        height
       }));
       
-      // Schedule initial tile loading
-      scheduleTilesForLoading();
-    }, 100);
+      // Force add center tile to the queue to ensure something loads
+      const centerX = Math.floor((width / 2) / TILE_SIZE);
+      const centerY = Math.floor((height / 2) / TILE_SIZE);
+      
+      console.log(`[MapView] Adding center tile (${centerX}, ${centerY}) to queue`);
+      scheduleTilesForLoading([{x: centerX, y: centerY}]);
+    };
+    
+    // Use requestAnimationFrame to ensure the DOM is ready
+    requestAnimationFrame(() => {
+      setTimeout(initialLoad, 50);
+    });
   });
 
   // Update viewport and schedule tiles for loading
@@ -209,10 +224,8 @@ const MapView: Component = () => {
         return newQueue;
       });
       
-      // Process the queue if not already doing so
-      if (!isProcessingQueue()) {
-        processTileQueue();
-      }
+      // Always process the queue when specific tiles are provided
+      processTileQueue();
       return;
     }
     if (shouldStopProcessing || mountId() === 0) return;
@@ -232,7 +245,8 @@ const MapView: Component = () => {
     
     // If queue is full, skip scheduling more tiles
     if (queueLength >= TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD) {
-      console.log(`[scheduleTilesForLoading] Queue full (${queueLength}), skipping`);
+      console.log(`[scheduleTilesForLoading] Queue full (${queueLength}), processing existing queue`);
+      processTileQueue();
       return;
     }
     
