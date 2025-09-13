@@ -49,13 +49,13 @@ const MapView: Component = () => {
   const { user } = useAuth();
   const [tiles, setTiles] = createSignal<Record<string, Tile>>({});
   let containerRef: HTMLDivElement | undefined;
-  // Initialize viewport to start at (0,0) in world coordinates
+  // Initialize viewport to center on the map at 100% zoom
   const getInitialViewport = (): Viewport => {
     const width = containerRef?.clientWidth || VIEWPORT_WIDTH;
     const height = containerRef?.clientHeight || VIEWPORT_HEIGHT;
     return {
-      x: 0,  // Start at (0,0) in world coordinates
-      y: 0,
+      x: -width / 2,  // Center at (0,0) in world coordinates
+      y: -height / 2,
       zoom: 1.0,  // 100% zoom
       width,
       height
@@ -748,6 +748,9 @@ const MapView: Component = () => {
                 alt={`Tile ${tile.x},${tile.y}`}
                 class={styles.tileImage}
               />
+              <div class={styles.tileLabel}>
+                {tile.x},{tile.y}
+              </div>
             </div>
           );
         } else {
