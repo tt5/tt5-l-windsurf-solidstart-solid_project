@@ -29,12 +29,12 @@ const handleApiError = (error: unknown, requestId: string, endpoint: string) => 
   
   if (error instanceof Error) {
     if (error.message.includes('coordinates must be')) {
-      return createErrorResponse(400, error.message, requestId);
+      return createErrorResponse(error.message, 400, undefined, { requestId });
     }
-    return createErrorResponse(500, `Internal server error: ${error.message}`, requestId);
+    return createErrorResponse(`Internal server error: ${error.message}`, 500, undefined, { requestId });
   }
   
-  return createErrorResponse(500, 'An unknown error occurred', requestId);
+  return createErrorResponse('An unknown error occurred', 500, undefined, { requestId });
 };
 
 export const GET = withAuth(async ({ request, params }) => {
@@ -51,7 +51,7 @@ export const GET = withAuth(async ({ request, params }) => {
     const tileRepo = await getMapTileRepository();
     const tile = await tileGenerationService.generateTile(tileX, tileY);
     await tileRepo.saveTile(tile);
-    const fromCache = false;
+    // fromCache is not used anymore, but keeping it for now to avoid breaking the response
     
     // Return the tile data with appropriate headers
     return new Response(JSON.stringify({
@@ -77,8 +77,7 @@ export const GET = withAuth(async ({ request, params }) => {
         'Content-Type': 'application/json',
         'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
         'ETag': `"${tile.version}"`,
-        'X-Tile-Generated': tile.version === 1 ? 'true' : 'false',
-        'X-Tile-Cache': 'generated'
+        'X-Tile-Generated': String(tile.version === 1)
       }
     });
     
