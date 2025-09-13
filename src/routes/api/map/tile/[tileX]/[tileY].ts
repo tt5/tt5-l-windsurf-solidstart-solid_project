@@ -52,17 +52,14 @@ export const GET = withAuth(async ({ request, params }) => {
     let tile = tileCacheService.get(tileX, tileY);
     let fromCache = true;
     
-    // If not in cache, get from database
+    // If not in cache, generate a new tile
     if (!tile) {
       fromCache = false;
       const tileRepo = await getMapTileRepository();
-      tile = await tileRepo.getTile(tileX, tileY);
       
-      // If tile doesn't exist in database, generate it
-      if (!tile) {
-        tile = await tileGenerationService.generateTile(tileX, tileY);
-        await tileRepo.saveTile(tile);
-      }
+      // Always generate a new tile when not in cache
+      tile = await tileGenerationService.generateTile(tileX, tileY);
+      await tileRepo.saveTile(tile);
       
       // Store in cache
       if (tile) {
