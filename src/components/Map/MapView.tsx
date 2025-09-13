@@ -102,9 +102,18 @@ const MapView: Component = () => {
     }
   };
 
-  // Initialize tile loading when component mounts
+  // Track mount state to prevent multiple initializations
+  const [isMounted, setIsMounted] = createSignal(false);
+  
+  // Initialize component
   onMount(() => {
-    console.log('[MapView] Component mounted, scheduling initial tile load');
+    if (isMounted()) {
+      console.log('[MapView] Component already initialized, skipping');
+      return;
+    }
+    
+    console.log('[MapView] Component mounting, initializing...');
+    setIsMounted(true);
     
     // Set up resize observer
     if (containerRef) {
@@ -113,15 +122,18 @@ const MapView: Component = () => {
       
       // Clean up on unmount
       onCleanup(() => {
+        console.log('[MapView] Cleaning up resize observer');
         resizeObserver.disconnect();
       });
     }
     
-    // Schedule initial tile loading after a short delay to ensure the component is fully rendered
-    console.log('[MapView] Scheduling initial tile load');
+    // Initial tile loading function
     const initialLoad = () => {
-      console.log('[MapView] Running initial scheduleTilesForLoading');
-      // Update viewport with initial dimensions
+      if (!isMounted()) return;
+      
+      console.log('[MapView] Running initial tile loading');
+      
+      // Update viewport with actual dimensions
       const width = containerRef?.clientWidth || VIEWPORT_WIDTH;
       const height = containerRef?.clientHeight || VIEWPORT_HEIGHT;
       
@@ -133,7 +145,7 @@ const MapView: Component = () => {
         height
       }));
       
-      // Force add center tile to the queue to ensure something loads
+      // Add center tile to ensure something loads immediately
       const centerX = Math.floor((width / 2) / TILE_SIZE);
       const centerY = Math.floor((height / 2) / TILE_SIZE);
       
@@ -141,9 +153,17 @@ const MapView: Component = () => {
       scheduleTilesForLoading([{x: centerX, y: centerY}]);
     };
     
-    // Use requestAnimationFrame to ensure the DOM is ready
-    requestAnimationFrame(() => {
-      setTimeout(initialLoad, 50);
+    // Schedule initial load after a short delay to ensure DOM is ready
+    const loadTimer = setTimeout(() => {
+      if (isMounted()) {
+        initialLoad();
+      }
+    }, 50);
+    
+    // Clean up timer on unmount
+    onCleanup(() => {
+      console.log('[MapView] Cleaning up load timer');
+      clearTimeout(loadTimer);
     });
   });
 
@@ -327,12 +347,15 @@ const MapView: Component = () => {
 
   // Cleanup on unmount
   onCleanup(() => {
-    console.log('[MapView] Cleaning up...');
+    if (!isMounted()) return;
+    
+    console.log('[MapView] Cleaning up component...');
     shouldStopProcessing = true;
-    setMountId(prev => prev + 1);
+    setIsMounted(false);
     
     // Clear any pending timeouts first
     if (processQueueTimeout !== null) {
+      console.log('[MapView] Clearing process queue timeout');
       clearTimeout(processQueueTimeout);
       processQueueTimeout = null;
     }
@@ -341,6 +364,7 @@ const MapView: Component = () => {
     const operations = Array.from(activeOperations);
     activeOperations.clear();
     
+    console.log(`[MapView] Aborting ${operations.length} active operations`);
     operations.forEach(controller => {
       try {
         controller.abort();
@@ -350,30 +374,105 @@ const MapView: Component = () => {
     });
     
     // Clear the queue and tiles in a single batch update
+    console.log('[MapView] Clearing tile queue and state');
     batch(() => {
       setTileQueue([]);
       setTiles({});
     });
+    
+    // Reset mount ID to force new operations to be created on next mount
+    setMountId(prev => prev + 1);
+    console.log('[MapView] Cleanup complete');
   });
   
   // Helper to create a cancellable operation
   const createCancellableOperation = () => {
-    const currentMountId = mountId();
-    if (currentMountId === 0) throw new Error('Component is not mounted');
+    if (!isMounted()) {
+      throw new Error('Cannot create operation - component not mounted');
+    }
     
     const controller = new AbortController();
     activeOperations.add(controller);
     
-    const cleanup = () => {
-      if (activeOperations.has(controller)) {
+    return {
+      signal: controller.signal,
+      cleanup: () => {
         activeOperations.delete(controller);
       }
     };
+  };
+
+  // Process the tile loading queue with priority to visible tiles
+  const processTileQueue = async () => {
+    // Don't process if we're already processing or should stop
+    if (isProcessingQueue() || !isMounted()) {
+      console.log(`[processTileQueue] ${isProcessingQueue() ? 'Already processing' : 'Not mounted'}, skipping`);
+      return;
+    }
     
-    return {
-      signal: controller.signal,
-      cleanup
-    };
+    try {
+      setIsProcessingQueue(true);
+      
+      // Get current queue and check if it's empty
+      const currentQueue = tileQueue();
+      if (currentQueue.length === 0) {
+        console.log('[processTileQueue] Queue is empty, nothing to process');
+        return;
+      }
+      
+      console.log(`[processTileQueue] Processing ${currentQueue.length} tiles`);
+      
+      // Sort tiles by distance from viewport center (closest first)
+      const vp = viewport();
+      const centerX = vp.width / 2;
+      const centerY = vp.height / 2;
+      
+      const sortedQueue = [...currentQueue].sort((a, b) => {
+        const distA = Math.sqrt(Math.pow(a.x - centerX, 2) + Math.pow(a.y - centerY, 2));
+        const distB = Math.sqrt(Math.pow(b.x - centerX, 2) + Math.pow(b.y - centerY, 2));
+        return distA - distB;
+      });
+      
+      // Process tiles in batches
+      const batchSize = Math.min(TILE_LOAD_CONFIG.BATCH_SIZE, sortedQueue.length);
+      const batch = sortedQueue.slice(0, batchSize);
+      
+      console.log(`[processTileQueue] Loading batch of ${batch.length} tiles`);
+      
+      // Process each tile in the batch
+      const tilePromises = batch.map(({ x, y }) => 
+        loadTile(x, y).catch(error => {
+          console.error(`[processTileQueue] Error loading tile (${x},${y}):`, error);
+          return null;
+        })
+      );
+      
+      // Wait for all tiles in the batch to complete
+      await Promise.all(tilePromises);
+      
+      // Remove processed tiles from the queue
+      setTileQueue(prev => {
+        const processedCoords = new Set(batch.map(t => `${t.x},${t.y}`));
+        return prev.filter(tile => !processedCoords.has(`${tile.x},${tile.y}`));
+      });
+      
+      // If there are more tiles to process, schedule the next batch
+      const remainingTiles = tileQueue().length;
+      if (remainingTiles > 0 && isMounted()) {
+        console.log(`[processTileQueue] Scheduling next batch (${remainingTiles} tiles remaining)`);
+        processQueueTimeout = window.setTimeout(() => {
+          if (isMounted()) {
+            processTileQueue();
+          }
+        }, TILE_LOAD_CONFIG.BATCH_DELAY);
+      } else {
+        console.log('[processTileQueue] Queue processing complete');
+      }
+    } catch (error) {
+      console.error('[processTileQueue] Error in queue processing:', error);
+    } finally {
+      setIsProcessingQueue(false);
+    }
   };
 
   // Convert world coordinates to tile coordinates
@@ -392,24 +491,28 @@ const MapView: Component = () => {
   const getTileKey = (tileX: number, tileY: number) => `${tileX},${tileY}`;
 
   // Load a single tile
-  const loadTile = async (tileX: number, tileY: number) => {
+  const loadTile = async (tileX: number, tileY: number): Promise<void> => {
     const currentMountId = mountId();
-    
     const key = getTileKey(tileX, tileY);
-    const currentTiles = tiles();
     
+    // Skip if component is unmounting
+    if (!isMounted() || currentMountId === 0) {
+      console.log(`[loadTile] Component unmounting, skipping tile (${tileX}, ${tileY})`);
+      return;
+    }
+
+    const currentTiles = tiles();
     console.log(`[loadTile] Attempting to load tile (${tileX}, ${tileY})`);
     
-    // Skip if already loading
-    if (currentTiles[key]?.loading) {
+    // Skip if already loading or loaded recently
+    const currentTile = currentTiles[key];
+    if (currentTile?.loading) {
       console.log(`[loadTile] Tile (${tileX}, ${tileY}) is already loading`);
       return;
     }
     
     // Check if we need to load fresh data
-    const currentTile = currentTiles[key];
     if (currentTile?.data) {
-      // If tile was loaded in a previous mount or is stale, reload it
       const isStale = Date.now() - currentTile.timestamp >= 30000;
       const isFromPreviousMount = currentTile.mountId !== currentMountId;
       
@@ -422,8 +525,6 @@ const MapView: Component = () => {
         { isStale, isFromPreviousMount });
     }
     
-    const { signal, cleanup } = createCancellableOperation();
-
     // Mark as loading
     setTiles(prev => ({
       ...prev,
@@ -438,53 +539,43 @@ const MapView: Component = () => {
       }
     }));
 
+    let cleanupFn: (() => void) | null = null;
+    
     try {
-      // Always fetch from server first
+      // Create a cancellable operation
+      const { signal, cleanup } = createCancellableOperation();
+      cleanupFn = cleanup;
+      
       console.log(`[loadTile] Fetching tile (${tileX}, ${tileY}) from server`);
-      if (mountId() !== currentMountId) {
-        console.log(`[loadTile] Component remounted, aborting fetch for tile (${tileX}, ${tileY})`);
-        return null;
-      }
       
       const response = await fetch(`/api/map/tile/${tileX}/${tileY}`, { 
         signal,
-        headers: {
-          'Accept': 'application/json'
-        }
+        headers: { 'Accept': 'application/json' }
       });
       
       if (!response.ok) {
-        throw new Error(`Failed to load tile (${tileX}, ${tileY}): ${response.statusText}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const responseData = await response.json();
-      console.log(`[loadTile] Response for tile (${tileX}, ${tileY}):`, {
-        success: responseData.success,
-        data: {
-          ...responseData.data,
-          data: typeof responseData.data?.data === 'string' 
-            ? `${responseData.data.data.substring(0, 30)}...` 
-            : responseData.data?.data
-        },
-        requestId: responseData.requestId
-      });
+      
+      if (!isMounted() || mountId() !== currentMountId) {
+        console.log(`[loadTile] Component unmounted during fetch for tile (${tileX}, ${tileY})`);
+        return;
+      }
       
       if (!responseData.success || !responseData.data) {
         console.error(`[loadTile] Invalid response format for tile (${tileX}, ${tileY}):`, responseData);
-        throw new Error(`Invalid response format for tile (${tileX}, ${tileY})`);
+        throw new Error('Invalid response format');
       }
       
-      // The API returns the tile data in responseData.data
+      // Process tile data
       const tileData = responseData.data;
-      
-      // Convert the data to a Uint8Array based on its type
-      let bytes;
+      let bytes: Uint8Array;
       
       if (Array.isArray(tileData.data)) {
-        // If it's already an array of numbers, convert directly to Uint8Array
         bytes = new Uint8Array(tileData.data);
       } else if (typeof tileData.data === 'string') {
-        // Handle comma-separated string of numbers
         try {
           const numbers = tileData.data.split(',').map(Number);
           if (numbers.some(isNaN)) {
@@ -499,144 +590,124 @@ const MapView: Component = () => {
         throw new Error('Unexpected tile data format');
       }
       
-      console.log(`[loadTile] Successfully processed tile (${tileX}, ${tileY}), data length:`, bytes.length);
+      console.log(`[loadTile] Successfully loaded tile (${tileX}, ${tileY}), data length:`, bytes.length);
 
-      setTiles(prev => ({
-        ...prev,
-        [key]: {
-          x: tileX,
-          y: tileY,
-          data: bytes,
-          loading: false,
-          error: false,
-          timestamp: Date.now(),
-          mountId: currentMountId,
-          fromCache: false
-        }
-      }));
+      // Only update state if we're still mounted and the mount ID hasn't changed
+      if (isMounted() && mountId() === currentMountId) {
+        setTiles(prev => ({
+          ...prev,
+          [key]: {
+            x: tileX,
+            y: tileY,
+            data: bytes,
+            loading: false,
+            error: false,
+            timestamp: Date.now(),
+            mountId: currentMountId,
+            fromCache: false
+          }
+        }));
+      }
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return null;
+      // Don't log aborted requests as errors
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log(`[loadTile] Request for tile (${tileX}, ${tileY}) was aborted`);
+        return;
+      }
       
-      console.error(`Error loading tile (${tileX}, ${tileY}):`, err);
-      if (mountId() === currentMountId) {
+      console.error(`[loadTile] Error loading tile (${tileX}, ${tileY}):`, err);
+      
+      // Only update error state if we're still mounted and the mount ID hasn't changed
+      if (isMounted() && mountId() === currentMountId) {
         setTiles(prev => ({
           ...prev,
           [key]: {
             ...(prev[key] || { x: tileX, y: tileY }),
             loading: false,
             error: true,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            mountId: currentMountId
           }
         }));
       }
     } finally {
-      cleanup();
+      // Clean up the abort controller
+      if (cleanupFn) {
+        cleanupFn();
+      }
     }
   };
 
   // Process the tile loading queue with priority to visible tiles
   const processTileQueue = async () => {
-    const currentMountId = mountId();
-    if (shouldStopProcessing || currentMountId === 0) {
-      console.log('[processTileQueue] Skipping - component unmounting or stopped');
+    // Don't process if we're already processing or should stop
+    if (isProcessingQueue() || !isMounted()) {
+      console.log(`[processTileQueue] ${isProcessingQueue() ? 'Already processing' : 'Not mounted'}, skipping`);
       return;
     }
-    
-    if (activeOperations.size > 0) {
-      console.log(`[processTileQueue] Active operations (${activeOperations.size}), will retry`);
-      // Schedule a retry after a short delay
-      setTimeout(processTileQueue, 100);
-      return;
-    }
-    
-    const { signal, cleanup } = createCancellableOperation();
-    
-    if (isProcessingQueue()) {
-      return;
-    }
-    
-    const currentQueue = tileQueue();
-    if (currentQueue.length === 0) {
-      return;
-    }
-    
-    console.log(`[processTileQueue] Starting, queue length: ${currentQueue.length}`);
-    
-    setIsProcessingQueue(true);
-    // Create a copy of the queue to work with and clear the main queue
-    const queue = [...currentQueue];
-    const processedTiles = new Set<string>();
-    setTileQueue([]); // Clear the queue immediately to prevent duplicates
     
     try {
-      const vp = viewport();
-      // Sort tiles by distance to viewport center (prioritize loading visible tiles first)
-      const centerX = vp.x + (vp.width / 2) / vp.zoom;
-      const centerY = vp.y + (vp.height / 2) / vp.zoom;
+      setIsProcessingQueue(true);
       
-      queue.sort((a, b) => {
-        const distA = Math.hypot(a.x * TILE_SIZE + TILE_SIZE/2 - centerX, a.y * TILE_SIZE + TILE_SIZE/2 - centerY);
-        const distB = Math.hypot(b.x * TILE_SIZE + TILE_SIZE/2 - centerX, b.y * TILE_SIZE + TILE_SIZE/2 - centerY);
+      // Get current queue and check if it's empty
+      const currentQueue = tileQueue();
+      if (currentQueue.length === 0) {
+        console.log('[processTileQueue] Queue is empty, nothing to process');
+        return;
+      }
+      
+      console.log(`[processTileQueue] Processing ${currentQueue.length} tiles`);
+      
+      // Sort tiles by distance from viewport center (closest first)
+      const vp = viewport();
+      const centerX = vp.width / 2;
+      const centerY = vp.height / 2;
+      
+      const sortedQueue = [...currentQueue].sort((a, b) => {
+        const distA = Math.sqrt(Math.pow(a.x - centerX, 2) + Math.pow(a.y - centerY, 2));
+        const distB = Math.sqrt(Math.pow(b.x - centerX, 2) + Math.pow(b.y - centerY, 2));
         return distA - distB;
       });
       
-            // Process tiles in batches to avoid UI freezing
-      console.log(`[processTileQueue] Processing ${queue.length} tiles in batches of ${TILE_LOAD_CONFIG.BATCH_SIZE}`);
+      // Process tiles in batches
+      const batchSize = Math.min(TILE_LOAD_CONFIG.BATCH_SIZE, sortedQueue.length);
+      const batch = sortedQueue.slice(0, batchSize);
       
-      // Process all batches
-      for (let i = 0; i < queue.length && !shouldStopProcessing; i += TILE_LOAD_CONFIG.BATCH_SIZE) {
-        if (shouldStopProcessing) break;
-        
-        const batch = queue.slice(i, i + TILE_LOAD_CONFIG.BATCH_SIZE);
-        console.log(`[processTileQueue] Processing batch of ${batch.length} tiles`);
-        
-        try {
-          // Mark these tiles as processed
-          batch.forEach(({x, y}) => processedTiles.add(`${x},${y}`));
-          
-          // Load all tiles in parallel
-          await Promise.all(batch.map(({x, y}) => {
-            if (shouldStopProcessing) return Promise.resolve();
-            console.log(`[processTileQueue] Loading tile (${x}, ${y})`);
-            return loadTile(x, y);
-          }));
-          
-          // Add a small delay between batches to keep the UI responsive
-          if (i + TILE_LOAD_CONFIG.BATCH_SIZE < queue.length && !shouldStopProcessing) {
-            await new Promise(resolve => {
-              if (shouldStopProcessing) return resolve(undefined);
-              const timeoutId = setTimeout(resolve, TILE_LOAD_CONFIG.BATCH_DELAY);
-              // Store timeout ID for cleanup
-              processQueueTimeout = timeoutId as unknown as number;
-            });
+      console.log(`[processTileQueue] Loading batch of ${batch.length} tiles`);
+      
+      // Process each tile in the batch
+      const tilePromises = batch.map(({ x, y }) => 
+        loadTile(x, y).catch(error => {
+          console.error(`[processTileQueue] Error loading tile (${x},${y}):`, error);
+          return null;
+        })
+      );
+      
+      // Wait for all tiles in the batch to complete
+      await Promise.all(tilePromises);
+      
+      // Remove processed tiles from the queue
+      setTileQueue(prev => {
+        const processedCoords = new Set(batch.map(t => `${t.x},${t.y}`));
+        return prev.filter(tile => !processedCoords.has(`${tile.x},${tile.y}`));
+      });
+      
+      // If there are more tiles to process, schedule the next batch
+      const remainingTiles = tileQueue().length;
+      if (remainingTiles > 0 && isMounted()) {
+        console.log(`[processTileQueue] Scheduling next batch (${remainingTiles} tiles remaining)`);
+        processQueueTimeout = window.setTimeout(() => {
+          if (isMounted()) {
+            processTileQueue();
           }
-        } catch (err) {
-          if (!shouldStopProcessing) {
-            console.error('Error in batch processing:', err);
-          }
-          break;
-        }
+        }, TILE_LOAD_CONFIG.BATCH_DELAY);
+      } else {
+        console.log('[processTileQueue] Queue processing complete');
       }
-    } catch (err) {
-      console.error('Error processing tile queue:', err);
-      setError('Error loading map data');
+    } catch (error) {
+      console.error('[processTileQueue] Error in queue processing:', error);
     } finally {
-      cleanup();
       setIsProcessingQueue(false);
-      
-      // Check if we have more tiles to process
-      if (mountId() > 0) {
-        const remainingTiles = tileQueue();
-        if (remainingTiles.length > 0) {
-          console.log(`[processTileQueue] Processing remaining ${remainingTiles.length} tiles`);
-          // Use requestAnimationFrame for better scheduling
-          requestAnimationFrame(() => {
-            processQueueTimeout = window.setTimeout(processTileQueue, 0);
-          });
-        } else {
-          console.log('[processTileQueue] Queue is empty, all tiles processed');
-        }
-      }
     }
   };
   
@@ -748,15 +819,9 @@ const MapView: Component = () => {
     return false;
   };
 
-  // Load initial tiles
-  onMount(() => {
-    console.log('[MapView] Component mounted, scheduling initial tile load');
-    scheduleTilesForLoading();
-    
-    // Clean up event listeners
-    onCleanup(() => {
-      document.body.style.cursor = '';
-    });
+  // Handle cursor cleanup on unmount
+  onCleanup(() => {
+    document.body.style.cursor = '';
   });
 
   // Handle zooming with mouse wheel
@@ -797,20 +862,6 @@ const MapView: Component = () => {
     });
   };
   
-  // Initialize and clean up
-  onMount(() => {
-    // Schedule initial tile loading
-    scheduleTilesForLoading();
-    
-    // Clean up
-    onCleanup(() => {
-      document.body.style.cursor = '';
-      // Don't clear the IndexedDB cache, just the in-memory state
-      setTiles({});
-      setTileQueue([]);
-      setTileCache({});
-    });
-  });
   
   // Update tiles when viewport changes with debounce
   createEffect(() => {
