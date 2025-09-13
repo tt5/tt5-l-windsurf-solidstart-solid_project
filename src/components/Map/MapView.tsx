@@ -902,128 +902,86 @@ const MapView: Component = () => {
     return dataUrl;
   };
 
-  // Render coordinate grid
+  // Simple test grid
   const renderGrid = () => {
     const vp = viewport();
-    const gridSize = 50; // Grid size in world coordinates
+    const gridSize = 20; // Reduced from 50px to 20px
+    const width = vp.width / vp.zoom;
+    const height = vp.height / vp.zoom;
     
-    // Calculate visible area in world coordinates with padding
-    const padding = 2; // Extra cells to render outside viewport
-    
-    // Calculate visible area in world coordinates
-    const visibleLeft = vp.x;
-    const visibleTop = vp.y;
-    const visibleRight = vp.x + (vp.width / vp.zoom);
-    const visibleBottom = vp.y + (vp.height / vp.zoom);
-    
-    // Calculate grid boundaries with padding
-    const startX = Math.floor(visibleLeft / gridSize) * gridSize - padding * gridSize;
-    const startY = Math.floor(visibleTop / gridSize) * gridSize - padding * gridSize;
-    const endX = Math.ceil(visibleRight / gridSize) * gridSize + padding * gridSize;
-    const endY = Math.ceil(visibleBottom / gridSize) * gridSize + padding * gridSize;
-    
-    const lines = [];
-    
-    // Add vertical grid lines
-    for (let x = startX; x <= endX; x += gridSize) {
-      const isMajor = x % (gridSize * 5) === 0;
-      const isHundred = x % 100 === 0;
-      const isZero = x === 0;
-      
-      lines.push(
-        <line 
-          x1={x} 
-          y1={startY}
-          x2={x} 
-          y2={endY}
-          stroke={isZero ? '#ff0000' : isHundred ? '#888888' : isMajor ? '#aaaaaa' : '#e0e0e0'}
-          stroke-width={isZero ? '2' : isHundred ? '1.2' : isMajor ? '1' : '0.5'}
-          vector-effect="non-scaling-stroke"
-        />
-      );
-      
-      // Add x-axis labels for major lines
-      if (isHundred || isZero) {
-        lines.push(
-          <text 
-            x={x + 2}
-            y={-2}
-            fill={isZero ? '#ff0000' : '#000000'}
-            font-size="10"
-            text-anchor="start"
-            style={{ 'font-family': 'Arial, sans-serif', 'pointer-events': 'none' }}
-          >
-            {x}
-          </text>
+    // Create a test pattern that covers the viewport
+    const testPattern = [
+      // Red border around the viewport
+      <rect 
+        x={vp.x} y={vp.y} 
+        width={width} height={height} 
+        fill="none" 
+        stroke="red" 
+        stroke-width="4"
+      />,
+      // Grid lines
+      ...Array.from({length: Math.ceil(width / gridSize) + 1}).map((_, i) => {
+        const x = vp.x + (i * gridSize);
+        return (
+          <line 
+            x1={x} y1={vp.y} 
+            x2={x} y2={vp.y + height} 
+            stroke={x === 0 ? 'red' : '#000000'}
+            stroke-width={x % 100 === 0 ? '2' : '1'}
+          />
         );
-      }
-    }
-    
-    // Add horizontal grid lines
-    for (let y = startY; y <= endY; y += gridSize) {
-      const isMajor = y % (gridSize * 5) === 0;
-      const isHundred = y % 100 === 0;
-      const isZero = y === 0;
-      
-      lines.push(
-        <line 
-          x1={startX} 
-          y1={y}
-          x2={endX} 
-          y2={y}
-          stroke={isZero ? '#ff0000' : isHundred ? '#888888' : isMajor ? '#aaaaaa' : '#e0e0e0'}
-          stroke-width={isZero ? '2' : isHundred ? '1.2' : isMajor ? '1' : '0.5'}
-          vector-effect="non-scaling-stroke"
-        />
-      );
-      
-      // Add y-axis labels for major lines
-      if (y !== 0 && (isHundred || isZero)) {
-        lines.push(
-          <text 
-            x={2}
-            y={y - 2}
-            fill={isZero ? '#ff0000' : '#000000'}
-            font-size="10"
-            text-anchor="start"
-            style={{ 'font-family': 'Arial, sans-serif', 'pointer-events': 'none' }}
-          >
-            {y}
-          </text>
+      }),
+      ...Array.from({length: Math.ceil(height / gridSize) + 1}).map((_, i) => {
+        const y = vp.y + (i * gridSize);
+        return (
+          <line 
+            x1={vp.x} y1={y} 
+            x2={vp.x + width} y2={y} 
+            stroke={y === 0 ? 'red' : '#000000'}
+            stroke-width={y % 100 === 0 ? '2' : '1'}
+          />
         );
-      }
-    }
-    
+      })
+    ];
+
     return (
-      <svg 
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          'transform-origin': '0 0',
-          transform: `translate(${-vp.x * vp.zoom}px, ${-vp.y * vp.zoom}px) scale(${vp.zoom})`,
-          'will-change': 'transform',
-          'pointer-events': 'none',
-          'z-index': 1
-        }}
-        viewBox={`${startX} ${startY} ${endX - startX} ${endY - startY}`}
-        preserveAspectRatio="none"
-      >
-        {lines}
-      </svg>
+      <div class={styles.testGridContainer}>
+        <svg 
+          class={styles.testGridSvg}
+          viewBox={`${vp.x} ${vp.y} ${width} ${height}`}
+          preserveAspectRatio="none"
+        >
+          {testPattern}
+          <text 
+            x={vp.x + 10} 
+            y={vp.y + 20} 
+            fill="red" 
+            fontSize="16"
+            style={{fontWeight: 'bold'}}
+          >
+            Viewport: {vp.x.toFixed(0)},{vp.y.toFixed(0)} to {(vp.x + width).toFixed(0)},{(vp.y + height).toFixed(0)}
+          </text>
+        </svg>
+      </div>
     );
   };
 
-  // Debug: Add a test grid to verify rendering
-  const renderTestGrid = () => (
-    <div class={styles.testGrid}>
-      <div class={styles.testGridLabel}>
-        Grid Test - This should be visible
+  const renderTestGrid = () => {
+    const vp = viewport();
+    const gridStyle = {
+      backgroundPosition: `${-vp.x * vp.zoom}px ${-vp.y * vp.zoom}px`,
+      transform: `scale(${vp.zoom})`,
+      backgroundSize: `50px 50px`
+    };
+    
+    return (
+      <div class={styles.testGrid} style={gridStyle}>
+        <div class={styles.testGridLabel}>
+          Grid Test - You should see grid lines
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div
@@ -1038,10 +996,33 @@ const MapView: Component = () => {
       <div class={isDragging() ? styles.mapViewportDragging : styles.mapViewport}>
         <div 
           class={styles.mapContent}
-          style={`--translate-x: ${-viewport().x * viewport().zoom}px; --translate-y: ${-viewport().y * viewport().zoom}px; --scale: ${viewport().zoom}`}
+          style={{
+            '--translate-x': `${-viewport().x * viewport().zoom}px`,
+            '--translate-y': `${-viewport().y * viewport().zoom}px`,
+            '--scale': viewport().zoom,
+            'transform': `translate(var(--translate-x, 0), var(--translate-y, 0)) scale(var(--scale, 1))`
+          }}
         >
-          {renderTestGrid()}
-          {Object.values(tiles()).map(tile => renderTile(tile))}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            'z-index': 1
+          }}>
+            {renderGrid()}
+          </div>
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            'z-index': 2
+          }}>
+            {Object.values(tiles()).map(tile => renderTile(tile))}
+          </div>
         </div>
       </div>
       
