@@ -15,28 +15,79 @@ export async function requireAuth(event: APIEvent): Promise<AuthResponse> {
   return { user };
 }
 
-export function withAuth(handler: (event: APIEvent & { user: TokenPayload }) => Promise<Response>) {
+// Extend the APIEvent type to include the user in locals
+type AuthenticatedAPIEvent = APIEvent & {
+  locals: {
+    user?: TokenPayload;
+    [key: string]: any;
+  };
+};
+
+export function withAuth(handler: (event: AuthenticatedAPIEvent & { user: TokenPayload }) => Promise<Response>) {
   return async (event: APIEvent): Promise<Response> => {
+    // Cast to our extended type
+    const authEvent = event as AuthenticatedAPIEvent;
+    
     // For SSE connections, we want to allow anonymous access but still pass the user if available
-    const isSSE = event.request.headers.get('accept') === 'text/event-stream';
+    const isSSE = authEvent.request.headers.get('accept') === 'text/event-stream';
+    
+    console.log('[Auth] Request received', {
+      url: authEvent.request.url,
+      method: authEvent.request.method,
+      isSSE,
+      hasAuthHeader: !!authEvent.request.headers.get('authorization'),
+      hasCookies: !!authEvent.request.headers.get('cookie')
+    });
+    
+    // For all requests, try to get the user from the auth token
+    const user = await getAuthUser(authEvent.request);
     
     if (isSSE) {
-      // For SSE, try to get the user but don't block if not authenticated
-      const user = await getAuthUser(event.request);
+      console.log('[SSE] Handling SSE connection', { 
+        authenticated: !!user,
+        userId: user?.userId || 'anonymous',
+        hasLocalsUser: !!authEvent.locals?.user
+      });
+      
+      // Ensure user is set in locals for SSE connections
       if (user) {
-        console.log(`[SSE] Authenticated SSE connection for user: ${user.userId}`);
-        return handler({ ...event, user });
-      } else {
-        console.log('[SSE] Anonymous SSE connection');
-        return handler({ ...event, user: { userId: 'anonymous', username: 'anonymous' } });
+        if (!authEvent.locals) authEvent.locals = {};
+        authEvent.locals.user = user;
       }
+      
+      // For SSE, we always want to call the handler, but with the user if available
+      return handler({ 
+        ...authEvent, 
+        user: user || { userId: 'anonymous', username: 'anonymous' },
+        locals: {
+          ...authEvent.locals,
+          user: user || { userId: 'anonymous', username: 'anonymous' }
+        }
+      });
     }
     
-    // For non-SSE requests, use the regular auth flow
-    const auth = await requireAuth(event);
-    if ('user' in auth) {
-      return handler({ ...event, user: auth.user });
+    // For non-SSE requests, require authentication
+    if (!user) {
+      console.warn('[Auth] Unauthorized access attempt');
+      return jsonResponse({ error: 'Unauthorized' }, 401);
     }
-    return auth; // This is already a Response
+    
+    console.log('[Auth] Authenticated request', { 
+      userId: user.userId,
+      username: user.username
+    });
+    
+    // Ensure user is set in locals for authenticated requests
+    if (!authEvent.locals) authEvent.locals = {};
+    authEvent.locals.user = user;
+    
+    return handler({ 
+      ...authEvent, 
+      user,
+      locals: {
+        ...authEvent.locals,
+        user
+      }
+    });
   };
 }

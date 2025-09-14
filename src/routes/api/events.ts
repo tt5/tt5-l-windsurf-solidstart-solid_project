@@ -1,18 +1,51 @@
+import type { APIEvent } from '@solidjs/start/server';
 import { withAuth } from '~/middleware/auth';
 import { basePointEventService } from '~/lib/server/events/base-point-events';
 import type { BasePoint } from '~/types/board';
+import type { TokenPayload } from '~/lib/server/auth/jwt';
 
-export const GET = withAuth(async ({ request, clientAddress, locals }) => {
+// Extend the APIEvent type to include the user in the event
+type SSEEvent = APIEvent & {
+  user: TokenPayload;
+  locals: {
+    user?: TokenPayload;
+    [key: string]: any;
+  };
+};
+
+export const GET = withAuth(async (event: SSEEvent) => {
+  const { request, clientAddress, locals } = event;
+  // Log all available information for debugging
   console.log('[SSE] New connection', {
     ip: clientAddress,
-    userId: locals.user?.id || 'anonymous',
-    userEmail: locals.user?.email,
-    user: locals.user ? JSON.stringify(locals.user) : 'none',
-    authHeader: request.headers.get('authorization')?.substring(0, 20) + '...' || 'none'
+    localsUser: locals?.user ? {
+      userId: locals.user.userId,
+      username: locals.user.username,
+      role: locals.user.role
+    } : 'none',
+    headers: {
+      accept: request.headers.get('accept'),
+      authorization: request.headers.get('authorization')?.substring(0, 20) + '...' || 'none',
+      cookie: request.headers.get('cookie') ? 'exists' : 'none'
+    },
+    // Log other potentially useful context
+    url: request.url,
+    method: request.method,
+    // Log all locals for debugging
+    allLocals: Object.keys(locals).filter(k => k !== 'user').reduce((acc, key) => {
+      acc[key] = locals[key];
+      return acc;
+    }, {} as Record<string, any>)
   });
   
   if (!locals.user) {
     console.warn('[SSE] WARNING: No user in locals, connection will be anonymous');
+  } else {
+    console.log('[SSE] User authenticated:', {
+      userId: locals.user.userId,
+      username: locals.user.username,
+      role: locals.user.role
+    });
   }
   
   // Set up SSE headers
@@ -32,8 +65,16 @@ export const GET = withAuth(async ({ request, clientAddress, locals }) => {
     writer.write(encoder.encode('event: ping\ndata: {}\n\n'));
   }, 30000); // Send a ping every 30 seconds
 
-  // Create a client object for this connection with user context
-  const user = locals.user || { userId: 'anonymous', username: 'anonymous' };
+  // Get the user from the event (set by withAuth middleware)
+  const user = event.user || { userId: 'anonymous', username: 'anonymous' };
+  
+  console.log('[SSE] Creating client with user:', {
+    userId: user.userId,
+    username: user.username,
+    ip: clientAddress,
+    hasLocalsUser: !!locals?.user
+  });
+  
   const client = {
     send: (data: string) => {
       try {
@@ -42,32 +83,36 @@ export const GET = withAuth(async ({ request, clientAddress, locals }) => {
         if (dataToLog.length > 100) {
           dataToLog = dataToLog.substring(0, 100) + '...';
         }
-        console.log(`[SSE] Sending to client ${locals.user?.id || 'anonymous'}:`, dataToLog);
+        console.log(`[SSE] Sending to client ${locals.user?.userId || 'anonymous'}:`, dataToLog);
         
         // Write the data to the stream
         const result = writer.write(encoder.encode(data));
-        console.log(`[SSE] Write result for ${locals.user?.id || 'anonymous'}:`, {
+        console.log(`[SSE] Write result for ${locals.user?.userId || 'anonymous'}:`, {
           success: true,
           bytesWritten: data.length,
           ready: result
         });
       } catch (error) {
-        console.error(`[SSE] Error writing to client ${locals.user?.id || 'anonymous'}:`, error);
+        console.error(`[SSE] Error writing to client ${locals.user?.userId || 'anonymous'}:`, error);
         cleanup();
       }
     },
-    // Use the authenticated user ID from the token if available
+    // User information
     userId: user.userId,
     username: user.username,
     ip: clientAddress,
     connectedAt: new Date().toISOString(),
-    // Store the full user object for debugging
-    user
+    // Store the full user object
+    user: {
+      userId: user.userId,
+      username: user.username,
+      role: user.role
+    }
   };
 
   // First, clean up any existing connections for this client
   const userInfo = locals.user 
-    ? `user:${locals.user.id} (${locals.user.email || 'no-email'})` 
+    ? `user:${locals.user.userId} (${locals.user.username || 'no-username'})` 
     : 'anonymous';
     
   console.log(`[SSE] Registering client for ${userInfo} from ${client.ip}`);
