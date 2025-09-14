@@ -13,8 +13,8 @@ export const POST = withAuth(async ({ user }) => {
   try {
     const db = await getDb();
     
-    // Get random slopes (2-4 random primes, including 1 for basic diagonals)
-    const slopes = getRandomSlopes(2 + Math.floor(Math.random() * 3));
+    // Get random slopes (2 random primes, including 1 for basic diagonals)
+    const slopes = getRandomSlopes(2);
     
     // Get and delete points in lines
     const pointsToDelete = await getPointsInLines(db, slopes);

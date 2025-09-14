@@ -50,32 +50,31 @@ class ServerInitializer {
 
     // Schedule cleanup
     this.cleanupInterval = setInterval(async () => {
+      const startTime = Date.now();
       try {
-        console.log('Running cleanup...');
         const db = await getDb();
-        const slopes = getRandomSlopes(2 + Math.floor(Math.random() * 3));
-        console.log('Using slopes:', slopes);
+        const slopes = getRandomSlopes(2);
+        const cleanupStartTime = performance.now();
         
-        // Get all points before cleanup for comparison
-        const allPoints = await db.all('SELECT id, x, y FROM base_points');
-        console.log('Points before cleanup:', allPoints);
-        
-        const pointsToDelete = await getPointsInLines(db, slopes);
-        console.log('Points to delete:', pointsToDelete);
+        // Get unique base slopes as whole numbers
+        const uniqueBaseSlopes = [...new Set(slopes
+          .filter(s => Math.abs(s) >= 1)  // Only take values >= 1 to avoid reciprocals
+          .map(s => Math.round(Math.abs(s)))  // Round to nearest integer
+        )];
+        console.log(`[Cleanup] Starting cleanup with slopes: ${uniqueBaseSlopes.join(', ')}`);
+        const { points: pointsToDelete, duration } = await getPointsInLines(db, slopes);
         
         if (pointsToDelete.length > 0) {
-          console.log('Executing delete for points:', pointsToDelete.map(p => `(${p.x},${p.y})`).join(', '));
+          console.log(`[Cleanup] Removing ${pointsToDelete.length} points...`);
           await deletePoints(db, pointsToDelete);
-          console.log(`[Cleanup] Removed ${pointsToDelete.length} points in lines`);
-          
-          // Get points after cleanup
-          const remainingPoints = await db.all('SELECT id, x, y FROM base_points');
-          console.log('Points after cleanup:', remainingPoints);
+          const totalTime = performance.now() - cleanupStartTime;
+          console.log(`[Cleanup] Removed ${pointsToDelete.length} points in ${duration.toFixed(2)}ms (total: ${totalTime.toFixed(2)}ms)`);
         } else {
-          console.log('No duplicate base points found to clean up');
+          const totalTime = performance.now() - cleanupStartTime;
+          console.log(`[Cleanup] No points to remove (took ${totalTime.toFixed(2)}ms)`);
         }
       } catch (error) {
-        console.error('Error during cleanup:', error);
+        console.error('[Cleanup] Error:', error);
       }
     }, 10000);
   }

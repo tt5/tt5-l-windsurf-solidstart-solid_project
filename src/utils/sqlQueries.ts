@@ -1,4 +1,5 @@
 import { getRandomSlopes, getSlopeConditions } from './randomSlopes';
+import { performance } from 'perf_hooks';
 
 interface BasePoint {
   id: number;
@@ -6,15 +7,15 @@ interface BasePoint {
   y: number;
 }
 
-export async function getPointsInLines(db: any, slopes: number[] = []): Promise<BasePoint[]> {
-  // Get all points first to understand the current state
+export async function getPointsInLines(db: any, slopes: number[] = []): Promise<{points: BasePoint[], duration: number}> {
+  const startTime = performance.now();
+  // Get all points first
   const allPoints = await db.all('SELECT id, x, y FROM base_points ORDER BY id');
-  console.log('\n=== All Points ===');
-  console.table(allPoints);
+  console.log(`[Cleanup] Checking ${allPoints.length} points`);
   
   if (allPoints.length <= 1) {
-    console.log('Not enough points to form lines');
-    return [];
+    console.log('[Cleanup] Not enough points to check for lines');
+    return { points: [], duration: 0 };
   }
   
   const pointsToDelete: BasePoint[] = [];
@@ -40,31 +41,23 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
       slopes.forEach(slope => addVariants(slope));
       activeSlopes = Array.from(slopeVariants);
     } else {
-      // If no slopes provided, get random ones
-      activeSlopes = getRandomSlopes(3);
+      // If no slopes provided, get 2 random ones
+      activeSlopes = getRandomSlopes(2);
     }
     
     const slopeConditions = getSlopeConditions(activeSlopes);
   
-    console.log('\n=== Using Slopes for Cleanup ===');
-    // Group slopes by their base value for better readability
+    // Group slopes by their base value
     const slopeGroups = new Map<number, number[]>();
     activeSlopes.forEach(slope => {
-      // Group by the absolute value of the slope, rounded to 2 decimal places
       const base = Math.round(Math.abs(slope) * 100) / 100;
       if (!slopeGroups.has(base)) {
         slopeGroups.set(base, []);
       }
       slopeGroups.get(base)!.push(slope);
     });
-    
-    console.log('Active slopes:');
-    for (const [base, slopes] of slopeGroups.entries()) {
-      console.log(`  - Base ${base}: ${slopes.sort().join(', ')}`);
-    }
   
     // 1. Find vertical lines (same x-coordinate)
-    console.log('\n=== Checking for Vertical Lines ===');
     const verticalLines = await db.all(`
       SELECT 
         x,
@@ -77,9 +70,6 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
       HAVING point_count > 1
       ORDER BY point_count DESC
     `);
-    
-    console.log('\n=== Vertical Lines Found ===');
-    console.table(verticalLines);
     
     // For each vertical line, keep the oldest point (smallest ID)
     for (const line of verticalLines) {
@@ -99,11 +89,9 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
       }
     }
     
-    console.log('\n=== Points to Delete (Vertical Lines) ===');
-    console.table(pointsToDelete);
+    // Points to delete are now in pointsToDelete array
     
     // 2. Find horizontal lines (same y-coordinate)
-    console.log('\n=== Checking for Horizontal Lines ===');
     const horizontalLines = await db.all(`
       SELECT 
         y,
@@ -116,9 +104,6 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
       HAVING point_count > 1
       ORDER BY point_count DESC
     `);
-    
-    console.log('\n=== Horizontal Lines Found ===');
-    console.table(horizontalLines);
     
     // For each horizontal line, keep the oldest point (smallest ID)
     for (const line of horizontalLines) {
@@ -141,9 +126,8 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
       }
     }
     
-    // 3. Find diagonal lines with the given slopes
-    console.log('\n=== Checking for Diagonal Lines ===');
-    const diagonalLinesQuery = `
+    // 3. Find lines with specific slopes
+    const diagonalLines = await db.all(`
       SELECT 
         p1.id as p1_id, p1.x as p1_x, p1.y as p1_y,
         p2.id as p2_id, p2.x as p2_x, p2.y as p2_y
@@ -152,15 +136,7 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
       WHERE ${slopeConditions}
         AND NOT (p1.x = 0 AND p1.y = 0)  -- Exclude (0,0) from cleanup
         AND NOT (p2.x = 0 AND p2.y = 0)  -- Exclude (0,0) from cleanup
-    `;
-    
-    console.log('\n=== Diagonal Lines Query ===');
-    console.log(diagonalLinesQuery);
-    
-    const diagonalLines = await db.all(diagonalLinesQuery);
-    
-    console.log('\n=== Diagonal Lines Found ===');
-    console.table(diagonalLines);
+    `);
     
     // Process diagonal lines
     const diagonalGroups = new Map<string, Array<{id: number, x: number, y: number}>>();
@@ -210,14 +186,16 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
       }
     }
     
-    console.log('\n=== All Points to Delete (Vertical + Horizontal + Diagonal) ===');
-    console.table(pointsToDelete);
-    
-    return pointsToDelete;
+    const endTime = performance.now();
+  const duration = endTime - startTime;
+  
+  console.log(`[Cleanup] Found ${pointsToDelete.length} points to remove`);
+  return { points: pointsToDelete, duration };
     
   } catch (error) {
-    console.error('Error in getPointsInLines:', error);
-    return [];
+    const endTime = performance.now();
+    const duration = endTime - startTime;
+    return { points: [], duration };
   }
   
   // All line detections are now implemented above

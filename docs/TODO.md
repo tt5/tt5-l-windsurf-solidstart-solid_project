@@ -5,6 +5,7 @@
 - teleport (randomly) new players
 - delete account and clean up base points
 - notify user about removed base points
+- check cleanup (getRandomSlopes) for floating point precision issues
 
 ## unclear
 
