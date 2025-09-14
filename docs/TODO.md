@@ -12,7 +12,6 @@
 - production build
   - migrations
 - db backups
-- websockets
 - component testing
 
 ## map

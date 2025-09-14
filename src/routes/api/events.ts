@@ -22,18 +22,25 @@ export const GET = withAuth(async ({ request, clientAddress, locals }) => {
 
   // Handle base point events
   const handleBasePointEvent = (event: 'created' | 'updated' | 'deleted', point: BasePoint) => {
-    const eventData = {
-      type: 'basePointChanged',
-      event,
-      point: {
-        id: point.id,
-        x: point.x,
-        y: point.y,
-        timestamp: Date.now()
-      }
-    };
-    
-    writer.write(encoder.encode(`event: basePoint\ndata: ${JSON.stringify(eventData)}\n\n`));
+    try {
+      const eventData = {
+        type: 'basePointChanged',
+        event,
+        point: {
+          id: point.id,
+          x: point.x,
+          y: point.y,
+          userId: point.userId,
+          timestamp: point.createdAtMs || Date.now()
+        }
+      };
+      
+      const message = `event: ${event}\ndata: ${JSON.stringify(eventData)}\n\n`;
+      writer.write(encoder.encode(message));
+      console.log('Sent SSE event:', message);
+    } catch (error) {
+      console.error('Error sending SSE event:', error);
+    }
   };
 
   // Set up event listeners with proper type safety

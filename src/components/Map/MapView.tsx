@@ -1087,7 +1087,7 @@ const MapView: Component = () => {
             left: 0,
             width: '100%',
             height: '100%',
-            zIndex: 2
+            'z-index': 2
           }}>
             {Object.values(tiles()).map(tile => renderTile(tile))}
           </div>

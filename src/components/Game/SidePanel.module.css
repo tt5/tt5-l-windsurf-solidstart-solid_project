@@ -40,12 +40,117 @@
   overflow-y: auto;
 }
 
-.infoTab h2,
-.settingsTab h2 {
-  margin-top: 0;
+.infoHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 16px;
+}
+
+.notificationBadge {
+  background-color: #f0f0f0;
+  color: #666;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.notificationBadge.hasNotifications {
+  background-color: #1a73e8;
+  color: white;
+}
+
+.playerInfo {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.playerInfo button {
+  margin-top: 12px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.playerInfo button:hover {
+  background: #e0e0e0;
+}
+
+.notificationsSection {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.notificationsSection h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+  color: #444;
+}
+
+.noNotifications {
+  color: #888;
+  font-style: italic;
+  text-align: center;
+  padding: 12px 0;
+}
+
+.notificationsList {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.notificationItem {
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notificationItem:last-child {
+  border-bottom: none;
+}
+
+.notificationTime {
+  font-size: 11px;
+  color: #888;
+}
+
+.notificationText {
+  font-size: 13px;
   color: #333;
-  font-size: 18px;
+  line-height: 1.4;
+}
+
+/* Scrollbar styles */
+.notificationsList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.notificationsList::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 2px;
+}
+
+.notificationsList::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 2px;
+}
+
+.notificationsList::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
 }
 
 .infoTab div {

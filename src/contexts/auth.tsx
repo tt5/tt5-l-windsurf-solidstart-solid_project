@@ -34,7 +34,11 @@ const createAuthStore = (): AuthStore => {
   
   const updateUser = (userData: User | null) => {
     setUser(userData);
-    userData ? localStorage.setItem('user', JSON.stringify(userData)) : localStorage.removeItem('user');
+    if (typeof window !== 'undefined') {
+      userData 
+        ? sessionStorage.setItem('user', JSON.stringify(userData))
+        : sessionStorage.removeItem('user');
+    }
   };
 
   // Initialize auth state
@@ -54,7 +58,7 @@ const createAuthStore = (): AuthStore => {
     const isDev = typeof import.meta.env.DEV !== 'undefined' ? import.meta.env.DEV : process.env.NODE_ENV !== 'production';
     
     // Check for saved user first
-    const savedUser = localStorage.getItem('user');
+    const savedUser = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null;
     
     if (savedUser) {
       try {
@@ -70,12 +74,16 @@ const createAuthStore = (): AuthStore => {
           verifySession(userData);
         } else {
           // Clear invalid user data
-          localStorage.removeItem('user');
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('user');
+          }
         }
       } catch (error) {
         updateUser(null);
         // Clear corrupted user data
-        localStorage.removeItem('user');
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('user');
+        }
       }
     } else {
     }
