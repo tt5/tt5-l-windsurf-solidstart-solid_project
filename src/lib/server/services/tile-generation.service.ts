@@ -22,7 +22,22 @@ export class TileGenerationService {
     // Get all base points within this tile
     const basePoints = await basePointRepo.getPointsInBounds(minX, minY, maxX, maxY);
     
-    // Create a bitmap for this tile
+    // Try to get existing tile data
+    const existingTile = await tileRepo.getTile(tileX, tileY);
+    
+    // If tile exists and has the same base points, return it
+    if (existingTile) {
+      const existingBitmap = existingTile.data;
+      const newBitmap = this.createBitmap(basePoints, minX, minY);
+      
+      // Compare bitmaps
+      if (existingBitmap.length === newBitmap.length &&
+          existingBitmap.every((val, i) => val === newBitmap[i])) {
+        return existingTile; // No changes, return existing tile
+      }
+    }
+    
+    // Create a new bitmap for this tile
     const bitmap = this.createBitmap(basePoints, minX, minY);
     
     // Create the tile

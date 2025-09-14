@@ -19,6 +19,20 @@ The tile system is responsible for efficiently serving map data to clients. It u
   - Manual invalidation when base points change
   - Server restart clears the cache
 
+## Eventual Consistency
+
+### Base Point Updates and Tile Regeneration
+- When a base point is added or modified, the affected tiles are **not immediately regenerated**
+- Tile updates follow an **eventually consistent** model with the following behavior:
+  - The tile will be regenerated on the next request after the server cache expires (10 seconds)
+  - The new base point will be included in the tile data after regeneration
+  - This design was chosen to:
+    - Prevent performance degradation during high write loads
+    - Reduce database write contention
+    - Maintain acceptable freshness guarantees for most use cases
+
+> **Note**: If immediate tile updates are required after base point changes, manual cache invalidation should be implemented in the base point update flow.
+
 ### 2. Client-Side Cache (Second Level)
 - **TTL**: 30 seconds
 - **Purpose**: Reduce server requests
