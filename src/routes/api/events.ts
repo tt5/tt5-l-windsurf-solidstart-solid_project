@@ -4,6 +4,14 @@ import { basePointEventService } from '~/lib/server/events/base-point-events';
 import type { BasePoint } from '~/types/board';
 import type { TokenPayload } from '~/lib/server/auth/jwt';
 
+// Define the Client interface
+interface Client {
+  userId: string;
+  ip?: string;
+  connectedAt?: string;
+  send: (data: string) => void;
+}
+
 // Extend the APIEvent type to include the user in the event
 type SSEEvent = APIEvent & {
   user: TokenPayload;
@@ -51,18 +59,68 @@ export const GET = withAuth(async (event: SSEEvent) => {
   // Set up SSE headers
   const headers = new Headers({
     'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
+    'Cache-Control': 'no-cache, no-transform',
     'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Credentials': 'true'
+  });
+  
+  // Log the incoming request
+  console.log('[SSE] New connection request from:', clientAddress, {
+    url: request.url,
+    headers: Object.fromEntries(request.headers.entries()),
+    method: request.method
   });
 
   // Create a transform stream for the response
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
+  
+  // Get the user from the event (set by withAuth middleware)
+  const currentUser = event.user || { userId: 'anonymous', username: 'anonymous' };
+  
+  // Create a client object for the event service
+  const sseClient: Client = {
+    userId: currentUser.userId,
+    ip: clientAddress,
+    send: (data: string) => {
+      writer.write(encoder.encode(data)).catch(err => {
+        console.error('[SSE] Error sending message to client:', err);
+      });
+    },
+    connectedAt: new Date().toISOString()
+  };
+  
+  // Register the client with the event service
+  const { cleanup } = basePointEventService.registerClient(sseClient);
+  console.log(`[SSE] Registered client ${currentUser.userId} (${clientAddress})`);
+  
+  // Send initial connection message
+  const sendMessage = async (event: string, data: any) => {
+    const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+    console.log(`[SSE] Sending ${event} event to client ${currentUser.userId}`);
+    try {
+      await writer.write(encoder.encode(message));
+    } catch (err) {
+      console.error(`[SSE] Error sending ${event}:`, err);
+    }
+  };
 
+  // Log when the connection is established
+  console.log('[SSE] Connection established, setting up ping interval');
+  
   // Send a ping event to keep the connection alive
   let keepAlive: NodeJS.Timeout | null = setInterval(() => {
-    writer.write(encoder.encode('event: ping\ndata: {}\n\n'));
+    const pingEvent = {
+      type: 'ping',
+      timestamp: Date.now()
+    };
+    const pingMessage = `event: ping\ndata: ${JSON.stringify(pingEvent)}\n\n`;
+    console.log('[SSE] Sending ping event at', new Date().toISOString());
+    writer.write(pingMessage)
+      .then(() => console.log('[SSE] Ping sent successfully'))
+      .catch(err => console.error('[SSE] Error sending ping:', err));
   }, 30000); // Send a ping every 30 seconds
 
   // Get the user from the event (set by withAuth middleware)
@@ -149,7 +207,7 @@ export const GET = withAuth(async (event: SSEEvent) => {
   let isCleaningUp = false;
   
   // Handle client disconnect
-  const cleanup = async () => {
+  const handleDisconnect = () => {
     // Prevent multiple cleanup calls
     if (isCleaningUp) {
       console.log(`[SSE] Cleanup already in progress for ${client.userId}@${client.ip}`);
@@ -167,40 +225,13 @@ export const GET = withAuth(async (event: SSEEvent) => {
         keepAlive = null;
       }
       
-      // Unregister the client using the stored cleanup function
-      try {
-        console.log(`[SSE] Unregistering client ${clientId}`);
-        if (clientCleanup) {
-          clientCleanup();
-          clientCleanup = null;
-        } else {
-          basePointEventService.unregisterClient(client);
-        }
-      } catch (error) {
-        console.error(`[SSE] Error unregistering client ${clientId}:`, error);
-      }
+      // Clean up the client from the event service
+      cleanup();
       
       // Close the writer
-      try {
-        console.log(`[SSE] Closing writer for ${clientId}`);
-        await writer.close().catch(error => {
-          console.error(`[SSE] Error closing writer for ${clientId}:`, error);
-        });
-      } catch (error) {
-        console.error(`[SSE] Error in writer.close() for ${clientId}:`, error);
-      }
-      
-      // Remove the abort event listener
-      try {
-        request.signal.removeEventListener('abort', cleanup);
-      } catch (error) {
-        // Ignore errors from removeEventListener
-      }
-      
-      // Remove process exit handlers
-      process.off('exit', handleExit);
-      process.off('SIGINT', handleExit);
-      process.off('SIGTERM', handleExit);
+      writer.close().catch(error => {
+        console.error(`[SSE] Error closing writer for ${clientId}:`, error);
+      });
       
       console.log(`[SSE] Cleanup completed for ${clientId}`);
     } catch (error) {
@@ -211,16 +242,12 @@ export const GET = withAuth(async (event: SSEEvent) => {
   };
 
   // Set up request close handler
-  const abortHandler = () => {
-    console.log(`[SSE] Abort signal received for ${client.userId}@${client.ip}`);
-    cleanup().catch(console.error);
-  };
-  request.signal.addEventListener('abort', abortHandler);
+  request.signal.addEventListener('abort', handleDisconnect);
   
-  // Handle process termination
+  // Set up process exit handlers for graceful shutdown
   const handleExit = () => {
-    console.log(`[SSE] Process exit signal received, cleaning up ${client.userId}@${client.ip}`);
-    cleanup().catch(console.error);
+    console.log(`[SSE] Process exiting, cleaning up client ${client.userId}@${client.ip}`);
+    handleDisconnect();
   };
   
   // Only set up process exit handlers if we're not in a test environment

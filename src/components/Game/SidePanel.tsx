@@ -60,24 +60,36 @@ const SidePanel: Component<SidePanelProps> = (props) => {
     };
 
     const connect = () => {
+      // Clean up any existing connection
       if (eventSource) {
         console.log('[SSE] Closing existing connection');
         eventSource.close();
+        eventSource = null;
+      }
+      
+      // Clear any existing reconnect timeout
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = undefined;
       }
 
       // Use the correct API URL based on the environment
-      const apiUrl = new URL('/api/events', window.location.origin).toString();
-      console.log('[SSE] Connecting to:', apiUrl);
+      const apiUrl = '/api/events';
       
+      console.log('[SSE] Attempting to connect to:', apiUrl, 'at', new Date().toISOString());
+      
+      // Add a timestamp to prevent caching
+      const urlWithCacheBust = `${apiUrl}?_=${Date.now()}`;
       try {
-        eventSource = new EventSource(apiUrl, { withCredentials: true });
+        console.log('[SSE] Creating new EventSource instance');
+        eventSource = new EventSource(urlWithCacheBust, { 
+          withCredentials: true 
+        });
+        
         isConnected = false;
         
-        // Log all event listeners being added
-        console.log('[SSE] Event source created, adding event listeners');
-        
         if (!eventSource) {
-          console.error('[SSE] Failed to create EventSource');
+          console.error('[SSE] Failed to create EventSource: eventSource is null');
           return;
         }
         
@@ -85,15 +97,41 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           isConnected = true;
           reconnectAttempts = 0;
           console.log('[SSE] Connection established, readyState:', eventSource?.readyState);
+          
+          // Send a test message to verify the connection
+          if (eventSource) {
+            const testEvent = {
+              type: 'test',
+              message: 'Connection test',
+              timestamp: Date.now()
+            };
+            console.log('[SSE] Sending test message');
+            // @ts-ignore - This is just for testing
+            eventSource.send(JSON.stringify(testEvent));
+          }
         };
         
         eventSource.onerror = (error) => {
-          console.error('[SSE] Connection error, readyState:', eventSource?.readyState, error);
+          const readyState = eventSource?.readyState;
+          console.error(`[SSE] Connection error at ${new Date().toISOString()}, readyState: ${readyState}`, error);
+          
+          // Log more details about the readyState
+          const readyStateMap = {
+            0: 'CONNECTING',
+            1: 'OPEN',
+            2: 'CLOSED'
+          };
+          console.log(`[SSE] Connection state: ${readyStateMap[readyState as keyof typeof readyStateMap] || 'UNKNOWN'}`);
           
           if (isConnected) {
             console.log('[SSE] Connection was previously established, attempting to reconnect...');
             isConnected = false;
-            eventSource?.close();
+            
+            // Close the existing connection if it exists
+            if (eventSource) {
+              eventSource.close();
+              eventSource = null;
+            }
             
             if (reconnectAttempts < maxReconnectAttempts) {
               const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
@@ -157,6 +195,27 @@ const SidePanel: Component<SidePanelProps> = (props) => {
             // Parse the event data if it's a string
             data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
             console.log('[SSE] Parsed event data:', data);
+            
+            // Handle different event formats
+            if (event.type === 'message' && data.event) {
+              // If this is a message event with an embedded event type
+              console.log(`[SSE] Processing embedded event: ${data.event}`);
+              // Create a new event object with the updated type
+              const eventInit: MessageEventInit = {
+                data: data.data || data,
+                lastEventId: event.lastEventId,
+                origin: event.origin
+              };
+              // Only include ports if they exist
+              if (event.ports && event.ports.length > 0) {
+                eventInit.ports = Array.from(event.ports);
+              }
+              event = new MessageEvent(data.event, eventInit);
+            }
+            
+            // Log the processed event
+            console.log(`[SSE] Processing ${event.type} event:`, data);
+            
           } catch (e) {
             console.error('[SSE] Failed to parse event data:', event.data, 'Error:', e);
             return;
@@ -164,21 +223,36 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           
           // Extract point data from different possible event formats
           let pointData = null;
+          let eventType = event.type;
           
-          // Format 1: { type: 'basePointChanged', event: 'created', point: {...} }
-          if (data?.type === 'basePointChanged' && data.event === 'created' && data.point) {
+          // Log the full event for debugging
+          console.log('[SSE] Full event received:', { type: eventType, data });
+          
+          // Handle different event formats
+          if (data?.type === 'basePointChanged' && data.point) {
+            // Format 1: { type: 'basePointChanged', event: 'created', point: {...} }
             pointData = data.point;
-            console.log('[SSE] Processing basePointChanged event, point data:', pointData);
+            eventType = data.event || eventType;
+            console.log('[SSE] Processing basePointChanged event:', { 
+              eventType,
+              pointData 
+            });
           } 
-          // Format 2: Direct point data in the root
-          else if (data?.x !== undefined && data?.y !== undefined) {
-            pointData = data;
-            console.log('[SSE] Processing direct point data:', pointData);
+          else if (data?.point) {
+            // Format 2: { point: {...}, event: 'created' }
+            pointData = data.point;
+            eventType = data.event || eventType;
+            console.log('[SSE] Processing point data from nested object:', { eventType, pointData });
           }
-          // Format 3: Data in the root with event type
-          else if (event.type === 'created' && data) {
+          else if (data?.x !== undefined && data?.y !== undefined) {
+            // Format 3: Direct point data in the root
             pointData = data;
-            console.log('[SSE] Processing event with created type:', pointData);
+            console.log('[SSE] Processing direct point data:', { eventType, pointData });
+          }
+          else if (data) {
+            // Format 4: Generic data object
+            pointData = data;
+            console.log(`[SSE] Processing ${eventType} event:`, pointData);
           }
           
           if (!pointData) {
@@ -191,8 +265,9 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           
           console.log('[SSE] User check - Current user ID:', currentUserId, 'Event user ID:', eventUserId);
           
-          // Skip only if this is the current user's own action
-          if (currentUserId && eventUserId === currentUserId) {
+          // Skip only if this is the current user's own action for created/updated/deleted events
+          const isUserAction = ['created', 'updated', 'deleted'].includes(eventType);
+          if (isUserAction && currentUserId && eventUserId === currentUserId) {
             console.log('[SSE] Skipping notification for current user (self-action)');
             return;
           }
@@ -210,16 +285,37 @@ const SidePanel: Component<SidePanelProps> = (props) => {
             const notificationId = Date.now();
             const timestamp = pointData.timestamp || pointData.createdAtMs || Date.now();
             
+            // Determine the action type and message based on event type
+            let message = '';
+            const username = pointData.username ? `Player ${pointData.username}` : 'Another player';
+            
+            switch (eventType) {
+              case 'created':
+                message = `${username} added a base point at (${pointData.x}, ${pointData.y})`;
+                break;
+              case 'updated':
+                message = `${username} updated a base point at (${pointData.x}, ${pointData.y})`;
+                break;
+              case 'deleted':
+                message = `${username} removed a base point at (${pointData.x}, ${pointData.y})`;
+                break;
+              default:
+                // For custom events, use the event type in the message
+                message = pointData.message || `${username} performed ${eventType} at (${pointData.x || '?'}, ${pointData.y || '?'})`;
+            }
+            
             const newNotification: Notification = {
               id: notificationId,
-              message: `New base point added at (${pointData.x}, ${pointData.y})`,
+              message: message,
               timestamp: timestamp
             };
             
             console.log('[SSE] Creating new notification:', {
               id: notificationId,
               point: { x: pointData.x, y: pointData.y },
-              timestamp: new Date(timestamp).toISOString()
+              timestamp: new Date(timestamp).toISOString(),
+              eventType: event.type,
+              fromUser: pointData.userId
             });
             
             // Update the state with the new notification
