@@ -1,4 +1,5 @@
 import { MapTile } from '~/lib/server/repositories/map-tile.repository';
+import { MapTileRepository } from '~/lib/server/repositories/map-tile.repository';
 
 interface CacheEntry<T> {
   data: T;
@@ -10,11 +11,39 @@ export class TileCacheService {
   private cache: Map<string, CacheEntry<MapTile>>;
   private maxSize: number;
   private defaultTTL: number; // in milliseconds
+  private tileRepository: MapTileRepository;
+  
+  /**
+   * Get a tile from cache or generate it if not found
+   */
+  async getOrGenerate(tileX: number, tileY: number, generator: (x: number, y: number) => Promise<MapTile>): Promise<MapTile> {
+    // Try to get from cache first
+    const cached = this.get(tileX, tileY);
+    if (cached) {
+      return cached;
+    }
+    
+    // If not in cache, try to get from database
+    const dbTile = await this.tileRepository.getTile(tileX, tileY);
+    if (dbTile) {
+      // Cache the tile for future use
+      this.set(dbTile);
+      return dbTile;
+    }
+    
+    // If not in database, generate it
+    const tile = await generator(tileX, tileY);
+    // Save to database and cache
+    await this.tileRepository.saveTile(tile);
+    this.set(tile);
+    return tile;
+  }
 
-  constructor(maxSize = 1000, defaultTTL = 10000) { // 10 seconds default TTL
+  constructor(tileRepository: MapTileRepository, maxSize = 1000, defaultTTL = 10000) {
     this.cache = new Map();
     this.maxSize = maxSize;
     this.defaultTTL = defaultTTL;
+    this.tileRepository = tileRepository;
   }
 
   /**
@@ -46,7 +75,7 @@ export class TileCacheService {
    * Store a tile in cache
    */
   set(tile: MapTile, ttl: number = this.defaultTTL): void {
-    if (!tile || !tile.tileX || !tile.tileY || !tile.data) {
+    if (!tile || tile.tileX == null || tile.tileY == null || !tile.data) {
       throw new Error('Invalid tile data');
     }
     // If cache is full, remove the oldest entry

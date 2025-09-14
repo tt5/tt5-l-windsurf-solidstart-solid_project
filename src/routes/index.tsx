@@ -1,7 +1,8 @@
 import { Title } from "@solidjs/meta";
 import { A } from "@solidjs/router";
 
-export default () => (
+export default function () {
+  return (
   <>
     <Title>Welcome</Title>
     <h1>Welcome</h1>
@@ -10,4 +11,4 @@ export default () => (
     <A href="/game">Game</A>
     <A href="/api/admin/performance">Performance</A>
   </>
-);
+)};

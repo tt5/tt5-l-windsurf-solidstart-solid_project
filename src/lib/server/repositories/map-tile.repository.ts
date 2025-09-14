@@ -108,23 +108,26 @@ export class MapTileRepository {
     maxX: number,
     maxY: number
   ): Promise<MapTile[]> {
-    const results = await this.db.all<{
+    type DatabaseTile = {
       tile_x: number;
       tile_y: number;
       data: Buffer;
       version: number;
       last_updated_ms: number;
-    }>(
+    };
+
+    const results: DatabaseTile[] = await this.db.all(
       'SELECT tile_x, tile_y, data, version, last_updated_ms ' +
       'FROM map_tiles ' +
       'WHERE tile_x BETWEEN ? AND ? AND tile_y BETWEEN ? AND ?',
       [minX, maxX, minY, maxY]
-    );
+    ) as unknown as DatabaseTile[];
 
-    return results.map(result => ({
+    return results.map((result) => ({
       tileX: result.tile_x,
       tileY: result.tile_y,
       data: result.data,
+      compressedData: result.data, // Using the same data for compressedData since it's already compressed
       version: result.version,
       lastUpdatedMs: result.last_updated_ms
     }));
@@ -151,7 +154,13 @@ export class MapTileRepository {
       maxY: (tileY + 1) * this.TILE_SIZE - 1
     };
   }
+
+  /**
+   * Delete all tiles from the database
+   * Primarily for testing purposes
+   */
+  async deleteAllTiles(): Promise<void> {
+    await this.db.run('DELETE FROM map_tiles');
+  }
 }
 
-// Export a type for the map tile data structure
-export type { MapTile } from './map-tile.repository';
