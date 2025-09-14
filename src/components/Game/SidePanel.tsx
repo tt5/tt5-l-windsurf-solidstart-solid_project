@@ -103,19 +103,21 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           return;
         }
         
-        eventSource.onopen = () => {
+        eventSource.onopen = (event) => {
+          console.log('[SSE] Connection opened at', new Date().toISOString(), event);
           isConnected = true;
-          reconnectAttempts = 0;
-          console.log('[SSE] Connection established, readyState:', eventSource?.readyState);
+          reconnectAttempts = 0; // Reset reconnect attempts on successful connection
           
           // Log connection details
-          console.log('[SSE] Connection details:', {
-            url: eventSource?.url,
-            readyState: eventSource?.readyState,
-            withCredentials: eventSource?.withCredentials
-          });
+          if (eventSource) {
+            console.log('[SSE] Connection details:', {
+              url: eventSource.url,
+              readyState: eventSource.readyState,
+              withCredentials: eventSource.withCredentials
+            });
+          }
           
-          // Send a test message to verify the connection
+          // Send a test message to verify the connection is working
           if (eventSource) {
             const testEvent = {
               type: 'test',

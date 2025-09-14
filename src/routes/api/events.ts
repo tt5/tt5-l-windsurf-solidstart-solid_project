@@ -259,12 +259,29 @@ export const GET = withAuth(async (event: SSEEvent) => {
 
   // Send initial connection message
   try {
-    await writer.write(encoder.encode('event: connected\ndata: {}\n\n'));
+    const initialMessage = 'event: connected\ndata: {}\n\n';
+    await writer.write(encoder.encode(initialMessage));
+    console.log('[SSE] Sent initial connection message');
   } catch (error) {
     console.error(`[SSE] Error sending initial connection message to ${client.userId}:`, error);
     cleanup();
     return new Response('Internal Server Error', { status: 500 });
   }
 
-  return new Response(readable, { headers });
+  // Log the response being sent
+  console.log('[SSE] Sending SSE response with headers:', Object.fromEntries(headers.entries()));
+  
+  // Create and return the response with proper SSE headers
+  const response = new Response(readable, { 
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': 'true'
+    }
+  });
+  
+  console.log('[SSE] Response prepared, returning from handler');
+  return response;
 });
