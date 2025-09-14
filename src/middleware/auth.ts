@@ -17,6 +17,22 @@ export async function requireAuth(event: APIEvent): Promise<AuthResponse> {
 
 export function withAuth(handler: (event: APIEvent & { user: TokenPayload }) => Promise<Response>) {
   return async (event: APIEvent): Promise<Response> => {
+    // For SSE connections, we want to allow anonymous access but still pass the user if available
+    const isSSE = event.request.headers.get('accept') === 'text/event-stream';
+    
+    if (isSSE) {
+      // For SSE, try to get the user but don't block if not authenticated
+      const user = await getAuthUser(event.request);
+      if (user) {
+        console.log(`[SSE] Authenticated SSE connection for user: ${user.userId}`);
+        return handler({ ...event, user });
+      } else {
+        console.log('[SSE] Anonymous SSE connection');
+        return handler({ ...event, user: { userId: 'anonymous', username: 'anonymous' } });
+      }
+    }
+    
+    // For non-SSE requests, use the regular auth flow
     const auth = await requireAuth(event);
     if ('user' in auth) {
       return handler({ ...event, user: auth.user });

@@ -33,6 +33,31 @@ const SidePanel: Component<SidePanelProps> = (props) => {
     let reconnectTimeout: number | undefined;
     let eventSource: EventSource | null = null;
     let isConnected = false;
+    let cleanupCallbacks: Array<() => void> = [];
+    
+    // Function to clean up all resources
+    const cleanupAll = () => {
+      console.log('[SSE] Running cleanup callbacks');
+      cleanupCallbacks.forEach(cb => {
+        try {
+          cb();
+        } catch (e) {
+          console.error('[SSE] Error during cleanup:', e);
+        }
+      });
+      cleanupCallbacks = [];
+      
+      if (eventSource) {
+        console.log('[SSE] Closing EventSource in cleanup');
+        eventSource.close();
+        eventSource = null;
+      }
+      
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = undefined;
+      }
+    };
 
     const connect = () => {
       if (eventSource) {
@@ -50,6 +75,11 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         
         // Log all event listeners being added
         console.log('[SSE] Event source created, adding event listeners');
+        
+        if (!eventSource) {
+          console.error('[SSE] Failed to create EventSource');
+          return;
+        }
         
         eventSource.onopen = () => {
           isConnected = true;
@@ -87,7 +117,7 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           
           // Add specific event type listeners
           ['created', 'updated', 'deleted', 'ping'].forEach(eventType => {
-            eventSource.addEventListener(eventType, (event) => {
+            eventSource?.addEventListener(eventType, (event) => {
               console.log(`[SSE] Received ${eventType} event:`, event);
               handleMessage(event as MessageEvent);
             });
@@ -256,18 +286,43 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         }
       };
 
-      eventSource.addEventListener('open', handleOpen);
-      eventSource.addEventListener('error', handleError);
+      if (eventSource) {
+        eventSource.addEventListener('open', handleOpen);
+        eventSource.addEventListener('error', handleError);
+      }
+      
+      // Register cleanup callbacks
+      const cleanupListeners = () => {
+        if (eventSource) {
+          console.log('[SSE] Removing event listeners');
+          eventSource.removeEventListener('message', handleMessage);
+          eventSource.removeEventListener('open', handleOpen);
+          eventSource.removeEventListener('error', handleError);
+          
+          // Remove all event listeners of specific types
+          ['created', 'updated', 'deleted', 'ping'].forEach(eventType => {
+            eventSource?.removeEventListener(eventType, handleMessage as any);
+          });
+        }
+      };
+      
+      // Add to cleanup callbacks
+      cleanupCallbacks.push(cleanupListeners);
       
       // Return cleanup function for this connection
       return () => {
-        eventSource?.removeEventListener('message', handleMessage);
-        eventSource?.removeEventListener('open', handleOpen);
-        eventSource?.removeEventListener('error', handleError);
-        eventSource?.close();
+        console.log('[SSE] Connection cleanup triggered');
+        cleanupListeners();
+        
+        if (eventSource) {
+          console.log('[SSE] Closing EventSource in connection cleanup');
+          eventSource.close();
+          eventSource = null;
+        }
         
         if (reconnectTimeout) {
           clearTimeout(reconnectTimeout);
+          reconnectTimeout = undefined;
         }
       };
     };
@@ -277,7 +332,20 @@ const SidePanel: Component<SidePanelProps> = (props) => {
 
     // Cleanup on component unmount
     onCleanup(() => {
+      console.log('[SSE] Cleaning up SidePanel SSE connection');
       cleanup?.();
+      
+      // Force cleanup of any remaining resources
+      if (eventSource) {
+        console.log('[SSE] Force closing EventSource');
+        eventSource.close();
+        eventSource = null;
+      }
+      
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = undefined;
+      }
     });
   });
   

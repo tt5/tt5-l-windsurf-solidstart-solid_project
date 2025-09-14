@@ -17,7 +17,7 @@ interface Client {
 export class BasePointEventService {
   private static instance: BasePointEventService;
   private eventEmitter: EventEmitter;
-  private clients: Set<Client> = new Set();
+  private clients: Map<string, { client: Client; cleanup: () => void }> = new Map(); // Store client with cleanup function
 
   private constructor() {
     this.eventEmitter = new EventEmitter();
@@ -57,18 +57,76 @@ export class BasePointEventService {
    * Register a new client connection
    * @param client - The client connection
    */
-  public registerClient(client: Client): void {
-    this.clients.add(client);
-    console.log(`Client connected. Total clients: ${this.clients.size}`);
+  /**
+   * Generate a unique client ID based on user ID and IP
+   */
+  private getClientId(client: Client): string {
+    // Use a stable ID based on user ID and IP
+    // If the client already has an ID (from a previous connection), use that
+    if ((client as any).__clientId) {
+      return (client as any).__clientId;
+    }
+    
+    // Otherwise generate a new stable ID
+    const clientId = `${client.userId}@${client.ip || 'unknown'}-${Date.now()}`;
+    (client as any).__clientId = clientId;
+    return clientId;
+  }
+
+  public registerClient(client: Client): { id: string; cleanup: () => void } {
+    const clientId = this.getClientId(client);
+    
+    // Cleanup function to unregister this client
+    const cleanup = () => {
+      if (this.clients.delete(clientId)) {
+        console.log(`[EventService] Cleaned up client: ${clientId}`);
+      }
+    };
+    
+    // Store client with its cleanup function
+    this.clients.set(clientId, { client, cleanup });
+    console.log(`[EventService] Client connected: ${clientId}. Total clients: ${this.clients.size}`);
+    
+    // Return the cleanup function to the caller
+    return { id: clientId, cleanup };
   }
 
   /**
    * Unregister a client connection
    * @param client - The client connection to remove
    */
-  public unregisterClient(client: Client): void {
-    this.clients.delete(client);
-    console.log(`Client disconnected. Total clients: ${this.clients.size}`);
+  public unregisterClient(client: Client): number {
+    let cleanedUpCount = 0;
+    
+    // If client has an ID, use that for direct lookup
+    if ((client as any).__clientId) {
+      const clientId = (client as any).__clientId;
+      const entry = this.clients.get(clientId);
+      if (entry) {
+        console.log(`[EventService] Disconnecting client by ID: ${clientId}`);
+        entry.cleanup();
+        cleanedUpCount++;
+      }
+    }
+    
+    // Fallback: Find by user ID and IP if no ID is set or if direct lookup failed
+    const clientKey = `${client.userId}@${client.ip || 'unknown'}`;
+    const matchingClients = Array.from(this.clients.entries())
+      .filter(([id]) => id.startsWith(clientKey));
+    
+    for (const [id, entry] of matchingClients) {
+      console.log(`[EventService] Disconnecting client: ${id}`);
+      entry.cleanup();
+      cleanedUpCount++;
+    }
+    
+    if (cleanedUpCount === 0) {
+      console.log(`[EventService] No clients found matching: ${clientKey}`);
+    } else {
+      console.log(`[EventService] Cleaned up ${cleanedUpCount} clients for user ${client.userId}`);
+    }
+    
+    return cleanedUpCount;
   }
 
   /**
@@ -80,7 +138,13 @@ export class BasePointEventService {
     const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
     console.log(`[EventService] Broadcasting '${event}' to ${this.clients.size} clients`);
     
-    this.clients.forEach(client => {
+    // Create a copy of clients to avoid modification during iteration
+    const clients = Array.from(this.clients.entries());
+    
+    for (const [id, { client }] of clients) {
+      if (!this.clients.has(id)) {
+        continue; // Skip if client was removed during iteration
+      }
       try {
         console.log(`[EventService] Sending to client ${client.userId}`, { 
           event, 
@@ -102,7 +166,7 @@ export class BasePointEventService {
       } catch (error) {
         console.error(`[EventService] Error sending to client ${client.userId}:`, error);
       }
-    });
+    }
   }
 
   /**
@@ -173,8 +237,34 @@ export class BasePointEventService {
   /**
    * Get all connected clients (for debugging)
    */
-  public getClients(): Set<Client> {
-    return new Set(this.clients);
+  public getClients(): Array<Client & { clientId: string }> {
+    return Array.from(this.clients.entries()).map(([clientId, entry]) => ({
+      ...entry.client,
+      clientId // Include the internal client ID for debugging
+    }));
+  }
+  
+  /**
+   * Get connection stats (for debugging)
+   */
+  public getConnectionStats() {
+    const clients = this.getClients();
+    const stats = {
+      total: clients.length,
+      byUser: clients.reduce((acc, client) => {
+        acc[client.userId] = (acc[client.userId] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      connections: clients.map(c => ({
+        userId: c.userId,
+        ip: c.ip,
+        clientId: (c as any).__clientId || 'none',
+        connectedAt: c.connectedAt
+      }))
+    };
+    
+    console.log('[EventService] Connection Stats:', JSON.stringify(stats, null, 2));
+    return stats;
   }
 }
 
