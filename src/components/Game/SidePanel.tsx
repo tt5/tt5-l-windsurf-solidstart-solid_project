@@ -192,21 +192,19 @@ const SidePanel: Component<SidePanelProps> = (props) => {
             console.error(`[SSE] Error in ${type} event listener:`, error);
           };
           
-          // Add generic message listener
-          try {
-            eventSource.addEventListener('message', onMessage);
-            console.log('[SSE] Added generic message listener');
-          } catch (e) {
-            console.error('[SSE] Failed to add generic message listener:', e);
-          }
-          
-          // Add specific event type listeners
-          const eventTypes = ['created', 'updated', 'deleted', 'ping', 'basePointChanged'];
-          
-          // Also listen for the raw message event to handle custom event types
-          eventSource.addEventListener('message', (event) => {
+          // Single message handler for all events
+          const messageHandler = (event: MessageEvent) => {
             try {
-              const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+              // First try to parse the data if it's a string
+              let data;
+              try {
+                data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+              } catch (e) {
+                console.error('[SSE] Failed to parse message data:', event.data);
+                return;
+              }
+              
+              // Handle different event formats
               if (data.type === 'basePointChanged' && data.event) {
                 console.log(`[SSE] Received basePointChanged.${data.event} event:`, data);
                 // Create a new event with the correct type
@@ -231,27 +229,44 @@ const SidePanel: Component<SidePanelProps> = (props) => {
                 handleMessage(event);
               }
             } catch (e) {
-              console.error('[SSE] Error processing message event:', e, event);
+              console.error('[SSE] Error processing message:', e, event);
             }
-          });
-          eventTypes.forEach(eventType => {
-            try {
-              eventSource?.addEventListener(eventType, (event) => {
-                console.log(`[SSE] Received ${eventType} event:`, event);
-                handleMessage(event as MessageEvent);
-              });
-              console.log(`[SSE] Added event listener for: ${eventType}`);
-            } catch (e) {
-              console.error(`[SSE] Failed to add ${eventType} event listener:`, e);
-            }
-          });
+          };
           
-          // Log all event listeners for debugging
-          console.log('[SSE] Current event listeners:', {
-            message: eventSource.onmessage !== null ? 'exists' : 'missing',
-            error: eventSource.onerror !== null ? 'exists' : 'missing',
-            open: eventSource.onopen !== null ? 'exists' : 'missing'
-          });
+          // Add the message handler
+          if (eventSource) {
+            eventSource.onmessage = messageHandler;
+            console.log('[SSE] Added message handler');
+            
+            // Add specific event type listeners
+            const eventTypes = ['created', 'updated', 'deleted', 'ping', 'basePointChanged'];
+            eventTypes.forEach(eventType => {
+              try {
+                if (eventSource) {
+                  eventSource.addEventListener(eventType, (event) => {
+                    console.log(`[SSE] Received ${eventType} event:`, event);
+                    handleMessage(event as MessageEvent);
+                  });
+                  console.log(`[SSE] Added event listener for: ${eventType}`);
+                } else {
+                  console.error(`[SSE] Cannot add ${eventType} listener: eventSource is null`);
+                }
+              } catch (e) {
+                console.error(`[SSE] Failed to add ${eventType} event listener:`, e);
+              }
+            });
+          }
+          
+          // Log connection status
+          if (eventSource) {
+            console.log('[SSE] Connection status:', {
+              readyState: eventSource.readyState,
+              url: eventSource.url,
+              withCredentials: eventSource.withCredentials
+            });
+          } else {
+            console.log('[SSE] Connection status: eventSource is null');
+          }
         } else {
           console.error('[SSE] Cannot add event listeners: eventSource is null');
         }
