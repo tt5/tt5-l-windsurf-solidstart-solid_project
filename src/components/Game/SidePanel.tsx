@@ -48,24 +48,37 @@ const SidePanel: Component<SidePanelProps> = (props) => {
     try {
       console.log('[SSE] Message received:', event);
       
-      // Skip empty or ping events
-      if (!event.data || event.data === '{}' || event.data.includes('"event":"ping"')) {
-        console.log('[SSE] Ping or empty message, skipping');
+      // Skip empty events
+      if (!event.data || event.data === '{}') {
+        console.log('[SSE] Empty message, skipping');
+        return;
+      }
+      
+      // Handle ping events
+      if (event.data.includes('"event":"ping"') || event.data.trim() === '') {
+        console.log('[SSE] Ping message, skipping');
         return;
       }
       
       let data;
       try {
-        data = JSON.parse(event.data);
+        // Try to parse the data (it might be a JSON string or already an object)
+        data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
         console.log('[SSE] Parsed message data:', data);
+        
+        // Handle the case where the data is nested under a 'data' property
+        if (data.data) {
+          data = data.data;
+        }
       } catch (e) {
-        console.error('[SSE] Error parsing message data:', e, event.data);
+        console.error('[SSE] Error parsing message data:', e, 'Raw data:', event.data);
         return;
       }
       
       // Handle different event types
       if (data.type === 'basePointChanged' && data.point) {
-        const { event: eventType, point } = data;
+        const eventType = data.event || 'updated'; // Default to 'updated' if event type not specified
+        const { point } = data;
         console.log(`[SSE] Base point ${eventType} at (${point.x}, ${point.y})`);
         
         // Add notification with string ID
@@ -119,6 +132,11 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       // Handle incoming messages
       eventSource.onmessage = handleMessage;
       
+      // Listen for specific event types
+      eventSource.addEventListener('created', handleMessage);
+      eventSource.addEventListener('updated', handleMessage);
+      eventSource.addEventListener('deleted', handleMessage);
+      
       // Set up error handler
       eventSource.onerror = (event: Event) => {
         console.error('[SSE] EventSource error:', event);
@@ -160,9 +178,14 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         reconnectTimeout = undefined;
       }
       
-      // Close the connection
+      // Close the connection and remove event listeners
       if (eventSource) {
         console.log('[SSE] Cleaning up EventSource');
+        // Remove event listeners
+        eventSource.removeEventListener('created', handleMessage);
+        eventSource.removeEventListener('updated', handleMessage);
+        eventSource.removeEventListener('deleted', handleMessage);
+        // Close the connection
         eventSource.close();
         eventSource = null;
       }
