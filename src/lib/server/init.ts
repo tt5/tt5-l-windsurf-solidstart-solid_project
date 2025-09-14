@@ -68,9 +68,15 @@ class ServerInitializer {
           console.log(`[Cleanup] Removing ${pointsToDelete.length} points...`);
           await deletePoints(db, pointsToDelete);
           const totalTime = performance.now() - cleanupStartTime;
+          if (totalTime > 5000) {
+            console.warn(`[Cleanup] WARNING: Cleanup took ${(totalTime/1000).toFixed(2)}s (over 5s threshold)`);
+          }
           console.log(`[Cleanup] Removed ${pointsToDelete.length} points in ${duration.toFixed(2)}ms (total: ${totalTime.toFixed(2)}ms)`);
         } else {
           const totalTime = performance.now() - cleanupStartTime;
+          if (totalTime > 5000) {
+            console.warn(`[Cleanup] WARNING: Cleanup took ${(totalTime/1000).toFixed(2)}s (over 5s threshold)`);
+          }
           console.log(`[Cleanup] No points to remove (took ${totalTime.toFixed(2)}ms)`);
         }
       } catch (error) {
