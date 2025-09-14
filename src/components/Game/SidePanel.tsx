@@ -81,12 +81,22 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       // Add a timestamp to prevent caching
       const urlWithCacheBust = `${apiUrl}?_=${Date.now()}`;
       try {
-        console.log('[SSE] Creating new EventSource instance');
+        console.log('[SSE] Creating new EventSource instance to:', urlWithCacheBust);
         eventSource = new EventSource(urlWithCacheBust, { 
           withCredentials: true 
         });
         
         isConnected = false;
+        
+        // Log the EventSource object for debugging
+        console.log('[SSE] EventSource created:', {
+          url: eventSource.url,
+          withCredentials: eventSource.withCredentials,
+          readyState: eventSource.readyState,
+          CONNECTING: EventSource.CONNECTING,
+          OPEN: EventSource.OPEN,
+          CLOSED: EventSource.CLOSED
+        });
         
         if (!eventSource) {
           console.error('[SSE] Failed to create EventSource: eventSource is null');
@@ -98,6 +108,13 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           reconnectAttempts = 0;
           console.log('[SSE] Connection established, readyState:', eventSource?.readyState);
           
+          // Log connection details
+          console.log('[SSE] Connection details:', {
+            url: eventSource?.url,
+            readyState: eventSource?.readyState,
+            withCredentials: eventSource?.withCredentials
+          });
+          
           // Send a test message to verify the connection
           if (eventSource) {
             const testEvent = {
@@ -107,13 +124,22 @@ const SidePanel: Component<SidePanelProps> = (props) => {
             };
             console.log('[SSE] Sending test message');
             // @ts-ignore - This is just for testing
-            eventSource.send(JSON.stringify(testEvent));
+            eventSource.send?.(JSON.stringify(testEvent));
           }
         };
         
-        eventSource.onerror = (error) => {
+        eventSource.onerror = (error: Event) => {
           const readyState = eventSource?.readyState;
-          console.error(`[SSE] Connection error at ${new Date().toISOString()}, readyState: ${readyState}`, error);
+          const errorEvent = error as ErrorEvent;
+          console.error(`[SSE] Connection error at ${new Date().toISOString()}`, {
+            readyState,
+            url: eventSource?.url,
+            error: errorEvent,
+            eventType: errorEvent.type || 'unknown',
+            eventPhase: errorEvent.eventPhase,
+            isTrusted: errorEvent.isTrusted,
+            timeStamp: errorEvent.timeStamp
+          });
           
           // Log more details about the readyState
           const readyStateMap = {
@@ -148,17 +174,83 @@ const SidePanel: Component<SidePanelProps> = (props) => {
 
         // Add message event listener
         if (eventSource) {
-          eventSource.addEventListener('message', (event) => {
-            console.log('[SSE] Received message event:', event.type, event);
+          console.log('[SSE] Setting up event listeners');
+          
+          // Generic message handler
+          const onMessage = (event: MessageEvent) => {
+            console.log('[SSE] Received message event:', {
+              type: event.type,
+              data: event.data,
+              origin: event.origin,
+              lastEventId: event.lastEventId
+            });
             handleMessage(event);
-          });
+          };
+          
+          // Error handler for individual event listeners
+          const onError = (type: string, error: any) => {
+            console.error(`[SSE] Error in ${type} event listener:`, error);
+          };
+          
+          // Add generic message listener
+          try {
+            eventSource.addEventListener('message', onMessage);
+            console.log('[SSE] Added generic message listener');
+          } catch (e) {
+            console.error('[SSE] Failed to add generic message listener:', e);
+          }
           
           // Add specific event type listeners
-          ['created', 'updated', 'deleted', 'ping'].forEach(eventType => {
-            eventSource?.addEventListener(eventType, (event) => {
-              console.log(`[SSE] Received ${eventType} event:`, event);
-              handleMessage(event as MessageEvent);
-            });
+          const eventTypes = ['created', 'updated', 'deleted', 'ping', 'basePointChanged'];
+          
+          // Also listen for the raw message event to handle custom event types
+          eventSource.addEventListener('message', (event) => {
+            try {
+              const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+              if (data.type === 'basePointChanged' && data.event) {
+                console.log(`[SSE] Received basePointChanged.${data.event} event:`, data);
+                // Create a new event with the correct type
+                const customEvent = new MessageEvent(data.event, {
+                  data: JSON.stringify(data.point || data.data || data),
+                  origin: event.origin,
+                  lastEventId: event.lastEventId
+                });
+                handleMessage(customEvent);
+              } else if (data.event) {
+                // Handle other custom event types
+                console.log(`[SSE] Forwarding custom event: ${data.event}`, data);
+                const customEvent = new MessageEvent(data.event, {
+                  data: JSON.stringify(data.data || data),
+                  origin: event.origin,
+                  lastEventId: event.lastEventId
+                });
+                handleMessage(customEvent);
+              } else {
+                // Fallback for regular messages
+                console.log('[SSE] Received message event:', event);
+                handleMessage(event);
+              }
+            } catch (e) {
+              console.error('[SSE] Error processing message event:', e, event);
+            }
+          });
+          eventTypes.forEach(eventType => {
+            try {
+              eventSource?.addEventListener(eventType, (event) => {
+                console.log(`[SSE] Received ${eventType} event:`, event);
+                handleMessage(event as MessageEvent);
+              });
+              console.log(`[SSE] Added event listener for: ${eventType}`);
+            } catch (e) {
+              console.error(`[SSE] Failed to add ${eventType} event listener:`, e);
+            }
+          });
+          
+          // Log all event listeners for debugging
+          console.log('[SSE] Current event listeners:', {
+            message: eventSource.onmessage !== null ? 'exists' : 'missing',
+            error: eventSource.onerror !== null ? 'exists' : 'missing',
+            open: eventSource.onopen !== null ? 'exists' : 'missing'
           });
         } else {
           console.error('[SSE] Cannot add event listeners: eventSource is null');
@@ -195,27 +287,6 @@ const SidePanel: Component<SidePanelProps> = (props) => {
             // Parse the event data if it's a string
             data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
             console.log('[SSE] Parsed event data:', data);
-            
-            // Handle different event formats
-            if (event.type === 'message' && data.event) {
-              // If this is a message event with an embedded event type
-              console.log(`[SSE] Processing embedded event: ${data.event}`);
-              // Create a new event object with the updated type
-              const eventInit: MessageEventInit = {
-                data: data.data || data,
-                lastEventId: event.lastEventId,
-                origin: event.origin
-              };
-              // Only include ports if they exist
-              if (event.ports && event.ports.length > 0) {
-                eventInit.ports = Array.from(event.ports);
-              }
-              event = new MessageEvent(data.event, eventInit);
-            }
-            
-            // Log the processed event
-            console.log(`[SSE] Processing ${event.type} event:`, data);
-            
           } catch (e) {
             console.error('[SSE] Failed to parse event data:', event.data, 'Error:', e);
             return;
@@ -248,6 +319,11 @@ const SidePanel: Component<SidePanelProps> = (props) => {
             // Format 3: Direct point data in the root
             pointData = data;
             console.log('[SSE] Processing direct point data:', { eventType, pointData });
+          }
+          else if (eventType === 'basePointChanged' && data) {
+            // Handle case where basePointChanged is the event type and data is the point
+            pointData = data;
+            console.log('[SSE] Processing basePointChanged event with direct data:', pointData);
           }
           else if (data) {
             // Format 4: Generic data object
