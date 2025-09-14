@@ -7,6 +7,7 @@ The tile system is responsible for efficiently serving map data to clients. It u
 - Each tile covers a 64x64 world coordinate area
 - Tiles are generated on-demand when first requested
 - Generated tiles are stored in both the database and server cache
+- **Optimization**: Tiles are only regenerated if their base points have changed, reducing unnecessary database writes and CPU usage
 
 ## Caching Strategy
 
