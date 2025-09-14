@@ -1054,99 +1054,10 @@ const MapView: Component = () => {
     const imgData = new ImageData(imageData, TILE_SIZE, TILE_SIZE);
     ctx.putImageData(imgData, 0, 0);
     
-    // Don't draw grid lines on individual tiles - they're handled by the grid overlay
-    
     // Convert to data URL
     const dataUrl = canvas.toDataURL('image/png');
     console.log('Generated image data URL');
     return dataUrl;
-  };
-
-  // Grid rendering with CSS modules
-  const renderGrid = () => {
-    const vp = viewport();
-    const gridSize = 20;
-    const width = vp.width / vp.zoom;
-    const height = vp.height / vp.zoom;
-    
-    // Create grid lines
-    const gridLines = [
-      // Viewport border
-      <rect 
-        x={vp.x} 
-        y={vp.y} 
-        width={width} 
-        height={height} 
-        fill="none" 
-        class={styles.gridAxis}
-      />,
-      // Vertical lines
-      ...Array.from({length: Math.ceil(width / gridSize) + 1}).map((_, i) => {
-        const x = vp.x + (i * gridSize);
-        const isAxis = x === 0;
-        const isMajor = x % 100 === 0;
-        return (
-          <line 
-            x1={x} 
-            y1={vp.y} 
-            x2={x} 
-            y2={vp.y + height} 
-            class={`${styles.gridLine} ${isAxis ? styles.gridAxis : isMajor ? styles.gridMajor : styles.gridMinor}`}
-          />
-        );
-      }),
-      // Horizontal lines
-      ...Array.from({length: Math.ceil(height / gridSize) + 1}).map((_, i) => {
-        const y = vp.y + (i * gridSize);
-        const isAxis = y === 0;
-        const isMajor = y % 100 === 0;
-        return (
-          <line 
-            x1={vp.x} 
-            y1={y} 
-            x2={vp.x + width} 
-            y2={y} 
-            class={`${styles.gridLine} ${isAxis ? styles.gridAxis : isMajor ? styles.gridMajor : styles.gridMinor}`}
-          />
-        );
-      })
-    ];
-
-    return (
-      <div class={styles.testGridContainer}>
-        <svg 
-          class={styles.gridSvg}
-          viewBox={`${vp.x} ${vp.y} ${width} ${height}`}
-          preserveAspectRatio="none"
-        >
-          {gridLines}
-          <text 
-            x={vp.x + 10} 
-            y={vp.y + 20} 
-            class={styles.gridText}
-          >
-            Viewport: {vp.x.toFixed(0)},{vp.y.toFixed(0)} to {(vp.x + width).toFixed(0)},{(vp.y + height).toFixed(0)}
-          </text>
-        </svg>
-      </div>
-    );
-  };
-
-  const renderTestGrid = () => {
-    const vp = viewport();
-    const gridStyle = {
-      backgroundPosition: `${-vp.x * vp.zoom}px ${-vp.y * vp.zoom}px`,
-      transform: `scale(${vp.zoom})`,
-      backgroundSize: `50px 50px`
-    };
-    
-    return (
-      <div class={styles.testGrid} style={gridStyle}>
-        <div class={styles.testGridLabel}>
-          Grid Test - You should see grid lines
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -1176,17 +1087,7 @@ const MapView: Component = () => {
             left: 0,
             width: '100%',
             height: '100%',
-            'z-index': 1
-          }}>
-            {renderGrid()}
-          </div>
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            'z-index': 2
+            zIndex: 2
           }}>
             {Object.values(tiles()).map(tile => renderTile(tile))}
           </div>
