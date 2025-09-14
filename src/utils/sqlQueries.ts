@@ -20,12 +20,48 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
   const pointsToDelete: BasePoint[] = [];
   
   try {
-    // Get random slopes if none provided
-    const activeSlopes = slopes.length > 0 ? slopes : getRandomSlopes(3); // Default to 3 random slope pairs
+    // Get slopes - either use provided ones or get random slopes
+    let activeSlopes: number[] = [];
+    
+    if (slopes.length > 0) {
+      // If slopes are provided, ensure we include all variants (original, reciprocal, negatives)
+      const slopeVariants = new Set<number>();
+      const addVariants = (s: number) => {
+        slopeVariants.add(s);
+        if (s !== 0) {
+          slopeVariants.add(1/s);
+        }
+        slopeVariants.add(-s);
+        if (s !== 0) {
+          slopeVariants.add(-1/s);
+        }
+      };
+      
+      slopes.forEach(slope => addVariants(slope));
+      activeSlopes = Array.from(slopeVariants);
+    } else {
+      // If no slopes provided, get random ones
+      activeSlopes = getRandomSlopes(3);
+    }
+    
     const slopeConditions = getSlopeConditions(activeSlopes);
   
     console.log('\n=== Using Slopes for Cleanup ===');
-    console.log('Active slopes:', activeSlopes);
+    // Group slopes by their base value for better readability
+    const slopeGroups = new Map<number, number[]>();
+    activeSlopes.forEach(slope => {
+      // Group by the absolute value of the slope, rounded to 2 decimal places
+      const base = Math.round(Math.abs(slope) * 100) / 100;
+      if (!slopeGroups.has(base)) {
+        slopeGroups.set(base, []);
+      }
+      slopeGroups.get(base)!.push(slope);
+    });
+    
+    console.log('Active slopes:');
+    for (const [base, slopes] of slopeGroups.entries()) {
+      console.log(`  - Base ${base}: ${slopes.sort().join(', ')}`);
+    }
   
     // 1. Find vertical lines (same x-coordinate)
     console.log('\n=== Checking for Vertical Lines ===');
