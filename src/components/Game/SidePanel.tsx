@@ -21,12 +21,18 @@ const SidePanel: Component<SidePanelProps> = (props) => {
   // Initialize notifications state
   const [notifications, setNotifications] = createSignal<Notification[]>([]);
   
-  // Reconnection handling
-  let reconnectAttempts = 0;
-  const maxReconnectAttempts = 5;
-  let reconnectTimeout: number | undefined;
+  // Store the EventSource instance and reconnection state
   let eventSource: EventSource | null = null;
+  let reconnectAttempts = 0;
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const RECONNECT_DELAY = 1000; // 1 second
   let isConnected = false;
+  let reconnectTimeout: NodeJS.Timeout | undefined;
+  
+  // Type-safe event listener storage for cleanup
+  const eventListeners: {
+    [key: string]: (event: any) => void;
+  } = {};
 
   // Debug effect to log notifications changes
   createEffect(() => {
@@ -34,60 +40,85 @@ const SidePanel: Component<SidePanelProps> = (props) => {
   });
 
   const scheduleReconnect = () => {
-    if (reconnectAttempts < maxReconnectAttempts) {
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-      reconnectAttempts++;
-      console.log(`[SSE] Retrying connection in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
-      reconnectTimeout = window.setTimeout(connect, delay);
+      reconnectTimeout = setTimeout(() => {
+        console.log(`[SSE] Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+        connect();
+      }, delay) as unknown as NodeJS.Timeout;
     } else {
       console.error('[SSE] Max reconnection attempts reached');
     }
   };
 
+  const getReadyStateName = (state: number | undefined): string => {
+    switch (state) {
+      case EventSource.CONNECTING: return 'CONNECTING';
+      case EventSource.OPEN: return 'OPEN';
+      case EventSource.CLOSED: return 'CLOSED';
+      default: return 'UNKNOWN';
+    }
+  };
+
   const handleMessage = (event: MessageEvent) => {
     try {
-      console.log('[SSE] Message received:', event);
+      console.group('[SSE] Message received');
+      console.log('Event type:', event.type);
+      console.log('Origin:', event.origin);
+      console.log('Last event ID:', (event as any).lastEventId || 'none');
+      console.log('Raw data:', event.data);
+      console.log('EventSource state:', getReadyStateName(eventSource?.readyState));
       
       // Skip empty events
-      if (!event.data || event.data === '{}') {
+      if (!event.data || event.data === '{}' || event.data.trim() === '') {
         console.log('[SSE] Empty message, skipping');
+        console.groupEnd();
         return;
       }
       
       // Handle ping events
-      if (event.data.includes('"event":"ping"') || event.data.trim() === '') {
+      if (event.data.includes('"event":"ping"') || event.type === 'ping') {
         console.log('[SSE] Ping message, skipping');
+        console.groupEnd();
         return;
       }
       
-      let data;
+      let messageData;
       try {
-        // Try to parse the data (it might be a JSON string or already an object)
-        data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        console.log('[SSE] Parsed message data:', data);
-        
-        // Handle the case where the data is nested under a 'data' property
-        if (data.data) {
-          data = data.data;
-        }
+        // The event data should be a JSON string
+        messageData = JSON.parse(event.data);
+        console.log('[SSE] Parsed message data:', messageData);
       } catch (e) {
         console.error('[SSE] Error parsing message data:', e, 'Raw data:', event.data);
+        console.groupEnd();
         return;
       }
       
-      // Handle different event types
-      if (data.type === 'basePointChanged' && data.point) {
-        const eventType = data.event || 'updated'; // Default to 'updated' if event type not specified
-        const { point } = data;
-        console.log(`[SSE] Base point ${eventType} at (${point.x}, ${point.y})`);
-        
-        // Add notification with string ID
-        setNotifications(prev => [{
-          id: `${point.x},${point.y}-${Date.now()}`,
-          message: `Base point at (${point.x}, ${point.y}) was ${eventType}`,
-          timestamp: Date.now()
-        }, ...prev]);
+      // The server sends the event type as the event name and the data in the message
+      const eventType = event.type;
+      const eventData = messageData;
+      
+      console.log(`[SSE] Processing ${eventType} event`);
+      
+      // Handle base point changes
+      const eventToProcess = eventType === 'message' ? eventData : { ...eventData, type: eventType };
+      
+      if (eventToProcess.type === 'basePointChanged' || (eventToProcess && eventToProcess.type === 'basePointChanged')) {
+        const pointData = eventToProcess.point || eventToProcess;
+        if (pointData && pointData.x !== undefined && pointData.y !== undefined) {
+          const eventAction = eventToProcess.event || 'updated';
+          console.log(`[SSE] Base point ${eventAction} at (${pointData.x}, ${pointData.y})`);
+          
+          // Add notification with string ID
+          setNotifications(prev => [{
+            id: `${pointData.x},${pointData.y}-${Date.now()}`,
+            message: `Base point at (${pointData.x}, ${pointData.y}) was ${eventAction}`,
+            timestamp: Date.now()
+          }, ...prev]);
+        }
       }
+      
+      console.groupEnd();
     } catch (error) {
       console.error('[SSE] Error processing message:', error);
     }
@@ -115,36 +146,137 @@ const SidePanel: Component<SidePanelProps> = (props) => {
     const urlWithCacheBust = `${apiUrl}?_=${Date.now()}`;
     
     try {
-      console.log('[SSE] Creating new EventSource instance to:', urlWithCacheBust);
+      console.group('[SSE] Creating new EventSource');
+      console.log('URL:', urlWithCacheBust);
+      console.log('With credentials:', true);
+      console.log('Current time:', new Date().toISOString());
+      
+      // Create a new EventSource with error handling
       eventSource = new EventSource(urlWithCacheBust, { 
         withCredentials: true 
       });
       
+      console.log('EventSource created, readyState:', getReadyStateName(eventSource.readyState));
+      console.groupEnd();
+      
       isConnected = false;
+      
+      // Log initial state
+      console.log('[SSE] Initial EventSource state:', {
+        url: eventSource.url,
+        withCredentials: eventSource.withCredentials,
+        readyState: getReadyStateName(eventSource.readyState),
+        CONNECTING: EventSource.CONNECTING,
+        OPEN: EventSource.OPEN,
+        CLOSED: EventSource.CLOSED
+      });
       
       // Set up event listeners for standard EventSource events
       eventSource.onopen = () => {
-        console.log('[SSE] Connection opened at', new Date().toISOString());
+        const now = new Date().toISOString();
+        console.log(`[SSE] Connection opened at ${now}`);
+        console.log(`[SSE] Ready state: ${eventSource?.readyState} (${getReadyStateName(eventSource?.readyState)})`);
+        console.log(`[SSE] URL: ${eventSource?.url}`);
+        console.log(`[SSE] With credentials: ${eventSource?.withCredentials}`);
         isConnected = true;
         reconnectAttempts = 0;
+        
+        // Send a test message to verify the connection
+        console.log('[SSE] Connection established, waiting for events...');
       };
       
       // Handle incoming messages
-      eventSource.onmessage = handleMessage;
+      eventSource.onmessage = (event) => {
+        console.group('[SSE] Message received (onmessage)');
+        console.log('Event type:', event.type);
+        console.log('Data:', event.data);
+        console.groupEnd();
+        
+        // Forward to handleMessage with the event type
+        handleMessage({
+          ...event,
+          type: 'message',
+          data: event.data
+        } as MessageEvent);
+      };
       
-      // Listen for specific event types
-      eventSource.addEventListener('created', handleMessage);
-      eventSource.addEventListener('updated', handleMessage);
-      eventSource.addEventListener('deleted', handleMessage);
+      // Store the current eventSource reference to avoid race conditions
+      const currentEventSource = eventSource;
+      if (!currentEventSource) {
+        console.error('[SSE] Cannot add event listeners: eventSource is null');
+        return;
+      }
+      
+      // Define event types to listen for
+      const eventTypes = ['created', 'updated', 'deleted', 'ping'] as const;
+      
+      // Add event listeners
+      eventTypes.forEach(eventType => {
+        // Create a type-safe event handler
+        const handler = (event: any) => {
+          console.group(`[SSE] ${eventType} event received`);
+          console.log('Event type:', event.type);
+          console.log('Data:', event.data);
+          console.groupEnd();
+          
+          // Forward to handleMessage with the correct event type
+          handleMessage({
+            ...event,
+            type: event.type,
+            data: event.data
+          } as MessageEvent);
+        };
+        
+        // Store the handler for cleanup
+        eventListeners[eventType] = handler;
+        currentEventSource.addEventListener(eventType, handler);
+      });
+      // Clean up any existing event listeners when reconnecting
+      const cleanupEventListeners = () => {
+        if (eventSource) {
+          Object.entries(eventListeners).forEach(([type, handler]) => {
+            eventSource?.removeEventListener(type, handler);
+          });
+        }
+        // Clear the listeners object
+        Object.keys(eventListeners).forEach(key => delete eventListeners[key as keyof typeof eventListeners]);
+      };
+      
+      // Set up cleanup on unmount
+      onCleanup(() => {
+        cleanupEventListeners();
+        if (eventSource) {
+          eventSource.close();
+        }
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+        }
+      });
       
       // Set up error handler
       eventSource.onerror = (event: Event) => {
-        console.error('[SSE] EventSource error:', event);
-        if (eventSource?.readyState === EventSource.CLOSED) {
-          console.log('[SSE] Connection closed by server');
+        console.group('[SSE] EventSource error');
+        console.error('Error event:', event);
+        console.log('EventSource state:', getReadyStateName(eventSource?.readyState));
+        console.log('Is connected:', isConnected);
+        console.log('Reconnect attempts:', reconnectAttempts);
+        
+        if (eventSource) {
+          console.log('EventSource URL:', eventSource.url);
+          console.log('Ready state:', eventSource.readyState, `(${getReadyStateName(eventSource.readyState)})`);
+          
+          if (eventSource.readyState === EventSource.CLOSED) {
+            console.log('[SSE] Connection closed by server');
+          }
         }
+        
+        console.groupEnd();
+        
         isConnected = false;
-        scheduleReconnect();
+        if (eventSource?.readyState === EventSource.CLOSED) {
+          console.log('[SSE] Attempting to reconnect...');
+          scheduleReconnect();
+        }
       };
       
       // Log the EventSource object for debugging
@@ -180,14 +312,31 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       
       // Close the connection and remove event listeners
       if (eventSource) {
-        console.log('[SSE] Cleaning up EventSource');
-        // Remove event listeners
-        eventSource.removeEventListener('created', handleMessage);
-        eventSource.removeEventListener('updated', handleMessage);
-        eventSource.removeEventListener('deleted', handleMessage);
-        // Close the connection
-        eventSource.close();
-        eventSource = null;
+        console.group('[SSE] Cleaning up EventSource');
+        console.log('Current state:', getReadyStateName(eventSource.readyState));
+        console.log('URL:', eventSource.url);
+        
+        try {
+          // Remove event listeners
+          eventSource.removeEventListener('created', handleMessage);
+          eventSource.removeEventListener('updated', handleMessage);
+          eventSource.removeEventListener('deleted', handleMessage);
+          
+          // Close the connection
+          if (eventSource.readyState !== EventSource.CLOSED) {
+            console.log('Closing connection...');
+            eventSource.close();
+          } else {
+            console.log('Connection already closed');
+          }
+          
+          eventSource = null;
+          console.log('Cleanup complete');
+        } catch (error) {
+          console.error('Error during cleanup:', error);
+        }
+        
+        console.groupEnd();
       }
     };
   });
