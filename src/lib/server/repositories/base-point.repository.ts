@@ -65,23 +65,30 @@ export class BasePointRepository {
           return existing;
         }
 
-        // Insert the new base point
-        console.log(`[BasePointRepository] Inserting new base point`);
+        // Insert the base point
+        console.log('[BasePointRepository] Inserting base point');
         const result = await this.db.run(
-          'INSERT INTO base_points (user_id, x, y, created_at_ms, updated_at_ms) VALUES (?, ?, ?, ?, ?)',
-          [userId, x, y, now, now]
+          'INSERT INTO base_points (user_id, x, y, created_at_ms) VALUES (?, ?, ?, ?)',
+          [userId, x, y, now]
         );
-        
-        console.log(`[BasePointRepository] Base point inserted with ID: ${result.lastID}`);
+
+        // Commit the transaction
+        console.log('[BasePointRepository] Committing transaction');
         await this.db.run('COMMIT');
         
-        return {
-          id: result.lastID!,
-          x,
-          y,
-          userId,
-          createdAtMs: now
-        };
+        console.log(`[BasePointRepository] Successfully added base point with ID: ${result.lastID}`);
+        
+        // Fetch the complete base point to ensure all fields are included
+        const insertedPoint = await this.db.get<BasePoint>(
+          'SELECT id, user_id as userId, x, y, created_at_ms as createdAtMs FROM base_points WHERE id = ?',
+          [result.lastID]
+        );
+
+        if (!insertedPoint) {
+          throw new Error('Failed to retrieve created base point');
+        }
+        
+        return insertedPoint;
       } catch (error) {
         console.error('[BasePointRepository] Error in transaction:', error);
         await this.db.run('ROLLBACK');

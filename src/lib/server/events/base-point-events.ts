@@ -2,6 +2,13 @@ import { EventEmitter } from 'events';
 import { BasePoint } from '~/types/board';
 
 type BasePointEvent = 'created' | 'updated' | 'deleted';
+interface Client {
+  send: (data: string) => void;
+  userId: string;
+  ip?: string;
+  connectedAt?: string;
+  [key: string]: any; // Allow additional properties
+};
 
 /**
  * Service for managing base point related events
@@ -10,6 +17,7 @@ type BasePointEvent = 'created' | 'updated' | 'deleted';
 export class BasePointEventService {
   private static instance: BasePointEventService;
   private eventEmitter: EventEmitter;
+  private clients: Set<Client> = new Set();
 
   private constructor() {
     this.eventEmitter = new EventEmitter();
@@ -46,11 +54,75 @@ export class BasePointEventService {
   }
 
   /**
+   * Register a new client connection
+   * @param client - The client connection
+   */
+  public registerClient(client: Client): void {
+    this.clients.add(client);
+    console.log(`Client connected. Total clients: ${this.clients.size}`);
+  }
+
+  /**
+   * Unregister a client connection
+   * @param client - The client connection to remove
+   */
+  public unregisterClient(client: Client): void {
+    this.clients.delete(client);
+    console.log(`Client disconnected. Total clients: ${this.clients.size}`);
+  }
+
+  /**
+   * Broadcast a message to all connected clients
+   * @param event - The event type
+   * @param data - The data to send
+   */
+  public broadcast(event: string, data: any): void {
+    const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+    console.log(`[EventService] Broadcasting '${event}' to ${this.clients.size} clients`);
+    
+    this.clients.forEach(client => {
+      try {
+        console.log(`[EventService] Sending to client ${client.userId}`, { 
+          event, 
+          data: {
+            ...data,
+            // Don't log the full point data to keep logs clean
+            point: data.point ? { 
+              id: data.point.id,
+              x: data.point.x,
+              y: data.point.y,
+              userId: data.point.userId,
+              timestamp: data.point.timestamp || data.point.createdAtMs
+            } : undefined
+          } 
+        });
+        
+        client.send(message);
+        console.log(`[EventService] Sent to client ${client.userId}`);
+      } catch (error) {
+        console.error(`[EventService] Error sending to client ${client.userId}:`, error);
+      }
+    });
+  }
+
+  /**
    * Emit a base point created event
    * @param point - The created base point
    */
   public emitCreated(point: BasePoint): void {
+    console.log(`[EventService] Emitting 'created' event for point ${point.id} by user ${point.userId}`);
     this.eventEmitter.emit('created', point);
+    this.broadcast('created', {
+      type: 'basePointChanged',
+      event: 'created',
+      point: {
+        id: point.id,
+        x: point.x,
+        y: point.y,
+        userId: point.userId,
+        timestamp: point.createdAtMs || Date.now()
+      }
+    });
   }
 
   /**
@@ -59,6 +131,17 @@ export class BasePointEventService {
    */
   public emitUpdated(point: BasePoint): void {
     this.eventEmitter.emit('updated', point);
+    this.broadcast('updated', {
+      type: 'basePointChanged',
+      event: 'updated',
+      point: {
+        id: point.id,
+        x: point.x,
+        y: point.y,
+        userId: point.userId,
+        timestamp: point.createdAtMs || Date.now()
+      }
+    });
   }
 
   /**
@@ -67,6 +150,17 @@ export class BasePointEventService {
    */
   public emitDeleted(point: BasePoint): void {
     this.eventEmitter.emit('deleted', point);
+    this.broadcast('deleted', {
+      type: 'basePointChanged',
+      event: 'deleted',
+      point: {
+        id: point.id,
+        x: point.x,
+        y: point.y,
+        userId: point.userId,
+        timestamp: Date.now()
+      }
+    });
   }
 
   /**
@@ -74,6 +168,13 @@ export class BasePointEventService {
    */
   public getListeners(event: BasePointEvent): Function[] {
     return this.eventEmitter.listeners(event);
+  }
+
+  /**
+   * Get all connected clients (for debugging)
+   */
+  public getClients(): Set<Client> {
+    return new Set(this.clients);
   }
 }
 

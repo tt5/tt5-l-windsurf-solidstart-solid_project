@@ -3,6 +3,8 @@ import { basePointEventService } from '~/lib/server/events/base-point-events';
 import type { BasePoint } from '~/types/board';
 
 export const GET = withAuth(async ({ request, clientAddress, locals }) => {
+  console.log(`[SSE] New connection from ${clientAddress}, user: ${locals.user?.id || 'anonymous'}`);
+  
   // Set up SSE headers
   const headers = new Headers({
     'Content-Type': 'text/event-stream',
@@ -20,45 +22,53 @@ export const GET = withAuth(async ({ request, clientAddress, locals }) => {
     writer.write(encoder.encode('event: ping\ndata: {}\n\n'));
   }, 30000); // Send a ping every 30 seconds
 
-  // Handle base point events
-  const handleBasePointEvent = (event: 'created' | 'updated' | 'deleted', point: BasePoint) => {
-    try {
-      const eventData = {
-        type: 'basePointChanged',
-        event,
-        point: {
-          id: point.id,
-          x: point.x,
-          y: point.y,
-          userId: point.userId,
-          timestamp: point.createdAtMs || Date.now()
+  // Create a client object for this connection
+  const client = {
+    send: (data: string) => {
+      try {
+        // Log a summary of the data being sent (avoid logging large data)
+        let dataToLog = data.trim();
+        if (dataToLog.length > 100) {
+          dataToLog = dataToLog.substring(0, 100) + '...';
         }
-      };
-      
-      const message = `event: ${event}\ndata: ${JSON.stringify(eventData)}\n\n`;
-      writer.write(encoder.encode(message));
-      console.log('Sent SSE event:', message);
-    } catch (error) {
-      console.error('Error sending SSE event:', error);
-    }
+        console.log(`[SSE] Sending to client ${locals.user?.id || 'anonymous'}:`, dataToLog);
+        
+        // Write the data to the stream
+        const result = writer.write(encoder.encode(data));
+        console.log(`[SSE] Write result for ${locals.user?.id || 'anonymous'}:`, {
+          success: true,
+          bytesWritten: data.length,
+          ready: result
+        });
+      } catch (error) {
+        console.error(`[SSE] Error writing to client ${locals.user?.id || 'anonymous'}:`, error);
+        cleanup();
+      }
+    },
+    userId: locals.user?.id || 'anonymous',
+    ip: clientAddress,
+    connectedAt: new Date().toISOString()
   };
 
-  // Set up event listeners with proper type safety
-  const handleCreated = (point: BasePoint) => handleBasePointEvent('created', point);
-  const handleUpdated = (point: BasePoint) => handleBasePointEvent('updated', point);
-  const handleDeleted = (point: BasePoint) => handleBasePointEvent('deleted', point);
-  
-  basePointEventService.on('created', handleCreated);
-  basePointEventService.on('updated', handleUpdated);
-  basePointEventService.on('deleted', handleDeleted);
+  // Register the client with the event service
+  console.log(`[SSE] Registering client for user ${client.userId} from ${client.ip}`);
+  try {
+    basePointEventService.registerClient(client);
+    const clients = Array.from(basePointEventService.getClients());
+    console.log(`[SSE] Client registered. Current clients (${clients.length}):`, 
+      clients.map(c => `${c.userId}@${c.ip}`).join(', '));
+  } catch (error) {
+    console.error(`[SSE] Failed to register client ${client.userId}:`, error);
+    return new Response('Internal Server Error', { status: 500 });
+  }
 
   // Handle client disconnect
   const cleanup = () => {
+    console.log(`[SSE] Cleaning up connection for user ${client.userId}`);
     clearInterval(keepAlive);
-    basePointEventService.off('created', handleCreated);
-    basePointEventService.off('updated', handleUpdated);
-    basePointEventService.off('deleted', handleDeleted);
+    basePointEventService.unregisterClient(client);
     writer.close();
+    console.log(`[SSE] Connection closed for user ${client.userId}`);
   };
 
   // Set up request close handler
