@@ -85,16 +85,15 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       
       // Handle different message formats
       if (event.data.startsWith('event: ')) {
-        // Format: "event: created\ndata: {...}"
-        const lines = event.data.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            eventType = line.substring(7).trim();
-          } else if (line.startsWith('data: ')) {
+        // Format: "event: created {\"type\":\"basePointChanged\",...}"
+        const eventMatch = event.data.match(/^event: (\w+)\s*(\{.*\})?/s);
+        if (eventMatch) {
+          eventType = eventMatch[1];
+          if (eventMatch[2]) {
             try {
-              messageData = JSON.parse(line.substring(5).trim());
+              messageData = JSON.parse(eventMatch[2].trim());
             } catch (e) {
-              console.error('[SSE] Error parsing message data:', e, 'Line:', line);
+              console.error('[SSE] Error parsing message data:', e);
             }
           }
         }
@@ -124,20 +123,25 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       console.log(`[SSE] Processing ${eventType} event`);
       
       // Handle base point changes
-      const eventToProcess = eventType === 'message' ? eventData : { ...eventData, type: eventType };
+      const eventToProcess = eventType === 'message' ? eventData : { 
+        ...eventData, 
+        type: eventType === 'created' && eventData?.type ? eventData.type : eventType 
+      };
       
-      if (eventToProcess.type === 'basePointChanged' || (eventToProcess && eventToProcess.type === 'basePointChanged')) {
+      if (eventToProcess.type === 'basePointChanged' || eventToProcess.event === 'basePointChanged') {
         const pointData = eventToProcess.point || eventToProcess;
         if (pointData && pointData.x !== undefined && pointData.y !== undefined) {
           const eventAction = eventToProcess.event || 'updated';
-          console.log(`[SSE] Base point ${eventAction} at (${pointData.x}, ${pointData.y})`);
+          const username = pointData.userId ? pointData.userId.split('_')[1]?.substring(0, 8) + '...' : 'someone';
+          console.log(`[SSE] Base point ${eventAction} at (${pointData.x}, ${pointData.y}) by ${username}`);
           
           // Add notification with string ID
           setNotifications(prev => [{
-            id: `${pointData.x},${pointData.y}-${Date.now()}`,
-            message: `Base point at (${pointData.x}, ${pointData.y}) was ${eventAction}`,
-            timestamp: Date.now()
-          }, ...prev]);
+            id: `${pointData.id || pointData.x},${pointData.y}-${Date.now()}`,
+            message: `${username} ${eventAction} a base point at (${pointData.x}, ${pointData.y})`,
+            timestamp: Date.now(),
+            userId: pointData.userId
+          }, ...prev].slice(0, 10)); // Keep only the 10 most recent notifications
         }
       }
       
