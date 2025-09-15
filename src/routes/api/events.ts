@@ -23,12 +23,6 @@ export const GET = withAuth(async (event: SSEEvent) => {
   const { request, clientAddress } = event;
   const user = event.user || { userId: 'anonymous', username: 'anonymous' };
 
-  // Log connection attempt
-  console.log('[SSE] New connection attempt', {
-    userId: user.userId,
-    ip: clientAddress,
-    url: request.url
-  });
 
   // Create a new response stream
   const stream = new ReadableStream({
@@ -93,7 +87,6 @@ export const GET = withAuth(async (event: SSEEvent) => {
       // Initial setup
       sendInitialMessage();
       setupPing();
-      console.log(`[SSE] Client ${user.userId} connected`);
 
       // Cleanup on stream cancellation
       const cleanupAndClose = () => {
@@ -101,7 +94,6 @@ export const GET = withAuth(async (event: SSEEvent) => {
         isConnected = false;
         clearInterval(pingInterval);
         cleanup();
-        console.log(`[SSE] Client ${user.userId} disconnected`);
         controller.close();
       };
 

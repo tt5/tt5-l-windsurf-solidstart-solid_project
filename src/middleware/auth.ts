@@ -35,11 +35,6 @@ export function withAuth(handler: (event: AuthenticatedAPIEvent & { user: TokenP
     const user = await getAuthUser(authEvent.request);
     
     if (isSSE) {
-      console.log('[SSE] Handling SSE connection', { 
-        authenticated: !!user,
-        userId: user?.userId || 'anonymous',
-        hasLocalsUser: !!authEvent.locals?.user
-      });
       
       // Ensure user is set in locals for SSE connections
       if (user) {
@@ -64,10 +59,6 @@ export function withAuth(handler: (event: AuthenticatedAPIEvent & { user: TokenP
       return jsonResponse({ error: 'Unauthorized' }, 401);
     }
     
-    console.log('[Auth] Authenticated request', { 
-      userId: user.userId,
-      username: user.username
-    });
     
     // Ensure user is set in locals for authenticated requests
     if (!authEvent.locals) authEvent.locals = {};

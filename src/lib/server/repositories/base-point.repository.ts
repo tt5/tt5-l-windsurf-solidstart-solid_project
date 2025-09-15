@@ -31,16 +31,13 @@ export class BasePointRepository {
 
   async add(userId: string, x: number, y: number): Promise<BasePoint> {
     const now = Date.now();
-    console.log(`[BasePointRepository] Adding base point - userId: ${userId}, x: ${x}, y: ${y}`);
     
     try {
       // Start a transaction to ensure both operations succeed or fail together
-      console.log('[BasePointRepository] Starting transaction');
       await this.db.run('BEGIN TRANSACTION');
       
       try {
         // Check if user exists in users table
-        console.log(`[BasePointRepository] Verifying user exists: ${userId}`);
         const userExists = await this.db.get<{count: number}>(
           'SELECT COUNT(*) as count FROM users WHERE id = ?',
           [userId]
@@ -50,33 +47,27 @@ export class BasePointRepository {
           throw new Error(`User ${userId} not found`);
         }
         
-        console.log(`[BasePointRepository] User ${userId} verified`);
 
         // First, try to get the existing base point
-        console.log(`[BasePointRepository] Checking for existing base point at (${x}, ${y})`);
         const existing = await this.db.get<BasePoint>(
           'SELECT id, x, y, created_at_ms as createdAtMs FROM base_points WHERE user_id = ? AND x = ? AND y = ?',
           [userId, x, y]
         );
 
         if (existing) {
-          console.log(`[BasePointRepository] Found existing base point:`, existing);
           await this.db.run('COMMIT');
           return existing;
         }
 
         // Insert the base point
-        console.log('[BasePointRepository] Inserting base point');
         const result = await this.db.run(
           'INSERT INTO base_points (user_id, x, y, created_at_ms) VALUES (?, ?, ?, ?)',
           [userId, x, y, now]
         );
 
         // Commit the transaction
-        console.log('[BasePointRepository] Committing transaction');
         await this.db.run('COMMIT');
         
-        console.log(`[BasePointRepository] Successfully added base point with ID: ${result.lastID}`);
         
         // Fetch the complete base point to ensure all fields are included
         const insertedPoint = await this.db.get<BasePoint>(

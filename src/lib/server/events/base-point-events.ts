@@ -79,13 +79,11 @@ export class BasePointEventService {
     // Cleanup function to unregister this client
     const cleanup = () => {
       if (this.clients.delete(clientId)) {
-        console.log(`[EventService] Cleaned up client: ${clientId}`);
       }
     };
     
     // Store client with its cleanup function
     this.clients.set(clientId, { client, cleanup });
-    console.log(`[EventService] Client connected: ${clientId}. Total clients: ${this.clients.size}`);
     
     // Return the cleanup function to the caller
     return { id: clientId, cleanup };
@@ -103,7 +101,6 @@ export class BasePointEventService {
       const clientId = (client as any).__clientId;
       const entry = this.clients.get(clientId);
       if (entry) {
-        console.log(`[EventService] Disconnecting client by ID: ${clientId}`);
         entry.cleanup();
         cleanedUpCount++;
       }
@@ -115,15 +112,12 @@ export class BasePointEventService {
       .filter(([id]) => id.startsWith(clientKey));
     
     for (const [id, entry] of matchingClients) {
-      console.log(`[EventService] Disconnecting client: ${id}`);
       entry.cleanup();
       cleanedUpCount++;
     }
     
     if (cleanedUpCount === 0) {
-      console.log(`[EventService] No clients found matching: ${clientKey}`);
     } else {
-      console.log(`[EventService] Cleaned up ${cleanedUpCount} clients for user ${client.userId}`);
     }
     
     return cleanedUpCount;
@@ -136,7 +130,6 @@ export class BasePointEventService {
    */
   public broadcast(event: string, data: any): void {
     const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-    console.log(`[EventService] Broadcasting '${event}' to ${this.clients.size} clients`);
     
     // Create a copy of clients to avoid modification during iteration
     const clients = Array.from(this.clients.entries());
@@ -146,23 +139,8 @@ export class BasePointEventService {
         continue; // Skip if client was removed during iteration
       }
       try {
-        console.log(`[EventService] Sending to client ${client.userId}`, { 
-          event, 
-          data: {
-            ...data,
-            // Don't log the full point data to keep logs clean
-            point: data.point ? { 
-              id: data.point.id,
-              x: data.point.x,
-              y: data.point.y,
-              userId: data.point.userId,
-              timestamp: data.point.timestamp || data.point.createdAtMs
-            } : undefined
-          } 
-        });
         
         client.send(message);
-        console.log(`[EventService] Sent to client ${client.userId}`);
       } catch (error) {
         console.error(`[EventService] Error sending to client ${client.userId}:`, error);
       }
@@ -174,7 +152,6 @@ export class BasePointEventService {
    * @param point - The created base point
    */
   public emitCreated(point: BasePoint): void {
-    console.log(`[EventService] Emitting 'created' event for point ${point.id} by user ${point.userId}`);
     this.eventEmitter.emit('created', point);
     this.broadcast('created', {
       type: 'basePointChanged',
@@ -214,6 +191,7 @@ export class BasePointEventService {
    */
   public emitDeleted(point: BasePoint): void {
     this.eventEmitter.emit('deleted', point);
+    const count = (point as any).count || 1;
     this.broadcast('basePointDeleted', {
       type: 'basePointDeleted',
       event: 'basePointDeleted',
@@ -222,9 +200,9 @@ export class BasePointEventService {
         x: point.x,
         y: point.y,
         userId: point.userId,
-        timestamp: Date.now(),
-        count: (point as any).count // Include the count if it exists (for batch deletes)
-      }
+        timestamp: Date.now()
+      },
+      count: count // Include the count at the root level for easier access in the UI
     });
   }
 
@@ -264,7 +242,6 @@ export class BasePointEventService {
       }))
     };
     
-    console.log('[EventService] Connection Stats:', JSON.stringify(stats, null, 2));
     return stats;
   }
 }

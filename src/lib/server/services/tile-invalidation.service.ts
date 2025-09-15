@@ -48,7 +48,6 @@ export class TileInvalidationService {
         tileCacheService.invalidate(tileX, tileY);
       }
 
-      console.log(`Invalidated ${affectedTiles.length} tiles for base point at (${point.x}, ${point.y})`);
     } catch (error) {
       console.error('Error handling base point change:', error);
     }
