@@ -113,6 +113,10 @@ const argv = yargs(hideBin(process.argv))
   .alias('help', 'h')
   .parseSync();
 
+// Log debug info at startup
+console.log('Debug mode:', argv.debug);
+console.log('Command line arguments:', process.argv);
+
 // Game constants
 const GRID_SIZE = Math.max(3, argv.gridSize + (argv.gridSize % 2 === 0 ? 1 : 0)); // Ensure odd number
 const VIEW_RADIUS = Math.floor(GRID_SIZE / 2); // How far the player can see
@@ -129,6 +133,7 @@ const AUTH_TOKEN = process.env.TEST_AUTH_TOKEN; // Set this in your .env file
 
 // Track player state
 let playerPosition = { x: 0, y: 0 };
+let totalMoves = 0; // Track total number of moves in the simulation
 
 // Track placed base points
 const placedBasePoints: Array<{x: number, y: number}> = [];
@@ -347,7 +352,7 @@ async function moveToNewPosition(): Promise<void> {
   let dx = 0;
   let dy = 0;
   
-  // Simple pattern: move right, then down, then left, then down, then right, etc.
+  // Handle movement based on current direction
   switch (moveDirection) {
     case 'right':
       dx = 1;
@@ -359,38 +364,53 @@ async function moveToNewPosition(): Promise<void> {
     case 'left':
       dx = -1;
       if (++moveCount >= MOVE_BEFORE_TURN) {
-        moveDirection = 'down';
+        moveDirection = 'up';
+        moveCount = 0;
+      }
+      break;
+    case 'up':
+      dy = -1;
+      if (++moveCount >= MOVE_BEFORE_TURN) {
+        // After moving up, alternate between left and right based on previous horizontal direction
+        const previousDirection = dx > 0 ? 'right' : 'left';
+        moveDirection = previousDirection === 'right' ? 'left' : 'right';
         moveCount = 0;
       }
       break;
     case 'down':
       dy = 1;
-      // After moving down, alternate between left and right based on previous horizontal direction
-      const previousDirection = dx > 0 ? 'right' : 'left';
-      moveDirection = previousDirection === 'right' ? 'left' : 'right';
-      moveCount = 0;
+      if (++moveCount >= MOVE_BEFORE_TURN) {
+        // After moving down, alternate between left and right based on previous horizontal direction
+        const previousDirection = dx > 0 ? 'right' : 'left';
+        moveDirection = previousDirection === 'right' ? 'left' : 'right';
+        moveCount = 0;
+      }
       break;
   }
   
-  // Calculate new position
-  const newX = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, playerPosition.x + dx));
-  const newY = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, playerPosition.y + dy));
+  // Calculate new position (reverse the movement direction)
+  const newX = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, playerPosition.x - dx));
+  const newY = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, playerPosition.y - dy));
   
-  // Skip if we hit the world boundary
-  if (newX === playerPosition.x && newY === playerPosition.y) {
-    return;
-  }
-  
-  // Show move information in debug mode
+  // Show move information in debug mode or if we actually moved
+  totalMoves++; // Increment total move counter
   if (argv.debug) {
-    const moveNumber = moveCount + 1;
+    const moveNumber = moveCount + 1;  // Add 1 to make it 1-based for display
     const line = '='.repeat(40);
     console.log(`\n${line}`);
-    console.log(` MOVE ${moveNumber}: ${moveDirection.toUpperCase()}`);
+    console.log(` MOVE ${totalMoves} (${moveNumber}/${MOVE_BEFORE_TURN} ${moveDirection.toUpperCase()})`);
     console.log(` Position: (${newX}, ${newY})`);
+    console.log(` Total moves: ${totalMoves}`);
     console.log(line);
-  } else {
-    console.log(`🌍 [${moveCount + 1}] Moving ${moveDirection} to (${newX}, ${newY})`);
+  } else if (newX !== playerPosition.x || newY !== playerPosition.y) {
+    // Only log non-debug movement if we actually moved
+    console.log(`🌍 [${totalMoves}] Moving ${moveDirection} to (${newX}, ${newY})`);
+  }
+  
+  // Skip if we hit the world boundary and not in debug mode
+  if (newX === playerPosition.x && newY === playerPosition.y) {
+    if (!argv.debug) return;
+    // In debug mode, continue to show the grid even if we didn't move
   }
   
   // Update position
@@ -401,15 +421,36 @@ async function moveToNewPosition(): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, MOVE_DELAY));
   }
   
-  // Determine the direction for restricted squares (same as movement direction since the world moves in the opposite direction)
+  // Determine the direction for restricted squares (opposite of movement direction since the world moves in the opposite direction)
   let borderDirection: 'up' | 'down' | 'left' | 'right' = 'up';
-  if (dx > 0) borderDirection = 'right';    // Moving right → get right border (world moves left)
-  else if (dx < 0) borderDirection = 'left'; // Moving left → get left border (world moves right)
-  if (dy > 0) borderDirection = 'down';     // Moving down → get bottom border (world moves up)
-  else if (dy < 0) borderDirection = 'up';   // Moving up → get top border (world moves down)
+  if (dx > 0) borderDirection = 'left';     // Player moves right → world moves left → get left border
+  else if (dx < 0) borderDirection = 'right'; // Player moves left → world moves right → get right border
+  if (dy > 0) borderDirection = 'up';       // Player moves down → world moves up → get top border
+  else if (dy < 0) borderDirection = 'down'; // Player moves up → world moves down → get bottom border
   
   // Fetch restricted squares for the new position
   await fetchRestrictedSquares(borderDirection);
+  
+  // Show debug grid if debug mode is enabled
+  if (argv.debug) {
+    console.log('\n=== DEBUG GRID ===');
+    console.log(`Player position: (${playerPosition.x}, ${playerPosition.y})`);
+    console.log(`Move count: ${moveCount}, Direction: ${moveDirection}`);
+    
+    // Get all squares in the viewport
+    const viewportSize = GRID_SIZE;
+    const halfViewport = Math.floor(viewportSize / 2);
+    const viewportIndices = [];
+    
+    // Add some sample restricted squares for visualization
+    viewportIndices.push(0, 1, 2, 3, 14, 15, 16, 17, 30, 31, 32, 45, 46, 60);
+    
+    console.log(`Displaying grid with ${viewportIndices.length} restricted squares`);
+    
+    // Display the grid with the current position in the center
+    displayRestrictedGrid(viewportIndices, moveCount, moveDirection, playerPosition);
+    console.log('=== END DEBUG GRID ===\n');
+  }
 }
 
 // Delete all base points for the test user
@@ -449,6 +490,7 @@ async function main() {
   console.log(`- Starting position: [${argv.startX}, ${argv.startY}]`);
   console.log(`- Target points: ${NUM_POINTS}`);
   console.log(`- Initial direction: ${moveDirection}`);
+  console.log(`- Moves before turn: ${MOVE_BEFORE_TURN}`);
   console.log(`- Move delay: ${MOVE_DELAY}ms`);
   
   try {

@@ -29,6 +29,7 @@ npx tsx scripts/simulate-base-points.ts --delete
 | `--start-y` |  | number | 0 | Starting Y coordinate |
 | `--direction` | `-d` | string | 'right' | Initial movement direction (right/left/up/down) |
 | `--delay` |  | number | 0 | Delay between moves in milliseconds |
+| `--debug` |  | boolean | false | Enable debug logging with detailed move information |
 | `--delete` |  | boolean | false | Delete all base points instead of simulating |
 | `--help` | `-h` |  |  | Show help |
 
@@ -41,6 +42,12 @@ npx tsx scripts/simulate-base-points.ts -p 20 --start-x 5 --start-y -3 -d right
 
 # Create points with a delay between moves (100ms)
 npx tsx scripts/simulate-base-points.ts --delay 100
+
+# Enable debug logging to see detailed move information
+npx tsx scripts/simulate-base-points.ts --debug -d up
+
+# Combine debug with other options
+npx tsx scripts/simulate-base-points.ts --debug --delay 500 -d left
 
 # Create points in a 21x21 grid
 npx tsx scripts/simulate-base-points.ts -g 21
