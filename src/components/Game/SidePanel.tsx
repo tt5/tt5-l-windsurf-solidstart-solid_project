@@ -74,32 +74,51 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       console.log('EventSource state:', getReadyStateName(eventSource?.readyState));
       
       // Skip empty events
-      if (!event.data || event.data === '{}' || event.data.trim() === '') {
+      if (!event.data || event.data.trim() === '') {
         console.log('[SSE] Empty message, skipping');
         console.groupEnd();
         return;
       }
+
+      let eventType = event.type;
+      let messageData: any = {};
+      
+      // Handle different message formats
+      if (event.data.startsWith('event: ')) {
+        // Format: "event: created\ndata: {...}"
+        const lines = event.data.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            eventType = line.substring(7).trim();
+          } else if (line.startsWith('data: ')) {
+            try {
+              messageData = JSON.parse(line.substring(5).trim());
+            } catch (e) {
+              console.error('[SSE] Error parsing message data:', e, 'Line:', line);
+            }
+          }
+        }
+      } else {
+        // Try to parse as direct JSON
+        try {
+          messageData = JSON.parse(event.data);
+        } catch (e) {
+          console.error('[SSE] Error parsing message data as JSON:', e);
+          console.groupEnd();
+          return;
+        }
+      }
+      
+      console.log('[SSE] Parsed message:', { eventType, messageData });
       
       // Handle ping events
-      if (event.data.includes('"event":"ping"') || event.type === 'ping') {
+      if (eventType === 'ping' || messageData?.type === 'ping') {
         console.log('[SSE] Ping message, skipping');
         console.groupEnd();
         return;
       }
       
-      let messageData;
-      try {
-        // The event data should be a JSON string
-        messageData = JSON.parse(event.data);
-        console.log('[SSE] Parsed message data:', messageData);
-      } catch (e) {
-        console.error('[SSE] Error parsing message data:', e, 'Raw data:', event.data);
-        console.groupEnd();
-        return;
-      }
-      
       // The server sends the event type as the event name and the data in the message
-      const eventType = event.type;
       const eventData = messageData;
       
       console.log(`[SSE] Processing ${eventType} event`);
