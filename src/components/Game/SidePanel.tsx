@@ -38,16 +38,10 @@ const SidePanel: Component<SidePanelProps> = (props) => {
     [key: string]: (event: any) => void;
   } = {};
 
-  // Debug effect to log notifications changes
-  createEffect(() => {
-    console.log('Current notifications:', notifications());
-  });
-
   const scheduleReconnect = () => {
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
       reconnectTimeout = setTimeout(() => {
-        console.log(`[SSE] Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
         connect();
       }, delay) as unknown as NodeJS.Timeout;
     } else {
@@ -66,17 +60,9 @@ const SidePanel: Component<SidePanelProps> = (props) => {
 
   const handleMessage = (event: MessageEvent) => {
     try {
-      console.group('[SSE] Message received');
-      console.log('Event type:', event.type);
-      console.log('Origin:', event.origin);
-      console.log('Last event ID:', (event as any).lastEventId || 'none');
-      console.log('Raw data:', event.data);
-      console.log('EventSource state:', getReadyStateName(eventSource?.readyState));
-      
+
       // Skip empty events
       if (!event.data || event.data.trim() === '') {
-        console.log('[SSE] Empty message, skipping');
-        console.groupEnd();
         return;
       }
 
@@ -103,24 +89,17 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           messageData = JSON.parse(event.data);
         } catch (e) {
           console.error('[SSE] Error parsing message data as JSON:', e);
-          console.groupEnd();
           return;
         }
       }
       
-      console.log('[SSE] Parsed message:', { eventType, messageData });
-      
       // Handle ping events
       if (eventType === 'ping' || messageData?.type === 'ping') {
-        console.log('[SSE] Ping message, skipping');
-        console.groupEnd();
         return;
       }
       
       // The server sends the event type as the event name and the data in the message
       const eventData = messageData;
-      
-      console.log(`[SSE] Processing ${eventType} event`);
       
       // Handle base point changes
       const eventToProcess = eventType === 'message' ? eventData : { 
@@ -133,7 +112,6 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         if (pointData && pointData.x !== undefined && pointData.y !== undefined) {
           const eventAction = eventToProcess.event || 'updated';
           const username = pointData.userId ? pointData.userId.split('_')[1]?.substring(0, 8) + '...' : 'someone';
-          console.log(`[SSE] Base point ${eventAction} at (${pointData.x}, ${pointData.y}) by ${username}`);
           
           // Add notification with string ID
           setNotifications(prev => [{
@@ -145,7 +123,6 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         }
       }
       
-      console.groupEnd();
     } catch (error) {
       console.error('[SSE] Error processing message:', error);
     }
@@ -158,7 +135,6 @@ const SidePanel: Component<SidePanelProps> = (props) => {
     }
     
     if (eventSource) {
-      console.log('[SSE] Cleaning up connection');
       eventSource.onopen = null;
       eventSource.onerror = null;
       eventSource.onmessage = null;
@@ -181,44 +157,25 @@ const SidePanel: Component<SidePanelProps> = (props) => {
 
     // Use the correct API URL based on the environment
     const apiUrl = '/api/events';
-    console.log('[SSE] Attempting to connect to:', apiUrl, 'at', new Date().toISOString());
     
     // Add a timestamp to prevent caching
     const urlWithCacheBust = `${apiUrl}?_=${Date.now()}`;
     
     try {
-      console.group('[SSE] Creating new EventSource');
-      console.log('URL:', urlWithCacheBust);
-      console.log('With credentials:', true);
-      console.log('Current time:', new Date().toISOString());
       
       // Create a new EventSource with error handling
       eventSource = new EventSource(urlWithCacheBust, { 
         withCredentials: true 
       });
       
-      console.log('EventSource created, readyState:', getReadyStateName(eventSource.readyState));
-      console.groupEnd();
-      
       isConnected = false;
       
       // Log initial state
-      console.log('[SSE] Initial EventSource state:', {
-        url: eventSource.url,
-        withCredentials: eventSource.withCredentials,
-        readyState: getReadyStateName(eventSource.readyState),
-        CONNECTING: EventSource.CONNECTING,
-        OPEN: EventSource.OPEN,
-        CLOSED: EventSource.CLOSED
-      });
       
       // Set up connection timeout
       connectionTimeout = setTimeout(() => {
         if (isMounted && eventSource?.readyState === EventSource.CONNECTING) {
           console.error('[SSE] Connection timeout - server is not responding');
-          console.log('[SSE] Server URL:', eventSource.url);
-          console.log('[SSE] With credentials:', eventSource.withCredentials);
-          console.log('[SSE] Current time:', new Date().toISOString());
           
           // Test the connection with a fetch request
           fetch(eventSource.url, {
@@ -230,7 +187,6 @@ const SidePanel: Component<SidePanelProps> = (props) => {
             }
           })
           .then(response => {
-            console.log('[SSE] Test fetch response status:', response.status);
             return response.text().then(text => ({
               status: response.status,
               statusText: response.statusText,
@@ -238,7 +194,6 @@ const SidePanel: Component<SidePanelProps> = (props) => {
               text: text.substring(0, 200) // Only log first 200 chars
             }));
           })
-          .then(data => console.log('[SSE] Test fetch response:', data))
           .catch(error => console.error('[SSE] Test fetch error:', error))
           .finally(() => {
             cleanupConnection();
@@ -255,27 +210,15 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         }
         
         const now = new Date().toISOString();
-        console.group('[SSE] Connection opened');
-        console.log('Time:', now);
-        console.log('Ready state:', getReadyStateName(eventSource?.readyState));
-        console.log('URL:', eventSource?.url);
-        console.log('With credentials:', eventSource?.withCredentials);
-        console.log('Event:', event);
-        console.groupEnd();
         
         isConnected = true;
         reconnectAttempts = 0;
         
         // Send a test message to verify the connection
-        console.log('[SSE] Connection established, waiting for events...');
       };
       
       // Handle incoming messages
       eventSource.onmessage = (event) => {
-        console.group('[SSE] Message received (onmessage)');
-        console.log('Event type:', event.type);
-        console.log('Data:', event.data);
-        console.groupEnd();
         
         // Forward to handleMessage with the event type
         handleMessage({
@@ -299,10 +242,6 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       eventTypes.forEach(eventType => {
         // Create a type-safe event handler
         const handler = (event: any) => {
-          console.group(`[SSE] ${eventType} event received`);
-          console.log('Event type:', event.type);
-          console.log('Data:', event.data);
-          console.groupEnd();
           
           // Forward to handleMessage with the correct event type
           handleMessage({
@@ -330,7 +269,6 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       // Set up cleanup on unmount
       onCleanup(() => {
         isMounted = false;
-        console.log('[SSE] Cleaning up SSE connection on unmount');
         cleanupEventListeners();
         cleanupConnection();
         
@@ -353,48 +291,22 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       
       // Set up error handler
       eventSource.onerror = (event: Event) => {
-        console.group('[SSE] EventSource error');
-        console.error('Error event:', event);
-        console.log('EventSource state:', getReadyStateName(eventSource?.readyState));
-        console.log('Is connected:', isConnected);
-        console.log('Reconnect attempts:', reconnectAttempts);
         
         if (eventSource) {
-          console.log('EventSource URL:', eventSource.url);
-          console.log('EventSource readyState:', getReadyStateName(eventSource.readyState));
-          console.log('Headers:', {
-            'Accept': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'Pragma': 'no-cache'
-          });
           
           isConnected = false;
           
           // If we're not already trying to reconnect, schedule a reconnection
           if (eventSource.readyState === EventSource.CLOSED && !reconnectTimeout) {
-            console.log('[SSE] Connection closed, scheduling reconnection...');
             scheduleReconnect();
-          } else if (eventSource.readyState === EventSource.CONNECTING) {
-            console.log('[SSE] Still connecting...');
           } else {
-            console.log('[SSE] Unknown error state, attempting to reconnect...');
             scheduleReconnect();
           }
         }
         
-        console.groupEnd();
       };
       
       // Log the EventSource object for debugging
-      console.log('[SSE] EventSource created:', {
-        url: eventSource.url,
-        withCredentials: eventSource.withCredentials,
-        readyState: eventSource.readyState,
-        CONNECTING: EventSource.CONNECTING,
-        OPEN: EventSource.OPEN,
-        CLOSED: EventSource.CLOSED
-      });
       
     } catch (error) {
       console.error('[SSE] Error creating EventSource:', error);
@@ -409,7 +321,6 @@ const SidePanel: Component<SidePanelProps> = (props) => {
     
     // Cleanup function
     return () => {
-      console.log('[SSE] Cleaning up SidePanel SSE connection');
       
       // Clear any pending reconnection
       if (reconnectTimeout) {
@@ -419,9 +330,6 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       
       // Close the connection and remove event listeners
       if (eventSource) {
-        console.group('[SSE] Cleaning up EventSource');
-        console.log('Current state:', getReadyStateName(eventSource.readyState));
-        console.log('URL:', eventSource.url);
         
         try {
           // Remove event listeners
@@ -431,19 +339,14 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           
           // Close the connection
           if (eventSource.readyState !== EventSource.CLOSED) {
-            console.log('Closing connection...');
             eventSource.close();
-          } else {
-            console.log('Connection already closed');
-          }
-          
+          }           
+
           eventSource = null;
-          console.log('Cleanup complete');
         } catch (error) {
           console.error('Error during cleanup:', error);
         }
         
-        console.groupEnd();
       }
     };
   });

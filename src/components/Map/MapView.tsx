@@ -5,16 +5,11 @@ import { TileCache } from '../../lib/client/services/tile-cache';
 import { getAffectedTiles } from '../../lib/server/utils/coordinate-utils';
 
 // Initialize the tile cache
-console.log('[MapView] Creating tile cache instance...');
 const tileCache = new TileCache();
 
 // Wait for tile cache to be ready before any operations
 let tileCacheReady = false;
 tileCache.init().then(() => {
-  console.log('[MapView] Tile cache initialized:', { 
-    isInitialized: (tileCache as any).isInitialized,
-    maxAge: (tileCache as any).maxAge 
-  });
   tileCacheReady = true;
 }).catch(error => {
   console.error('[MapView] Failed to initialize tile cache:', error);
@@ -127,18 +122,15 @@ const MapView: Component = () => {
     if (tile.error) return true; // Always refresh errored tiles
     const tileAge = Date.now() - tile.timestamp;
     const isStale = tileAge > 20 * 1000; // 20 seconds threshold
-    console.log(`[isTileStale] Tile (${tile.x}, ${tile.y}) age: ${tileAge}ms, isStale: ${isStale}`);
     return isStale;
   };
 
   // Function to load all visible tiles
   const loadVisibleTiles = () => {
     if (!isMounted()) {
-      console.log('[loadVisibleTiles] Component not mounted, skipping');
       return;
     }
     
-    console.log(`[loadVisibleTiles] Checking for stale tiles (mount ID: ${currentMountId})`);
     
     // Check for stale tiles that need refresh
     const currentTiles = tiles();
@@ -147,33 +139,28 @@ const MapView: Component = () => {
     Object.values(currentTiles).forEach(tile => {
       if (isTileStale(tile)) {
         staleCount++;
-        console.log(`[loadVisibleTiles] Tile (${tile.x}, ${tile.y}) is stale, refreshing`);
         loadTile(tile.x, tile.y, true).catch(error => {
           console.error(`[loadVisibleTiles] Error refreshing tile (${tile.x}, ${tile.y}):`, error);
         });
       }
     });
     
-    console.log(`[loadVisibleTiles] Checked ${Object.keys(currentTiles).length} tiles, ${staleCount} marked for refresh`);
   };
 
   // Set mount state when component mounts
   onMount(() => {
-    console.log('[MapView] Component mounted');
     setIsMounted(true);
     loadVisibleTiles();
     
     // Set up interval to check for stale tiles every 10 seconds
     const intervalId = setInterval(() => {
       if (isMounted()) {
-        console.log('[MapView] Running periodic tile refresh check');
         loadVisibleTiles();
       }
     }, 10 * 1000); // 10 seconds
     
     // Clean up on unmount
     return () => {
-      console.log('[MapView] Component unmounting, cleaning up');
       clearInterval(intervalId);
       setIsMounted(false);
     };
@@ -185,13 +172,11 @@ const MapView: Component = () => {
     const initialLoad = () => {
       if (!isMounted()) return;
       
-      console.log('[MapView] Running initial tile loading');
       
       // Update viewport with actual dimensions
       const width = containerRef?.clientWidth || VIEWPORT_WIDTH;
       const height = containerRef?.clientHeight || VIEWPORT_HEIGHT;
       
-      console.log(`[MapView] Initial viewport dimensions: ${width}x${height}`);
       
       setViewport(prev => ({
         ...prev,
@@ -203,7 +188,6 @@ const MapView: Component = () => {
       const centerX = Math.floor((width / 2) / TILE_SIZE);
       const centerY = Math.floor((height / 2) / TILE_SIZE);
       
-      console.log(`[MapView] Adding center tile (${centerX}, ${centerY}) to queue`);
       scheduleTilesForLoading([{x: centerX, y: centerY}]);
     };
     
@@ -216,14 +200,12 @@ const MapView: Component = () => {
     
     // Clean up timer on unmount
     onCleanup(() => {
-      console.log('[MapView] Cleaning up load timer');
       clearTimeout(loadTimer);
     });
   }); // End of createEffect;
 
   // Update viewport and schedule tiles for loading
   const updateViewport = (updates: Partial<Viewport>) => {
-    console.log('[updateViewport] Updating viewport with:', JSON.stringify(updates, null, 2));
     setViewport(prev => {
       const newViewport = {
         ...prev,
@@ -319,7 +301,6 @@ const MapView: Component = () => {
     
     // If queue is full, skip scheduling more tiles
     if (queueLength >= TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD) {
-      console.log(`[scheduleTilesForLoading] Queue full (${queueLength}), processing existing queue`);
       processTileQueue();
       return;
     }
@@ -333,7 +314,6 @@ const MapView: Component = () => {
     const tilesY = Math.ceil((vp.height / zoom) / TILE_SIZE) + 2; // +2 for buffer tiles
     const spiralRadius = Math.max(tilesX, tilesY);
     
-    console.log(`[scheduleTilesForLoading] Starting spiral from (0,0) with radius: ${spiralRadius}`);
     
     // Generate spiral coordinates starting from (0,0)
     const spiralCoords = generateSpiralCoords(0, 0, spiralRadius);
@@ -373,7 +353,6 @@ const MapView: Component = () => {
     
     // Add to queue if we have tiles to load
     if (tilesToLoad.length > 0) {
-      console.log(`[scheduleTilesForLoading] Adding ${tilesToLoad.length} tiles to queue`);
       
       setTileQueue(prev => {
         const newQueue = [...prev];
@@ -393,7 +372,6 @@ const MapView: Component = () => {
       
       // Process the queue if not already processing
       if (!isProcessingQueue()) {
-        console.log('[scheduleTilesForLoading] Starting queue processing');
         setTimeout(processTileQueue, 0);
       }
     }
@@ -403,13 +381,11 @@ const MapView: Component = () => {
   onCleanup(() => {
     if (!isMounted()) return;
     
-    console.log('[MapView] Cleaning up component...');
     shouldStopProcessing = true;
     setIsMounted(false);
     
     // Clear any pending timeouts first
     if (processQueueTimeout !== null) {
-      console.log('[MapView] Clearing process queue timeout');
       clearTimeout(processQueueTimeout);
       processQueueTimeout = null;
     }
@@ -418,7 +394,6 @@ const MapView: Component = () => {
     const operations = Array.from(activeOperations);
     activeOperations.clear();
     
-    console.log(`[MapView] Aborting ${operations.length} active operations`);
     operations.forEach(controller => {
       try {
         controller.abort();
@@ -428,13 +403,11 @@ const MapView: Component = () => {
     });
     
     // Clear the queue and tiles in a single batch update
-    console.log('[MapView] Clearing tile queue and state');
     batch(() => {
       setTileQueue([]);
       setTiles({});
     });
     
-    console.log('[MapView] Cleanup complete');
   });
   
   // Helper to create a cancellable operation
@@ -458,7 +431,6 @@ const MapView: Component = () => {
   const processTileQueue = async () => {
     // Don't process if we're already processing or should stop
     if (isProcessingQueue() || !isMounted()) {
-      console.log(`[processTileQueue] ${isProcessingQueue() ? 'Already processing' : 'Not mounted'}, skipping`);
       return;
     }
     
@@ -473,18 +445,15 @@ const MapView: Component = () => {
       
       // Check mount state after async operations
       if (!isMounted()) {
-        console.log('[processTileQueue] Component unmounted during processing');
         return;
       }
       
       // Get current queue and check if it's empty
       const currentQueue = tileQueue();
       if (currentQueue.length === 0) {
-        console.log('[processTileQueue] Queue is empty, nothing to process');
         return;
       }
       
-      console.log(`[processTileQueue] Processing ${currentQueue.length} tiles`);
       
       // Sort tiles by distance from viewport center (closest first)
       const vp = viewport();
@@ -501,7 +470,6 @@ const MapView: Component = () => {
       const batchSize = Math.min(TILE_LOAD_CONFIG.BATCH_SIZE, sortedQueue.length);
       const batch = sortedQueue.slice(0, batchSize);
       
-      console.log(`[processTileQueue] Loading batch of ${batch.length} tiles`);
       
       // Process each tile in the batch with mount checks
       const tilePromises = batch.map(({ x, y }) => 
@@ -521,7 +489,6 @@ const MapView: Component = () => {
       
       // Check mount state before updating state
       if (!isMounted()) {
-        console.log('[processTileQueue] Component unmounted during tile loading');
         return;
       }
       
@@ -534,7 +501,6 @@ const MapView: Component = () => {
       // If there are more tiles to process, schedule the next batch
       const remainingTiles = tileQueue().length;
       if (remainingTiles > 0 && isMounted()) {
-        console.log(`[processTileQueue] Scheduling next batch (${remainingTiles} tiles remaining)`);
         processQueueTimeout = window.setTimeout(() => {
           if (isMounted()) {
             processTileQueue();
@@ -573,11 +539,9 @@ const MapView: Component = () => {
   const loadTile = async (tileX: number, tileY: number, forceRefresh = false): Promise<void> => {
     // Wait for tile cache to be ready
     if (!tileCacheReady) {
-      console.log(`[loadTile] Waiting for tile cache to initialize...`);
       try {
         await tileCache.init();
         tileCacheReady = true;
-        console.log(`[loadTile] Tile cache initialized, proceeding with load`);
       } catch (error) {
         console.error(`[loadTile] Error initializing tile cache:`, error);
       }
@@ -590,40 +554,23 @@ const MapView: Component = () => {
     // Skip if already loading the same tile, unless we're forcing a refresh
     if (currentTile?.loading) {
       if (!forceRefresh) {
-        console.log(`[loadTile] Tile (${tileX}, ${tileY}) is already loading`);
         return;
       } else {
         console.log(`[loadTile] Forcing refresh of already loading tile (${tileX}, ${tileY})`);
       }
     }
     
-    console.log(`[loadTile] Starting load for tile (${tileX}, ${tileY})`);
-    console.log(`[loadTile] tileCache:`, { 
-      isInitialized: (tileCache as any).isInitialized,
-      maxAge: (tileCache as any).maxAge 
-    });
-    
     // Skip if component is unmounting
     if (!isMounted()) {
-      console.log(`[loadTile] Component not mounted, skipping tile (${tileX}, ${tileY})`);
       return;
     }
 
-    console.log(`[loadTile] Attempting to load tile (${tileX}, ${tileY}${forceRefresh ? ' (force refresh)' : ''})`);
-    
     // Check cache first if not forcing a refresh
     if (!forceRefresh) {
       try {
-        console.log(`[loadTile] Checking cache for tile (${tileX}, ${tileY})`);
         const cachedTile = await tileCache.getTile(tileX, tileY);
         if (cachedTile) {
           const tileAge = Date.now() - cachedTile.timestamp;
-          console.log(`[loadTile] Found tile (${tileX}, ${tileY}) in cache (age: ${tileAge}ms)`, {
-            cacheHit: true,
-            age: tileAge,
-            maxAge: (tileCache as any).maxAge,
-            needsRefresh: tileAge > 20000
-          });
           setTiles(prev => ({
             ...prev,
             [key]: {
@@ -641,7 +588,6 @@ const MapView: Component = () => {
           // Schedule a background refresh if needed
           const refreshThreshold = 20 * 1000; // 20 seconds
           if (tileAge > refreshThreshold) {
-            console.log(`[loadTile] Tile (${tileX}, ${tileY}) is stale, refreshing in background`);
             loadTile(tileX, tileY, true).catch(console.error);
           }
           
@@ -675,7 +621,6 @@ const MapView: Component = () => {
       const { signal, cleanup } = createCancellableOperation();
       cleanupFn = cleanup;
       
-      console.log(`[loadTile] Fetching tile (${tileX}, ${tileY}) from server`);
       
       // Get the auth token from session storage
       const authToken = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
@@ -723,7 +668,6 @@ const MapView: Component = () => {
           // Store the processed data in cache
           try {
             await tileCache.setTile(tileX, tileY, bytes);
-            console.log(`[loadTile] Cached tile (${tileX}, ${tileY})`);
           } catch (cacheError) {
             console.error(`[loadTile] Error caching tile (${tileX}, ${tileY}):`, cacheError);
           }
@@ -738,7 +682,6 @@ const MapView: Component = () => {
         // Store the processed data in cache
         try {
           await tileCache.setTile(tileX, tileY, bytes);
-          console.log(`[loadTile] Cached tile (${tileX}, ${tileY})`);
         } catch (cacheError) {
           console.error(`[loadTile] Error caching tile (${tileX}, ${tileY}):`, cacheError);
         }
@@ -746,8 +689,6 @@ const MapView: Component = () => {
         throw new Error('Unexpected tile data format');
       }
       
-      console.log(`[loadTile] Successfully loaded tile (${tileX}, ${tileY}), data length:`, bytes.length);
-
       // Only update state if we're still mounted
       if (isMounted()) {
         setTiles(prev => ({
@@ -767,11 +708,8 @@ const MapView: Component = () => {
     } catch (err) {
       // Don't log aborted requests as errors
       if (err instanceof Error && err.name === 'AbortError') {
-        console.log(`[loadTile] Request for tile (${tileX}, ${tileY}) was aborted`);
         return;
       }
-      
-      console.error(`[loadTile] Error loading tile (${tileX}, ${tileY}):`, err);
       
       // Only update error state if we're still mounted
       if (isMounted()) {
@@ -974,7 +912,6 @@ const MapView: Component = () => {
     
     // Log zoom changes
     if (zoom !== lastZoom) {
-      console.log(`Zoom changed from ${lastZoom} to ${zoom}`);
       lastZoom = zoom;
     }
     
@@ -992,17 +929,6 @@ const MapView: Component = () => {
     const pixelAlignedX = posX;
     const pixelAlignedY = posY;
     
-    // Debug logging for (0,0) tile
-    if (tile.x === 0 && tile.y === 0) {
-      console.log('(0,0) Tile Position:', { 
-        posX, 
-        posY,
-        viewportX: vp.x, 
-        viewportY: vp.y, 
-        zoom
-      });
-    }
-
     // Calculate tile bounds with exact size (no overlap)
     const tileEndWorldX = tileWorldX + TILE_SIZE;
     const tileEndWorldY = tileWorldY + TILE_SIZE;
@@ -1129,12 +1055,6 @@ const MapView: Component = () => {
       // The tile data should already be a Uint8Array at this point
       const data = tileData as Uint8Array;
       
-      console.log('Processing tile data:', { 
-        type: typeof tileData, 
-        length: data.length,
-        firstBytes: Array.from(data as Uint8Array).slice(0, 4).map(b => b.toString(16).padStart(2, '0')).join(' ')
-      });
-      
       // Check for empty data
       if (!data || data.length === 0) {
         console.log('Empty tile data');
@@ -1144,12 +1064,9 @@ const MapView: Component = () => {
       // The first byte is a version byte (0x01 for our format)
       if (data[0] === 0x01) {
         try {
-          console.log('Processing zlib-compressed data with version byte');
           // Skip the first byte (version) and decompress the rest
           const compressedData = (data as Uint8Array).subarray(1);
-          console.log('Decompressing data, compressed size:', compressedData.length);
           const decompressed = inflate(compressedData);
-          console.log('Decompressed data length:', decompressed.length);
           
           // The decompressed data should be a 1-bit bitmap (1 bit per pixel)
           const expectedSize = Math.ceil((TILE_SIZE * TILE_SIZE) / 8);
@@ -1218,7 +1135,6 @@ const MapView: Component = () => {
     
     // Convert to data URL
     const dataUrl = canvas.toDataURL('image/png');
-    console.log('Generated image data URL');
     return dataUrl;
   };
 

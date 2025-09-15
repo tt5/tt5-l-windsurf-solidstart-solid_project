@@ -146,7 +146,6 @@ export class TileCache {
     }
     
     try {
-      console.log(`[TileCache] Getting store '${STORE_NAME}' in mode '${mode}'`);
       const transaction = this.db.transaction([STORE_NAME], mode);
       
       transaction.onerror = (event) => {
@@ -154,7 +153,6 @@ export class TileCache {
       };
       
       transaction.oncomplete = () => {
-        console.log('[TileCache] Transaction completed');
       };
       
       transaction.onabort = (event) => {
@@ -169,13 +167,10 @@ export class TileCache {
   }
 
   async getTile(x: number, y: number, forceRefresh = false): Promise<TileCacheEntry | null> {
-    console.log(`[TileCache] getTile called for (${x}, ${y})`, { forceRefresh });
     
     if (!this.isInitialized) {
-      console.log('[TileCache] Initializing before getTile');
       try {
         await this.init();
-        console.log('[TileCache] Initialization completed in getTile');
       } catch (error) {
         console.error('[TileCache] Error initializing in getTile:', error);
         return null;
@@ -184,19 +179,16 @@ export class TileCache {
 
     // Skip if not in a browser environment
     if (typeof window === 'undefined') {
-      console.log('[TileCache] Skipping getTile in non-browser environment');
       return null;
     }
     
     // Only force refresh if explicitly requested
     if (forceRefresh) {
-      console.log(`[TileCache] Force refresh requested for tile (${x}, ${y})`);
       return null;
     }
 
     return new Promise((resolve) => {
       try {
-        console.log(`[TileCache] Getting store for (${x}, ${y})`);
         const store = this.getStore('readonly');
         if (!store) {
           console.error('[TileCache] Failed to get store');
@@ -204,7 +196,6 @@ export class TileCache {
           return;
         }
 
-        console.log(`[TileCache] Querying for tile (${x}, ${y})`);
         const request = store.get([x, y]);
         
         request.onsuccess = () => {
@@ -212,12 +203,6 @@ export class TileCache {
           if (result) {
             const age = Date.now() - result.timestamp;
             const isExpired = age > this.maxAge;
-            console.log(`[TileCache] Cache ${isExpired ? 'expired' : 'hit'} for (${x}, ${y})`, {
-              age,
-              maxAge: this.maxAge,
-              isExpired,
-              entry: result
-            });
             
             if (!isExpired) {
               resolve(result);
@@ -225,7 +210,6 @@ export class TileCache {
               // Delete expired entry
               const deleteRequest = store.delete([x, y]);
               deleteRequest.onsuccess = () => {
-                console.log(`[TileCache] Deleted expired cache entry for (${x}, ${y})`);
                 resolve(null);
               };
               deleteRequest.onerror = (e) => {
@@ -234,7 +218,6 @@ export class TileCache {
               };
             }
           } else {
-            console.log(`[TileCache] Cache miss for (${x}, ${y})`);
             resolve(null);
           }
         };
@@ -256,13 +239,10 @@ export class TileCache {
   }
 
   async setTile(x: number, y: number, data: Uint8Array, etag?: string): Promise<void> {
-    console.log(`[TileCache] setTile called for (${x}, ${y})`);
     
     if (!this.isInitialized) {
-      console.log('[TileCache] Initializing before setTile');
       try {
         await this.init();
-        console.log('[TileCache] Initialization completed in setTile');
       } catch (error) {
         console.error('[TileCache] Error initializing in setTile:', error);
         throw error;
@@ -279,13 +259,11 @@ export class TileCache {
 
     // Skip if not in a browser environment
     if (typeof window === 'undefined') {
-      console.log('[TileCache] Skipping setTile in non-browser environment');
       return;
     }
 
     return new Promise((resolve, reject) => {
       try {
-        console.log(`[TileCache] Getting store for (${x}, ${y})`);
         const store = this.getStore('readwrite');
         if (!store) {
           const error = new Error('Failed to access IndexedDB store');
@@ -302,19 +280,14 @@ export class TileCache {
           etag
         };
         
-        console.log(`[TileCache] Storing tile (${x}, ${y}) at ${new Date(entry.timestamp).toISOString()}`);
-        console.log(`[TileCache] Data length: ${data.length} bytes`);
-        
         const request = store.put(entry);
         
         request.onsuccess = () => {
-          console.log(`[TileCache] Successfully stored tile (${x}, ${y})`);
           
           // Verify the tile was stored
           store.get([x, y]).onsuccess = (e) => {
             const result = (e.target as IDBRequest).result;
             if (result) {
-              console.log(`[TileCache] Verified tile (${x}, ${y}) is in store`);
             } else {
               console.error(`[TileCache] Failed to verify tile (${x}, ${y}) was stored`);
             }
@@ -437,7 +410,6 @@ export class TileCache {
             });
 
             deleteTransaction.oncomplete = () => {
-              console.log(`[TileCache] Deleted ${keysToDelete.length} old tiles`);
               this.scheduleNextCleanup();
               resolve();
             };
@@ -462,19 +434,14 @@ export class TileCache {
 
   private scheduleNextCleanup() {
     if (this.refreshInterval) {
-      console.log('[TileCache] Clearing existing cleanup interval');
       clearTimeout(this.refreshInterval);
     }
     
     // Schedule next cleanup in 10 seconds
     const cleanupTime = Date.now() + 10000;
-    console.log(`[TileCache] Scheduling next cleanup at ${new Date(cleanupTime).toISOString()}`);
     
     this.refreshInterval = window.setTimeout(() => {
-      console.log('[TileCache] Running scheduled cleanup');
       this.cleanupOldTiles()
-        .then(() => console.log('[TileCache] Cleanup completed'))
-        .catch(error => console.error('[TileCache] Error during cleanup:', error));
     }, 10000);
   }
 
