@@ -126,4 +126,39 @@ export class BasePointRepository {
     await this.db.run('DELETE FROM base_points WHERE user_id = ?', [userId]);
   }
 
+  /**
+   * Deletes a single base point by ID
+   * @param id - The ID of the base point to delete
+   * @returns The deleted base point or null if not found
+   */
+  async deleteBasePoint(id: number): Promise<BasePoint | null> {
+    // First get the point to return it after deletion
+    const point = await this.db.get<BasePoint>(
+      'SELECT id, user_id as userId, x, y, created_at_ms as createdAtMs FROM base_points WHERE id = ?',
+      [id]
+    );
+
+    if (!point) {
+      return null;
+    }
+
+    // Start a transaction to ensure atomicity
+    await this.db.run('BEGIN TRANSACTION');
+    
+    try {
+      // Delete the point
+      await this.db.run('DELETE FROM base_points WHERE id = ?', [id]);
+      
+      // Emit the deletion event
+      const { basePointEventService } = await import('~/lib/server/events/base-point-events');
+      basePointEventService.emitDeleted(point);
+      
+      await this.db.run('COMMIT');
+      return point;
+    } catch (error) {
+      await this.db.run('ROLLBACK');
+      console.error(`[BasePointRepository] Failed to delete point ${id}:`, error);
+      throw error;
+    }
+  }
 }

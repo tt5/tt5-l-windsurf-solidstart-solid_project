@@ -1,6 +1,6 @@
-import { getDb } from './db';
+import { getDb, getBasePointRepository } from './db';
 import { getRandomSlopes } from '~/utils/randomSlopes';
-import { getPointsInLines, deletePoints } from '~/utils/sqlQueries';
+import { getPointsInLines } from '~/utils/sqlQueries';
 import { tileInvalidationService } from './services/tile-invalidation.service';
 
 class ServerInitializer {
@@ -66,7 +66,17 @@ class ServerInitializer {
         
         if (pointsToDelete.length > 0) {
           console.log(`[Cleanup] Removing ${pointsToDelete.length} points...`);
-          await deletePoints(db, pointsToDelete);
+          
+          // Use the repository to ensure proper event emission
+          const repository = await getBasePointRepository();
+          for (const point of pointsToDelete) {
+            try {
+              await repository.deleteBasePoint(point.id);
+            } catch (error) {
+              console.error(`[Cleanup] Failed to delete point ${point.id}:`, error);
+            }
+          }
+          
           const totalTime = performance.now() - cleanupStartTime;
           if (totalTime > 5000) {
             console.warn(`[Cleanup] WARNING: Cleanup took ${(totalTime/1000).toFixed(2)}s (over 5s threshold)`);
