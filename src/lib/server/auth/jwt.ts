@@ -64,18 +64,12 @@ export async function getAuthUser(request: Request): Promise<TokenPayload | null
       return null;
     }
     
-    console.log('Found auth token, verifying...');
     const payload = verifyToken(token);
     
     if (!payload) {
       console.warn('Token verification failed');
       return null;
     }
-    
-    console.log('Token verified successfully for user:', {
-      userId: payload.userId,
-      username: payload.username
-    });
     
     return payload;
     

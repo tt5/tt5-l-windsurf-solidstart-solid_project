@@ -53,7 +53,7 @@ class ServerInitializer {
       const startTime = Date.now();
       try {
         const db = await getDb();
-        const slopes = getRandomSlopes(2);
+        const slopes = getRandomSlopes(4);
         const cleanupStartTime = performance.now();
         
         // Get unique base slopes as whole numbers

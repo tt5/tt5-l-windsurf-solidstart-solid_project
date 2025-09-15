@@ -31,14 +31,6 @@ export function withAuth(handler: (event: AuthenticatedAPIEvent & { user: TokenP
     // For SSE connections, we want to allow anonymous access but still pass the user if available
     const isSSE = authEvent.request.headers.get('accept') === 'text/event-stream';
     
-    console.log('[Auth] Request received', {
-      url: authEvent.request.url,
-      method: authEvent.request.method,
-      isSSE,
-      hasAuthHeader: !!authEvent.request.headers.get('authorization'),
-      hasCookies: !!authEvent.request.headers.get('cookie')
-    });
-    
     // For all requests, try to get the user from the auth token
     const user = await getAuthUser(authEvent.request);
     

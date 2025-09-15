@@ -28,8 +28,6 @@ const SLOPE_PAIRS = PRIMES.map(prime => [prime, 1/prime] as [number, number]);
  * @returns Array of numbers including pairs of slopes, their reciprocals, and negative versions
  */
 export function getRandomSlopes(count: number = 4): number[] {
-  // Make a copy of the pairs array to avoid modifying the original
-  const availablePairs = [...SLOPE_PAIRS];
   const selectedSlopes = new Set<number>();
   
   // Function to add a slope and its variants to the result
@@ -46,39 +44,26 @@ export function getRandomSlopes(count: number = 4): number[] {
       selectedSlopes.add(-1 / slope);
     }
   };
+  
   // Always include the main diagonal (1) and anti-diagonal (-1)
   addSlopeWithVariants(1);  // Main diagonal (slope 1)
   addSlopeWithVariants(-1); // Anti-diagonal (slope -1)
 
-  // Select random pairs until we have enough slopes
-  while (availablePairs.length > 0 && selectedSlopes.size < count * 4) { // *4 because each selection adds 4 variants
-    // Pick a random pair
-    const randomIndex = Math.floor(Math.random() * availablePairs.length);
-    const [slope1, slope2] = availablePairs[randomIndex];
-    
-    // Add both slopes from the pair with all their variants
-    addSlopeWithVariants(slope1);
-    addSlopeWithVariants(slope2);
-    
-    // Remove the selected pair
-    availablePairs.splice(randomIndex, 1);
-  }
+  // Select exactly 'count' unique primes from PRIMES
+  const availablePrimes = [...PRIMES];
+  const selectedPrimes: number[] = [];
   
-  // If we still need more slopes, add some common fractions
-  if (selectedSlopes.size < count * 4) {
-    const commonFractions = [
-      [2/3, 3/2],
-      [3/4, 4/3],
-      [2/5, 5/2],
-      [3/5, 5/3],
-      [4/5, 5/4]
-    ];
+  // Ensure we don't try to select more primes than available
+  const primesToSelect = Math.min(count, availablePrimes.length);
+  
+  // Select the primes
+  for (let i = 0; i < primesToSelect; i++) {
+    const randomIndex = Math.floor(Math.random() * availablePrimes.length);
+    const prime = availablePrimes.splice(randomIndex, 1)[0];
+    selectedPrimes.push(prime);
     
-    for (const [frac1, frac2] of commonFractions) {
-      if (selectedSlopes.size >= count * 4) break;
-      addSlopeWithVariants(frac1);
-      addSlopeWithVariants(frac2);
-    }
+    // Add all four variants of this prime
+    addSlopeWithVariants(prime);
   }
   
   // Return all variants of the selected slopes

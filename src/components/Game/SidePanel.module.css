@@ -98,6 +98,64 @@
   color: #444;
 }
 
+/* Counters */
+.counters {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+.counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.counter:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.counterNumber {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  transition: transform 0.3s ease;
+}
+
+.counterNumber.added {
+  color: #10b981; /* Green for added */
+}
+
+.counterNumber.deleted {
+  color: #ef4444; /* Red for deleted */
+}
+
+.counterLabel {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+/* Animation for counter updates */
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.counterNumber {
+  animation: pop 0.3s ease;
+}
+
 .noNotifications {
   color: #888;
   font-style: italic;

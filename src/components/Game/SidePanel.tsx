@@ -22,6 +22,8 @@ interface SidePanelProps {
 const SidePanel: Component<SidePanelProps> = (props) => {
   // Initialize notifications state
   const [notifications, setNotifications] = createSignal<Notification[]>([]);
+  const [addedCount, setAddedCount] = createSignal(0);
+  const [deletedCount, setDeletedCount] = createSignal(0);
   
   // Store the EventSource instance and reconnection state
   let eventSource: EventSource | null = null;
@@ -115,40 +117,14 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         const pointData = eventToProcess.point || eventToProcess;
         if (pointData) {
           const isDeletion = eventToProcess.type === 'basePointDeleted' || eventToProcess.event === 'basePointDeleted';
-          const username = pointData.userId ? pointData.userId.split('_')[1]?.substring(0, 8) + '...' : 'the system';
-          
-          // Check if this is a batch operation with count
           const count = eventToProcess.count || 1;
-          const isBatch = count > 1;
           
-          let message = '';
-          
+          // Update counters
           if (isDeletion) {
-            if (isBatch) {
-              message = `Removed ${count} base points`;
-            } else {
-              message = pointData.x !== undefined && pointData.y !== undefined
-                ? `${username} removed a base point at (${pointData.x}, ${pointData.y})`
-                : `${username} removed a base point`;
-            }
+            setDeletedCount(prev => prev + count);
           } else {
-            if (isBatch) {
-              message = `${username} added ${count} base points`;
-            } else {
-              message = pointData.x !== undefined && pointData.y !== undefined
-                ? `${username} added a base point at (${pointData.x}, ${pointData.y})`
-                : `${username} added a base point`;
-            }
+            setAddedCount(prev => prev + count);
           }
-          
-          // Add notification with string ID
-          setNotifications(prev => [{
-            id: `${pointData.id || pointData.x || '0'},${pointData.y || '0'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            message,
-            timestamp: Date.now(),
-            userId: pointData.userId,
-            count: isBatch ? count : undefined
-          }, ...prev].slice(0, 10)); // Keep only the 10 most recent notifications
         }
       }
       
@@ -406,18 +382,16 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           <div class={styles.infoTab}>
             <h3>Player: {props.username}</h3>
             <div class={styles.notifications}>
-              <h4>Recent Activity</h4>
-              <div class={styles.notificationList}>
-                <For each={notifications()}>
-                  {(notification) => (
-                    <div class={styles.notification}>
-                      <div class={styles.notificationMessage}>{notification.message}</div>
-                      <div class={styles.notificationTime}>
-                        {formatTime(notification.timestamp)}
-                      </div>
-                    </div>
-                  )}
-                </For>
+              <h4>Activity Counters</h4>
+              <div class={styles.counters}>
+                <div class={styles.counter}>
+                  <span class={`${styles.counterNumber} ${styles.added}`}>{addedCount()}</span>
+                  <span class={styles.counterLabel}>Added</span>
+                </div>
+                <div class={styles.counter}>
+                  <span class={`${styles.counterNumber} ${styles.deleted}`}>{deletedCount()}</span>
+                  <span class={styles.counterLabel}>Removed</span>
+                </div>
               </div>
             </div>
           </div>
