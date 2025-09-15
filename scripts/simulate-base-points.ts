@@ -1,6 +1,11 @@
 import { randomInt } from 'crypto';
 import { config } from 'dotenv';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the current directory in ES module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Game constants
 const GRID_SIZE = 15; // Match the game's grid size
@@ -244,5 +249,31 @@ async function moveToNewPosition(): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 100));
 }
 
-// Run the simulation
+// Delete all base points for the test user
+async function deleteAllBasePoints(): Promise<void> {
+  try {
+    const response = await fetch(`${BASE_URL}/api/base-points`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AUTH_TOKEN}`,
+      },
+    });
+
+    if (response.ok) {
+      console.log('✅ Successfully deleted all base points');
+    } else {
+      console.error('Failed to delete base points:', await response.text());
+    }
+  } catch (error) {
+    console.error('Error deleting base points:', error);
+  }
+}
+
+// Uncomment one of these to run:
+
+// 1. Run the simulation
 simulatePlayer().catch(console.error);
+
+// 2. Delete all base points (uncomment to use)
+// deleteAllBasePoints().catch(console.error);
