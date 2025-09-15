@@ -214,15 +214,16 @@ export class BasePointEventService {
    */
   public emitDeleted(point: BasePoint): void {
     this.eventEmitter.emit('deleted', point);
-    this.broadcast('deleted', {
-      type: 'basePointChanged',
-      event: 'deleted',
+    this.broadcast('basePointDeleted', {
+      type: 'basePointDeleted',
+      event: 'basePointDeleted',
       point: {
         id: point.id,
         x: point.x,
         y: point.y,
         userId: point.userId,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        count: (point as any).count // Include the count if it exists (for batch deletes)
       }
     });
   }
