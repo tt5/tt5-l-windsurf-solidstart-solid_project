@@ -204,9 +204,6 @@ async function simulatePlayer() {
       continue;
     }
     
-    // Add a small delay between requests to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
     const success = await placeBasePoint(x, y);
     if (success) {
       successCount++;
