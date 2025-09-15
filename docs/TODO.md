@@ -5,6 +5,10 @@
 - delete account and clean up base points
 - check cleanup (getRandomSlopes) for floating point precision issues
 - auto add basepoint with space bar
+- optimize calculate-square endpoint
+  - algo
+  - is it necessary to call it with all viewport squares?
+
 
 ## notifications
 

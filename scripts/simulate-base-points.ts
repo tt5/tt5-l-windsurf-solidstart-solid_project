@@ -2,13 +2,59 @@ import { randomInt } from 'crypto';
 import { config } from 'dotenv';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 
 // Get the current directory in ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Parse command line arguments
+const argv = yargs(hideBin(process.argv))
+  .option('grid-size', {
+    alias: 'g',
+    type: 'number',
+    default: 15,
+    description: 'Size of the game grid (must be odd)'
+  })
+  .option('points', {
+    alias: 'p',
+    type: 'number',
+    default: 10,
+    description: 'Number of base points to create'
+  })
+  .option('start-x', {
+    type: 'number',
+    default: 0,
+    description: 'Starting X coordinate'
+  })
+  .option('start-y', {
+    type: 'number',
+    default: 0,
+    description: 'Starting Y coordinate'
+  })
+  .option('delay', {
+    type: 'number',
+    default: 0,
+    description: 'Delay between moves in milliseconds'
+  })
+  .option('direction', {
+    alias: 'd',
+    choices: ['right', 'left', 'up', 'down'],
+    default: 'right',
+    description: 'Initial movement direction'
+  })
+  .option('delete', {
+    type: 'boolean',
+    default: false,
+    description: 'Delete all base points instead of simulating'
+  })
+  .help()
+  .alias('help', 'h')
+  .parseSync();
+
 // Game constants
-const GRID_SIZE = 15; // Match the game's grid size
+const GRID_SIZE = Math.max(3, argv.gridSize + (argv.gridSize % 2 === 0 ? 1 : 0)); // Ensure odd number
 const VIEW_RADIUS = Math.floor(GRID_SIZE / 2); // How far the player can see
 
 // Load environment variables from the project root
@@ -16,7 +62,8 @@ config({ path: join(__dirname, '../.env') });
 
 const BASE_URL = process.env.API_URL || 'http://localhost:3000';
 const MAX_COORDINATE = 1000; // Match the server-side limit
-const NUM_POINTS = 10; // Number of base points to create
+const NUM_POINTS = argv.points;
+const MOVE_DELAY = argv.delay;
 const USER_ID = process.env.TEST_USER_ID; // Set this in your .env file
 const AUTH_TOKEN = process.env.TEST_AUTH_TOKEN; // Set this in your .env file
 
@@ -221,20 +268,40 @@ async function simulatePlayer() {
   }
 }
 
-// Move player one unit in a random direction
+// Movement types and state
+type MoveDirection = 'right' | 'left' | 'up' | 'down';
+let moveDirection: MoveDirection = argv.direction as MoveDirection;
+let moveCount = 0;
+const MOVE_BEFORE_TURN = 5; // How many steps to move in one direction before turning
+
+// Move player in a deliberate, grid-filling pattern
 async function moveToNewPosition(): Promise<void> {
-  // Choose a random direction (up, down, left, right, or diagonals)
-  // Only 4 possible directions: right, left, down, up
-  const direction = randomInt(0, 4);
   let dx = 0;
   let dy = 0;
   
-  // Convert direction to dx,dy (only horizontal/vertical)
-  switch(direction) {
-    case 0: dx = 1; break;  // right
-    case 1: dx = -1; break; // left
-    case 2: dy = 1; break;  // down
-    case 3: dy = -1; break; // up
+  // Simple pattern: move right, then down, then left, then down, then right, etc.
+  switch (moveDirection) {
+    case 'right':
+      dx = 1;
+      if (++moveCount >= MOVE_BEFORE_TURN) {
+        moveDirection = 'down';
+        moveCount = 0;
+      }
+      break;
+    case 'left':
+      dx = -1;
+      if (++moveCount >= MOVE_BEFORE_TURN) {
+        moveDirection = 'down';
+        moveCount = 0;
+      }
+      break;
+    case 'down':
+      dy = 1;
+      // After moving down, alternate between left and right based on previous horizontal direction
+      const previousDirection = dx > 0 ? 'right' : 'left';
+      moveDirection = previousDirection === 'right' ? 'left' : 'right';
+      moveCount = 0;
+      break;
   }
   
   // Calculate new position
@@ -248,8 +315,13 @@ async function moveToNewPosition(): Promise<void> {
   
   // Update position
   playerPosition = { x: newX, y: newY };
-  // Log position in world coordinates
-  console.log(`🌍 Player position: [x: ${newX}, y: ${newY}]`);
+  // Log position in world coordinates with direction
+  console.log(`🌍 Player position: [x: ${newX}, y: ${newY}] moving ${moveDirection}`);
+  
+  // Add delay if specified
+  if (MOVE_DELAY > 0) {
+    await new Promise(resolve => setTimeout(resolve, MOVE_DELAY));
+  }
   
   // Determine the direction for restricted squares (same as movement direction since the world moves in the opposite direction)
   let borderDirection: 'up' | 'down' | 'left' | 'right' = 'up';
@@ -260,9 +332,6 @@ async function moveToNewPosition(): Promise<void> {
   
   // Fetch restricted squares for the new position
   await fetchRestrictedSquares(borderDirection);
-  
-  // Small delay to simulate real player movement
-  await new Promise(resolve => setTimeout(resolve, 100));
 }
 
 // Delete all base points for the test user
@@ -286,10 +355,32 @@ async function deleteAllBasePoints(): Promise<void> {
   }
 }
 
-// Uncomment one of these to run:
+// Main execution
+async function main() {
+  if (argv.delete) {
+    console.log('🗑️  Deleting all base points...');
+    await deleteAllBasePoints();
+    return;
+  }
 
-// 1. Run the simulation
-simulatePlayer().catch(console.error);
+  // Set initial position from arguments
+  playerPosition = { x: argv.startX, y: argv.startY };
+  
+  console.log('🚀 Starting test user simulation with:');
+  console.log(`- Grid size: ${GRID_SIZE}x${GRID_SIZE}`);
+  console.log(`- Starting position: [${argv.startX}, ${argv.startY}]`);
+  console.log(`- Target points: ${NUM_POINTS}`);
+  console.log(`- Initial direction: ${moveDirection}`);
+  console.log(`- Move delay: ${MOVE_DELAY}ms`);
+  
+  try {
+    await simulatePlayer();
+    console.log('✅ Simulation completed successfully');
+  } catch (error) {
+    console.error('❌ Simulation failed:', error);
+    process.exit(1);
+  }
+}
 
-// 2. Delete all base points (uncomment to use)
-// deleteAllBasePoints().catch(console.error);
+// Start the simulation
+main();
