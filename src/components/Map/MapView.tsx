@@ -831,6 +831,12 @@ const MapView: Component = () => {
   // Debug: Track last zoom to detect changes
   let lastZoom = viewport().zoom;
   
+  // Generate a consistent color based on tile coordinates
+  const getTileColor = (x: number, y: number): string => {
+    const hue = (x * 13 + y * 7) % 360;
+    return `hsl(${hue}, 70%, ${tiles()[`${x},${y}`]?.data ? '85%' : '90%'})`;
+  };
+
   // Render a single tile
   const renderTile = (tile: Tile) => {
     const vp = viewport();
@@ -871,39 +877,58 @@ const MapView: Component = () => {
     const tileEndWorldX = tileWorldX + TILE_SIZE;
     const tileEndWorldY = tileWorldY + TILE_SIZE;
     
-    // Calculate viewport bounds in world coordinates (matching grid rendering)
-    const viewEndX = vp.x + (vp.width / zoom);
-    const viewEndY = vp.y + (vp.height / zoom);
+    // Initialize content with a default empty div
+    let content: JSX.Element = <div></div>;
     
-    // Skip rendering if tile is outside viewport with some padding
-    const padding = TILE_SIZE * 2;
-    if (
-      tileWorldX > viewEndX + padding ||
-      tileWorldX + TILE_SIZE < vp.x - padding ||
-      tileWorldY > viewEndY + padding ||
-      tileWorldY + TILE_SIZE < vp.y - padding
-    ) {
-      return null;
-    }
-
-    // Calculate tile size after zoom (handled by the container's transform)
-    const tileSize = TILE_SIZE;
-    let content;
-    
-    if (tile.loading) {
-      content = <div class={styles.loading}>Loading...</div>;
-    } else if (tile.error) {
-      content = <div class={styles.error}>Error</div>;
-    } else if (tile.data) {
+    if (tile.error) {
+      // Error state
+      content = (
+        <div class={`${styles.fallbackTile} ${styles.error}`}>
+          <div class={styles.fallbackTileContent}>
+            Error
+            <div class={styles.tileCoords}>{tile.x},{tile.y}</div>
+          </div>
+        </div>
+      );
+    } else if (tile.loading) {
+      // Loading state with animation
+      content = (
+        <div 
+          class={`${styles.fallbackTile} loading`}
+          style={`--tile-bg-color: ${getTileColor(tile.x, tile.y)}`}
+        >
+          <div class={styles.fallbackTileContent}>
+            <div class={styles.loadingSpinner} />
+            <div class={styles.tileCoords}>{tile.x},{tile.y}</div>
+          </div>
+        </div>
+      );
+    } else if (!tile.data || tile.data.length === 0) {
+      // Empty tile state
+      content = (
+        <div 
+          class={styles.fallbackTile}
+          style={`--tile-bg-color: ${getTileColor(tile.x, tile.y)}`}
+        >
+          <div class={styles.fallbackTileContent}>
+            <div class={styles.tileCoords}>{tile.x},{tile.y}</div>
+          </div>
+        </div>
+      );
+    } else {
       try {
+        // Try to render the tile image
         const tileImage = renderBitmap(tile.data);
+        
         if (tileImage) {
+          // Successfully rendered tile
           content = (
             <div class={styles.tileContent}>
               <img
                 src={tileImage}
                 alt={`Tile ${tile.x},${tile.y}`}
                 class={styles.tileImage}
+                loading="lazy"
               />
               <div class={styles.tileLabel}>
                 {tile.x},{tile.y}
@@ -911,21 +936,28 @@ const MapView: Component = () => {
             </div>
           );
         } else {
-          // Fallback to debug rendering if image couldn't be generated
+          // Fallback to colored tile if image couldn't be generated
           content = (
             <div 
               class={styles.fallbackTile}
-              style={`--tile-bg-color: hsl(${(tile.x * 13 + tile.y * 7) % 360}, 70%, 80%)`}
+              style={`--tile-bg-color: ${getTileColor(tile.x, tile.y)}`}
             >
               <div class={styles.fallbackTileContent}>
-                {tile.x},{tile.y}
+                <div class={styles.tileCoords}>{tile.x},{tile.y}</div>
               </div>
             </div>
           );
         }
       } catch (error) {
         console.error('Error rendering tile:', error);
-        content = <div class={styles.error}>Error</div>;
+        content = (
+          <div class={`${styles.fallbackTile} ${styles.error}`}>
+            <div class={styles.fallbackTileContent}>
+              Error
+              <div class={styles.tileCoords}>{tile.x},{tile.y}</div>
+            </div>
+          </div>
+        );
       }
     }
     
