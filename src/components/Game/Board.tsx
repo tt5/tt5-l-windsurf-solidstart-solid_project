@@ -588,7 +588,11 @@ const Board: Component = () => {
                      !validation.isValid ? validation.reason : 
                      'Left-click to add base point\nRight-click to select'}
             >
-              {isBP && <div class={styles.basePointMarker} />}
+              {isBP ? (
+                <div class={styles.basePointMarker} />
+              ) : !isSelected ? (
+                <div class={styles.emptyMarker}>×</div>
+              ) : null}
             </button>
           );
         })}

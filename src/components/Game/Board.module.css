@@ -66,8 +66,9 @@
   width: fit-content;
   margin: var(--spacing-lg) auto;
   padding: var(--spacing-md);
-  background: var(--color-bg);
+  background: #2e7d32; /* Lighter green background */
   border-radius: var(--border-radius-md);
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.2);
 }
 
 .square {
@@ -81,10 +82,11 @@
   cursor: pointer;
   transition: all var(--transition-normal);
   will-change: transform, box-shadow;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+  color: #333; /* Ensure text is dark on light squares */
 }
 
-/* Empty squares with pattern */
+/* Empty squares with pattern - larger size */
 .square:not(.basePoint):not(.selected):not(.restricted) {
   background-image: 
     linear-gradient(45deg, #f5f5f5 25%, transparent 25%),
@@ -93,6 +95,9 @@
     linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
   background-size: 8px 8px;
   background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+  transform: scale(1.1);
+  z-index: 1;
+  position: relative;
 }
 
 /* Hover States */
@@ -169,8 +174,24 @@
   height: 70%;
   background: var(--color-success);
   border-radius: 50%;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-  transition: background 0.2s ease;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+}
+
+.emptyMarker {
+  color: rgba(0, 0, 0, 0.3);
+  font-size: 1.8rem;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+  margin-top: -2px;
+}
+
+.square:hover .emptyMarker {
+  opacity: 0.8;
+  color: rgba(0, 0, 0, 0.4);
 }
 
 /* Error Message */
