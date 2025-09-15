@@ -15,11 +15,49 @@ const NUM_POINTS = 10; // Number of base points to create
 const USER_ID = process.env.TEST_USER_ID; // Set this in your .env file
 const AUTH_TOKEN = process.env.TEST_AUTH_TOKEN; // Set this in your .env file
 
-// Track player position
+// Track player state
 let playerPosition = { x: 0, y: 0 };
 
 // Track placed base points
 const placedBasePoints: Array<{x: number, y: number}> = [];
+
+// Track restricted squares from server
+let restrictedSquares: Array<[number, number]> = [];
+
+// Fetch restricted squares from server
+async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right' = 'up'): Promise<void> {
+  try {
+    // Calculate border indices that are newly visible in the direction of movement
+    // For now, we'll let the server handle this calculation
+    const response = await fetch(`${BASE_URL}/api/calculate-squares`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AUTH_TOKEN}`,
+      },
+      body: JSON.stringify({
+        borderIndices: [], // Let server calculate based on viewport
+        currentPosition: [playerPosition.x, playerPosition.y],
+        direction: direction
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      // Convert 1D indices back to coordinates
+      restrictedSquares = data.data.squares.map((index: number) => {
+        const x = (index % GRID_SIZE) - Math.floor(GRID_SIZE / 2) + playerPosition.x;
+        const y = Math.floor(index / GRID_SIZE) - Math.floor(GRID_SIZE / 2) + playerPosition.y;
+        return [x, y] as [number, number];
+      });
+      console.log(`Fetched ${restrictedSquares.length} restricted squares`);
+    } else {
+      console.error('Failed to fetch restricted squares:', await response.text());
+    }
+  } catch (error) {
+    console.error('Error fetching restricted squares:', error);
+  }
+}
 
 // Calculate if a point is in the viewable area
 function isInView(x: number, y: number): boolean {
@@ -31,24 +69,34 @@ function isInView(x: number, y: number): boolean {
   );
 }
 
-// Calculate restricted squares based on game rules
+// Check if a point is restricted based on existing base points
 function isRestricted(x: number, y: number): boolean {
-  // Player can't place on their own position
+  // Can't place on player's position
   if (x === playerPosition.x && y === playerPosition.y) {
     return true;
   }
 
-  // Check if it's in a straight line from the player (horizontal, vertical, diagonal)
-  const dx = Math.abs(x - playerPosition.x);
-  const dy = Math.abs(y - playerPosition.y);
-  
-  // Horizontal, vertical, or diagonal lines
-  if (dx === 0 || dy === 0 || dx === dy) {
-    return true;
+  // Check against all existing base points
+  for (const point of placedBasePoints) {
+    const dx = Math.abs(x - point.x);
+    const dy = Math.abs(y - point.y);
+    
+    // Skip if it's the same point
+    if (dx === 0 && dy === 0) continue;
+    
+    // Check for straight lines and diagonals
+    if (dx === 0 || dy === 0 || dx === dy) {
+      return true;
+    }
+    
+    // Check for 2:1 and 1:2 slopes
+    if (dx === 2 * dy || 2 * dx === dy) {
+      return true;
+    }
   }
-
-  // Prime-numbered slopes (2:1, 1:2, etc.)
-  if (dx === 2 * dy || 2 * dx === dy) {
+  
+  // Check if it's in the restricted squares from the server
+  if (restrictedSquares.some(([sx, sy]) => sx === x && sy === y)) {
     return true;
   }
 
@@ -110,6 +158,9 @@ async function placeBasePoint(x: number, y: number): Promise<boolean> {
 async function simulatePlayer() {
   console.log(`🎮 Simulating player ${USER_ID} placing ${NUM_POINTS} base points...`);
   
+  // Initial fetch of restricted squares
+  await fetchRestrictedSquares();
+  
   let successCount = 0;
   let attempts = 0;
   const MAX_ATTEMPTS = NUM_POINTS * 10; // Prevent infinite loops
@@ -132,12 +183,10 @@ async function simulatePlayer() {
     const success = await placeBasePoint(x, y);
     if (success) {
       successCount++;
-      
-      // After placing a point, there's a 30% chance to move to a new position
-      if (Math.random() < 0.3) {
-        await moveToNewPosition();
-      }
     }
+    
+    // Always move after each attempt, regardless of success
+    await moveToNewPosition();
   }
   
   if (successCount < NUM_POINTS) {
@@ -148,19 +197,51 @@ async function simulatePlayer() {
   }
 }
 
-// Move player to a new random position within world bounds
+// Move player one unit in a random direction
 async function moveToNewPosition(): Promise<void> {
-  const moveX = randomInt(-5, 6); // Move up to 5 units in any direction
-  const moveY = randomInt(-5, 6);
+  // Choose a random direction (up, down, left, right, or diagonals)
+  const direction = randomInt(0, 8);
+  let dx = 0;
+  let dy = 0;
   
-  const newX = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, playerPosition.x + moveX));
-  const newY = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, playerPosition.y + moveY));
+  // Convert direction to dx,dy
+  switch(direction) {
+    case 0: dx = 1; break;  // right
+    case 1: dx = -1; break; // left
+    case 2: dy = 1; break;  // down
+    case 3: dy = -1; break; // up
+    case 4: dx = 1; dy = 1; break;    // down-right
+    case 5: dx = -1; dy = 1; break;   // down-left
+    case 6: dx = 1; dy = -1; break;   // up-right
+    case 7: dx = -1; dy = -1; break;  // up-left
+  }
   
-  console.log(`🚶 Player moving from (${playerPosition.x}, ${playerPosition.y}) to (${newX}, ${newY})`);
+  // Calculate new position
+  const newX = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, playerPosition.x + dx));
+  const newY = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, playerPosition.y + dy));
+  
+  // Skip if we hit the world boundary
+  if (newX === playerPosition.x && newY === playerPosition.y) {
+    return;
+  }
+  
+  // Update position
   playerPosition = { x: newX, y: newY };
+  // Log position in world coordinates
+  console.log(`🌍 Player position: [x: ${newX}, y: ${newY}]`);
   
-  // Small delay after moving
-  await new Promise(resolve => setTimeout(resolve, 300));
+  // Determine the direction for restricted squares (same as movement direction since the world moves in the opposite direction)
+  let borderDirection: 'up' | 'down' | 'left' | 'right' = 'up';
+  if (dx > 0) borderDirection = 'right';    // Moving right → get right border (world moves left)
+  else if (dx < 0) borderDirection = 'left'; // Moving left → get left border (world moves right)
+  if (dy > 0) borderDirection = 'down';     // Moving down → get bottom border (world moves up)
+  else if (dy < 0) borderDirection = 'up';   // Moving up → get top border (world moves down)
+  
+  // Fetch restricted squares for the new position
+  await fetchRestrictedSquares(borderDirection);
+  
+  // Small delay to simulate real player movement
+  await new Promise(resolve => setTimeout(resolve, 100));
 }
 
 // Run the simulation
