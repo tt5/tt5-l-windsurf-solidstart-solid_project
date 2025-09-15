@@ -574,9 +574,18 @@ const MapView: Component = () => {
       
       console.log(`[loadTile] Fetching tile (${tileX}, ${tileY}) from server`);
       
+      // Get the auth token from session storage
+      const authToken = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
+      
+      const headers: HeadersInit = { 'Accept': 'application/json' };
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
       const response = await fetch(`/api/map/tile/${tileX}/${tileY}`, { 
         signal,
-        headers: { 'Accept': 'application/json' }
+        headers,
+        credentials: 'include' // Include cookies for session-based auth
       });
       
       if (!response.ok) {

@@ -100,3 +100,33 @@ export const POST = withAuth(async ({ request, user }) => {
     return handleApiError(error, requestId, 'POST /api/base-points');
   }
 });
+
+export const DELETE = withAuth(async ({ user }) => {
+  const requestId = generateRequestId();
+  
+  try {
+    const repository = await getBasePointRepository();
+    const userId = user.userId;
+    
+    // Delete all base points for the current user
+    await repository.deleteAllBasePointsForUser(userId);
+    
+    // Notify about the deletion with a dummy base point
+    // The client will handle the deletion of all points for this user
+    basePointEventService.emitDeleted({
+      id: -1, // Dummy ID since we're deleting all points
+      userId,
+      x: 0,
+      y: 0,
+      createdAtMs: Date.now()
+    });
+    
+    return createApiResponse({
+      success: true,
+      message: 'All base points deleted successfully',
+      requestId
+    });
+  } catch (error) {
+    return handleApiError(error, requestId, 'DELETE /api/base-points');
+  }
+});
