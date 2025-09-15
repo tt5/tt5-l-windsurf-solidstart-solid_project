@@ -7,6 +7,8 @@ interface Notification {
   id: string | number;
   message: string;
   timestamp: number;
+  userId?: string;
+  count?: number;
 }
 
 interface SidePanelProps {
@@ -107,18 +109,45 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         type: eventType === 'created' && eventData?.type ? eventData.type : eventType 
       };
       
-      if (eventToProcess.type === 'basePointChanged' || eventToProcess.event === 'basePointChanged') {
+      // Handle base point changes and deletions
+      if (eventToProcess.type === 'basePointChanged' || eventToProcess.event === 'basePointChanged' ||
+          eventToProcess.type === 'basePointDeleted' || eventToProcess.event === 'basePointDeleted') {
         const pointData = eventToProcess.point || eventToProcess;
-        if (pointData && pointData.x !== undefined && pointData.y !== undefined) {
-          const eventAction = eventToProcess.event || 'updated';
-          const username = pointData.userId ? pointData.userId.split('_')[1]?.substring(0, 8) + '...' : 'someone';
+        if (pointData) {
+          const isDeletion = eventToProcess.type === 'basePointDeleted' || eventToProcess.event === 'basePointDeleted';
+          const username = pointData.userId ? pointData.userId.split('_')[1]?.substring(0, 8) + '...' : 'the system';
+          
+          // Check if this is a batch operation with count
+          const count = eventToProcess.count || 1;
+          const isBatch = count > 1;
+          
+          let message = '';
+          
+          if (isDeletion) {
+            if (isBatch) {
+              message = `Removed ${count} base points`;
+            } else {
+              message = pointData.x !== undefined && pointData.y !== undefined
+                ? `${username} removed a base point at (${pointData.x}, ${pointData.y})`
+                : `${username} removed a base point`;
+            }
+          } else {
+            if (isBatch) {
+              message = `${username} added ${count} base points`;
+            } else {
+              message = pointData.x !== undefined && pointData.y !== undefined
+                ? `${username} added a base point at (${pointData.x}, ${pointData.y})`
+                : `${username} added a base point`;
+            }
+          }
           
           // Add notification with string ID
           setNotifications(prev => [{
-            id: `${pointData.id || pointData.x},${pointData.y}-${Date.now()}`,
-            message: `${username} ${eventAction} a base point at (${pointData.x}, ${pointData.y})`,
+            id: `${pointData.id || pointData.x || '0'},${pointData.y || '0'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            message,
             timestamp: Date.now(),
-            userId: pointData.userId
+            userId: pointData.userId,
+            count: isBatch ? count : undefined
           }, ...prev].slice(0, 10)); // Keep only the 10 most recent notifications
         }
       }
