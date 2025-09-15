@@ -1,6 +1,6 @@
 # TODO
 
-- bots
+- auto place base points periodically
 - teleport (randomly) new players
 - delete account and clean up base points
 - check cleanup (getRandomSlopes) for floating point precision issues
