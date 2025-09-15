@@ -1,11 +1,25 @@
-import { Component, createEffect, createSignal, onCleanup, onMount, batch } from 'solid-js';
+import { Component, createEffect, createSignal, onCleanup, onMount, batch, JSX } from 'solid-js';
 import { inflate } from 'pako';
 import { useAuth } from '../../contexts/auth';
 import { TileCache } from '../../lib/client/services/tile-cache';
 import { getAffectedTiles } from '../../lib/server/utils/coordinate-utils';
 
 // Initialize the tile cache
+console.log('[MapView] Creating tile cache instance...');
 const tileCache = new TileCache();
+
+// Wait for tile cache to be ready before any operations
+let tileCacheReady = false;
+tileCache.init().then(() => {
+  console.log('[MapView] Tile cache initialized:', { 
+    isInitialized: (tileCache as any).isInitialized,
+    maxAge: (tileCache as any).maxAge 
+  });
+  tileCacheReady = true;
+}).catch(error => {
+  console.error('[MapView] Failed to initialize tile cache:', error);
+});
+
 import styles from './MapView.module.css';
 
 // Constants
@@ -80,6 +94,7 @@ const MapView: Component = () => {
   const [isLoading, setIsLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [tileCacheState, setTileCache] = createSignal<Record<string, boolean>>({});
+  const tileCache = new TileCache(); // Initialize tile cache at component level
   const [tileQueue, setTileQueue] = createSignal<Array<{x: number, y: number}>>([]);
   const [isProcessingQueue, setIsProcessingQueue] = createSignal(false);
   // Track active operations and state
@@ -106,29 +121,66 @@ const MapView: Component = () => {
   const [isMounted, setIsMounted] = createSignal(false);
   const currentMountId = Math.floor(Math.random() * 1000000);
   
-  // Initialize component
-  onMount(() => {
-    if (isMounted()) {
-      console.log('[MapView] Component already initialized, skipping');
+  // Function to check if a tile is stale and needs refresh
+  const isTileStale = (tile: Tile | undefined): boolean => {
+    if (!tile) return true;
+    if (tile.error) return true; // Always refresh errored tiles
+    const tileAge = Date.now() - tile.timestamp;
+    const isStale = tileAge > 20 * 1000; // 20 seconds threshold
+    console.log(`[isTileStale] Tile (${tile.x}, ${tile.y}) age: ${tileAge}ms, isStale: ${isStale}`);
+    return isStale;
+  };
+
+  // Function to load all visible tiles
+  const loadVisibleTiles = () => {
+    if (!isMounted()) {
+      console.log('[loadVisibleTiles] Component not mounted, skipping');
       return;
     }
     
-    console.log('[MapView] Component mounting, initializing...');
-    console.log(`[MapView] Mount ID: ${currentMountId}`);
+    console.log(`[loadVisibleTiles] Checking for stale tiles (mount ID: ${currentMountId})`);
+    
+    // Check for stale tiles that need refresh
+    const currentTiles = tiles();
+    let staleCount = 0;
+    
+    Object.values(currentTiles).forEach(tile => {
+      if (isTileStale(tile)) {
+        staleCount++;
+        console.log(`[loadVisibleTiles] Tile (${tile.x}, ${tile.y}) is stale, refreshing`);
+        loadTile(tile.x, tile.y, true).catch(error => {
+          console.error(`[loadVisibleTiles] Error refreshing tile (${tile.x}, ${tile.y}):`, error);
+        });
+      }
+    });
+    
+    console.log(`[loadVisibleTiles] Checked ${Object.keys(currentTiles).length} tiles, ${staleCount} marked for refresh`);
+  };
+
+  // Set mount state when component mounts
+  onMount(() => {
+    console.log('[MapView] Component mounted');
     setIsMounted(true);
+    loadVisibleTiles();
     
-    // Set up resize observer
-    if (containerRef) {
-      const resizeObserver = new ResizeObserver(handleResize);
-      resizeObserver.observe(containerRef);
-      
-      // Clean up on unmount
-      onCleanup(() => {
-        console.log('[MapView] Cleaning up resize observer');
-        resizeObserver.disconnect();
-      });
-    }
+    // Set up interval to check for stale tiles every 10 seconds
+    const intervalId = setInterval(() => {
+      if (isMounted()) {
+        console.log('[MapView] Running periodic tile refresh check');
+        loadVisibleTiles();
+      }
+    }, 10 * 1000); // 10 seconds
     
+    // Clean up on unmount
+    return () => {
+      console.log('[MapView] Component unmounting, cleaning up');
+      clearInterval(intervalId);
+      setIsMounted(false);
+    };
+  });
+
+  // Initial load effect
+  createEffect(() => {
     // Initial tile loading function
     const initialLoad = () => {
       if (!isMounted()) return;
@@ -167,7 +219,7 @@ const MapView: Component = () => {
       console.log('[MapView] Cleaning up load timer');
       clearTimeout(loadTimer);
     });
-  });
+  }); // End of createEffect;
 
   // Update viewport and schedule tiles for loading
   const updateViewport = (updates: Partial<Viewport>) => {
@@ -518,8 +570,38 @@ const MapView: Component = () => {
   const getTileKey = (tileX: number, tileY: number) => `${tileX},${tileY}`;
 
   // Load a single tile
-  const loadTile = async (tileX: number, tileY: number): Promise<void> => {
+  const loadTile = async (tileX: number, tileY: number, forceRefresh = false): Promise<void> => {
+    // Wait for tile cache to be ready
+    if (!tileCacheReady) {
+      console.log(`[loadTile] Waiting for tile cache to initialize...`);
+      try {
+        await tileCache.init();
+        tileCacheReady = true;
+        console.log(`[loadTile] Tile cache initialized, proceeding with load`);
+      } catch (error) {
+        console.error(`[loadTile] Error initializing tile cache:`, error);
+      }
+    }
+    
     const key = getTileKey(tileX, tileY);
+    const currentTiles = tiles();
+    const currentTile = currentTiles[key];
+    
+    // Skip if already loading the same tile, unless we're forcing a refresh
+    if (currentTile?.loading) {
+      if (!forceRefresh) {
+        console.log(`[loadTile] Tile (${tileX}, ${tileY}) is already loading`);
+        return;
+      } else {
+        console.log(`[loadTile] Forcing refresh of already loading tile (${tileX}, ${tileY})`);
+      }
+    }
+    
+    console.log(`[loadTile] Starting load for tile (${tileX}, ${tileY})`);
+    console.log(`[loadTile] tileCache:`, { 
+      isInitialized: (tileCache as any).isInitialized,
+      maxAge: (tileCache as any).maxAge 
+    });
     
     // Skip if component is unmounting
     if (!isMounted()) {
@@ -527,29 +609,50 @@ const MapView: Component = () => {
       return;
     }
 
-    const currentTiles = tiles();
-    console.log(`[loadTile] Attempting to load tile (${tileX}, ${tileY})`);
+    console.log(`[loadTile] Attempting to load tile (${tileX}, ${tileY}${forceRefresh ? ' (force refresh)' : ''})`);
     
-    // Skip if already loading or loaded recently
-    const currentTile = currentTiles[key];
-    if (currentTile?.loading) {
-      console.log(`[loadTile] Tile (${tileX}, ${tileY}) is already loading`);
-      return;
-    }
-    
-    // Check if we need to load fresh data
-    if (currentTile?.data) {
-      const isStale = Date.now() - currentTile.timestamp >= 30000;
-      const isFromPreviousMount = currentTile.mountId !== currentMountId;
-      
-      if (!isStale && !isFromPreviousMount) {
-        console.log(`[loadTile] Tile (${tileX}, ${tileY}) is up to date`);
-        return;
+    // Check cache first if not forcing a refresh
+    if (!forceRefresh) {
+      try {
+        console.log(`[loadTile] Checking cache for tile (${tileX}, ${tileY})`);
+        const cachedTile = await tileCache.getTile(tileX, tileY);
+        if (cachedTile) {
+          const tileAge = Date.now() - cachedTile.timestamp;
+          console.log(`[loadTile] Found tile (${tileX}, ${tileY}) in cache (age: ${tileAge}ms)`, {
+            cacheHit: true,
+            age: tileAge,
+            maxAge: (tileCache as any).maxAge,
+            needsRefresh: tileAge > 20000
+          });
+          setTiles(prev => ({
+            ...prev,
+            [key]: {
+              x: tileX,
+              y: tileY,
+              data: cachedTile.data,
+              loading: false,
+              error: false,
+              timestamp: cachedTile.timestamp,
+              mountId: currentMountId,
+              fromCache: true
+            }
+          }));
+          
+          // Schedule a background refresh if needed
+          const refreshThreshold = 20 * 1000; // 20 seconds
+          if (tileAge > refreshThreshold) {
+            console.log(`[loadTile] Tile (${tileX}, ${tileY}) is stale, refreshing in background`);
+            loadTile(tileX, tileY, true).catch(console.error);
+          }
+          
+          return; // Skip fetch if we have a valid cached version
+        }
+      } catch (error) {
+        console.error(`[loadTile] Error reading from cache for tile (${tileX}, ${tileY}):`, error);
       }
-      
-      console.log(`[loadTile] Tile (${tileX}, ${tileY}) needs refresh:`, 
-        { isStale, isFromPreviousMount });
     }
+    
+    // Skip if already loading (duplicate check removed)
     
     // Mark as loading
     setTiles(prev => ({
@@ -608,18 +711,36 @@ const MapView: Component = () => {
       const tileData = responseData.data;
       let bytes: Uint8Array;
       
-      if (Array.isArray(tileData.data)) {
-        bytes = new Uint8Array(tileData.data);
-      } else if (typeof tileData.data === 'string') {
+      if (typeof tileData.data === 'string') {
         try {
+          // Convert comma-separated string to Uint8Array
           const numbers = tileData.data.split(',').map(Number);
           if (numbers.some(isNaN)) {
             throw new Error('Invalid number in tile data');
           }
           bytes = new Uint8Array(numbers);
+          
+          // Store the processed data in cache
+          try {
+            await tileCache.setTile(tileX, tileY, bytes);
+            console.log(`[loadTile] Cached tile (${tileX}, ${tileY})`);
+          } catch (cacheError) {
+            console.error(`[loadTile] Error caching tile (${tileX}, ${tileY}):`, cacheError);
+          }
+          
         } catch (error) {
           console.error('Error parsing tile data:', error);
           throw new Error('Failed to parse tile data');
+        }
+      } else if (Array.isArray(tileData.data)) {
+        bytes = new Uint8Array(tileData.data);
+        
+        // Store the processed data in cache
+        try {
+          await tileCache.setTile(tileX, tileY, bytes);
+          console.log(`[loadTile] Cached tile (${tileX}, ${tileY})`);
+        } catch (cacheError) {
+          console.error(`[loadTile] Error caching tile (${tileX}, ${tileY}):`, cacheError);
         }
       } else {
         throw new Error('Unexpected tile data format');
