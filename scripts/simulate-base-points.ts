@@ -16,6 +16,54 @@ const debugLog = (...args: any[]) => {
   }
 };
 
+// Display move information and grid
+const displayMoveInfo = (moveNumber: number, direction: string, position: {x: number, y: number}) => {
+  const line = '='.repeat(40);
+  console.log(`\n${line}`);
+  console.log(` MOVE ${moveNumber}: ${direction.toUpperCase()}`);
+  console.log(` Position: (${position.x}, ${position.y})`);
+  console.log(line);
+};
+
+// Display restricted squares as a 15x15 ASCII grid
+const displayRestrictedGrid = (squares: number[], moveNumber: number, direction: string, position: {x: number, y: number}) => {
+  const gridSize = 15;
+  const grid: string[][] = Array(gridSize).fill(null).map(() => Array(gridSize).fill('.'));
+  
+  // Mark restricted squares
+  squares.forEach(index => {
+    const x = index % gridSize;
+    const y = Math.floor(index / gridSize);
+    if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+      grid[y][x] = 'x';
+    }
+  });
+  
+  // Mark player position (center of the grid)
+  const center = Math.floor(gridSize / 2);
+  grid[center][center] = 'P';
+  
+  // Print the grid with borders
+  const border = '+' + '-'.repeat(gridSize * 2 + 1) + '+';
+  console.log('\n' + border);
+  console.log('| ' + 'RESTRICTED SQUARES'.padEnd(gridSize * 2 - 1) + ' |');
+  console.log('| ' + `Move ${moveNumber}: ${direction}`.padEnd(gridSize * 2 - 1) + ' |');
+  console.log('| ' + `Pos: (${position.x},${position.y})`.padEnd(gridSize * 2 - 1) + ' |');
+  console.log(border);
+  
+  // Print column headers (hex)
+  console.log('  ' + Array(gridSize).fill(0).map((_, i) => i.toString(16)).join(' '));
+  
+  // Print grid rows with row headers
+  grid.forEach((row, y) => {
+    console.log(y.toString(16) + ' ' + row.join(' '));
+  });
+  
+  // Add legend
+  console.log('\nLegend: P = Player, x = Restricted');
+  console.log(border + '\n');
+};
+
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
   .option('grid-size', {
@@ -133,6 +181,9 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
       const data = await response.json();
       debugLog('Received restricted squares:', data.data?.squares);
       if (data.success && data.data?.squares) {
+        if (argv.debug) {
+          displayRestrictedGrid(data.data.squares, moveCount, direction, playerPosition);
+        }
         // Convert 1D indices back to coordinates
         restrictedSquares = data.data.squares.map((index: number) => {
           const x = (index % GRID_SIZE) - Math.floor(GRID_SIZE / 2) + playerPosition.x;
@@ -141,7 +192,6 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
         });
         console.log(`Fetched ${restrictedSquares.length} restricted squares`);
       }
-      console.log(`Fetched ${restrictedSquares.length} restricted squares`);
     } else {
       console.error('Failed to fetch restricted squares:', await response.text());
     }
@@ -331,10 +381,20 @@ async function moveToNewPosition(): Promise<void> {
     return;
   }
   
+  // Show move information in debug mode
+  if (argv.debug) {
+    const moveNumber = moveCount + 1;
+    const line = '='.repeat(40);
+    console.log(`\n${line}`);
+    console.log(` MOVE ${moveNumber}: ${moveDirection.toUpperCase()}`);
+    console.log(` Position: (${newX}, ${newY})`);
+    console.log(line);
+  } else {
+    console.log(`🌍 [${moveCount + 1}] Moving ${moveDirection} to (${newX}, ${newY})`);
+  }
+  
   // Update position
   playerPosition = { x: newX, y: newY };
-  // Log position in world coordinates with direction
-  console.log(`🌍 Player position: [x: ${newX}, y: ${newY}] moving ${moveDirection}`);
   
   // Add delay if specified
   if (MOVE_DELAY > 0) {
