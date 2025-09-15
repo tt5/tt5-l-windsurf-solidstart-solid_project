@@ -7,6 +7,7 @@
 4. [Technical Implementation](#technical-implementation)
 5. [Authentication System](#authentication-system)
 6. [API Endpoints](#api-endpoints)
+7. [Notification System](./NOTIFICATIONS.md)
 
 ## Core Architecture
 
