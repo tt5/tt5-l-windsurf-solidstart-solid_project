@@ -25,9 +25,13 @@ const SidePanel: Component<SidePanelProps> = (props) => {
   let eventSource: EventSource | null = null;
   let reconnectAttempts = 0;
   const MAX_RECONNECT_ATTEMPTS = 5;
-  const RECONNECT_DELAY = 1000; // 1 second
+  const INITIAL_RECONNECT_DELAY = 1000; // Start with 1 second
+  const MAX_RECONNECT_DELAY = 30000; // Max 30 seconds
   let isConnected = false;
   let reconnectTimeout: NodeJS.Timeout | undefined;
+  let connectionTimeout: NodeJS.Timeout | undefined;
+  const CONNECTION_TIMEOUT = 5000; // 5 seconds
+  let isMounted = true;
   
   // Type-safe event listener storage for cleanup
   const eventListeners: {
@@ -124,13 +128,27 @@ const SidePanel: Component<SidePanelProps> = (props) => {
     }
   };
 
-  const connect = () => {
-    // Clean up any existing connection
+  const cleanupConnection = () => {
+    if (connectionTimeout) {
+      clearTimeout(connectionTimeout);
+      connectionTimeout = undefined;
+    }
+    
     if (eventSource) {
-      console.log('[SSE] Closing existing connection');
+      console.log('[SSE] Cleaning up connection');
+      eventSource.onopen = null;
+      eventSource.onerror = null;
+      eventSource.onmessage = null;
       eventSource.close();
       eventSource = null;
     }
+  };
+
+  const connect = () => {
+    if (!isMounted) return;
+    
+    // Clean up any existing connection
+    cleanupConnection();
     
     // Clear any existing reconnect timeout
     if (reconnectTimeout) {
@@ -171,13 +189,57 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         CLOSED: EventSource.CLOSED
       });
       
+      // Set up connection timeout
+      connectionTimeout = setTimeout(() => {
+        if (isMounted && eventSource?.readyState === EventSource.CONNECTING) {
+          console.error('[SSE] Connection timeout - server is not responding');
+          console.log('[SSE] Server URL:', eventSource.url);
+          console.log('[SSE] With credentials:', eventSource.withCredentials);
+          console.log('[SSE] Current time:', new Date().toISOString());
+          
+          // Test the connection with a fetch request
+          fetch(eventSource.url, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Accept': 'text/event-stream',
+              'Cache-Control': 'no-cache'
+            }
+          })
+          .then(response => {
+            console.log('[SSE] Test fetch response status:', response.status);
+            return response.text().then(text => ({
+              status: response.status,
+              statusText: response.statusText,
+              headers: Object.fromEntries(response.headers.entries()),
+              text: text.substring(0, 200) // Only log first 200 chars
+            }));
+          })
+          .then(data => console.log('[SSE] Test fetch response:', data))
+          .catch(error => console.error('[SSE] Test fetch error:', error))
+          .finally(() => {
+            cleanupConnection();
+            scheduleReconnect();
+          });
+        }
+      }, CONNECTION_TIMEOUT) as unknown as NodeJS.Timeout;
+      
       // Set up event listeners for standard EventSource events
-      eventSource.onopen = () => {
+      eventSource.onopen = (event) => {
+        if (connectionTimeout) {
+          clearTimeout(connectionTimeout);
+          connectionTimeout = undefined;
+        }
+        
         const now = new Date().toISOString();
-        console.log(`[SSE] Connection opened at ${now}`);
-        console.log(`[SSE] Ready state: ${eventSource?.readyState} (${getReadyStateName(eventSource?.readyState)})`);
-        console.log(`[SSE] URL: ${eventSource?.url}`);
-        console.log(`[SSE] With credentials: ${eventSource?.withCredentials}`);
+        console.group('[SSE] Connection opened');
+        console.log('Time:', now);
+        console.log('Ready state:', getReadyStateName(eventSource?.readyState));
+        console.log('URL:', eventSource?.url);
+        console.log('With credentials:', eventSource?.withCredentials);
+        console.log('Event:', event);
+        console.groupEnd();
+        
         isConnected = true;
         reconnectAttempts = 0;
         
@@ -244,12 +306,25 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       
       // Set up cleanup on unmount
       onCleanup(() => {
+        isMounted = false;
+        console.log('[SSE] Cleaning up SSE connection on unmount');
         cleanupEventListeners();
-        if (eventSource) {
-          eventSource.close();
-        }
+        cleanupConnection();
+        
+        // Clear all timeouts
         if (reconnectTimeout) {
           clearTimeout(reconnectTimeout);
+          reconnectTimeout = undefined;
+        }
+        if (connectionTimeout) {
+          clearTimeout(connectionTimeout);
+          connectionTimeout = undefined;
+        }
+        
+        // Close event source
+        if (eventSource) {
+          eventSource.close();
+          eventSource = null;
         }
       });
       
@@ -263,20 +338,29 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         
         if (eventSource) {
           console.log('EventSource URL:', eventSource.url);
-          console.log('Ready state:', eventSource.readyState, `(${getReadyStateName(eventSource.readyState)})`);
+          console.log('EventSource readyState:', getReadyStateName(eventSource.readyState));
+          console.log('Headers:', {
+            'Accept': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Pragma': 'no-cache'
+          });
           
-          if (eventSource.readyState === EventSource.CLOSED) {
-            console.log('[SSE] Connection closed by server');
+          isConnected = false;
+          
+          // If we're not already trying to reconnect, schedule a reconnection
+          if (eventSource.readyState === EventSource.CLOSED && !reconnectTimeout) {
+            console.log('[SSE] Connection closed, scheduling reconnection...');
+            scheduleReconnect();
+          } else if (eventSource.readyState === EventSource.CONNECTING) {
+            console.log('[SSE] Still connecting...');
+          } else {
+            console.log('[SSE] Unknown error state, attempting to reconnect...');
+            scheduleReconnect();
           }
         }
         
         console.groupEnd();
-        
-        isConnected = false;
-        if (eventSource?.readyState === EventSource.CLOSED) {
-          console.log('[SSE] Attempting to reconnect...');
-          scheduleReconnect();
-        }
       };
       
       // Log the EventSource object for debugging

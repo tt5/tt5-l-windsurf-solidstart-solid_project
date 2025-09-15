@@ -1,18 +1,16 @@
 import type { APIEvent } from '@solidjs/start/server';
 import { withAuth } from '~/middleware/auth';
 import { basePointEventService } from '~/lib/server/events/base-point-events';
-import type { BasePoint } from '~/types/board';
 import type { TokenPayload } from '~/lib/server/auth/jwt';
 
-// Define the Client interface
 interface Client {
   userId: string;
+  username: string;
   ip?: string;
-  connectedAt?: string;
+  connectedAt: string;
   send: (data: string) => void;
 }
 
-// Extend the APIEvent type to include the user in the event
 type SSEEvent = APIEvent & {
   user: TokenPayload;
   locals: {
@@ -22,44 +20,109 @@ type SSEEvent = APIEvent & {
 };
 
 export const GET = withAuth(async (event: SSEEvent) => {
-  const { request, clientAddress, locals } = event;
-  // Log all available information for debugging
-  console.log('[SSE] New connection', {
+  const { request, clientAddress } = event;
+  const user = event.user || { userId: 'anonymous', username: 'anonymous' };
+
+  // Log connection attempt
+  console.log('[SSE] New connection attempt', {
+    userId: user.userId,
     ip: clientAddress,
-    localsUser: locals?.user ? {
-      userId: locals.user.userId,
-      username: locals.user.username,
-      role: locals.user.role
-    } : 'none',
-    headers: {
-      accept: request.headers.get('accept'),
-      authorization: request.headers.get('authorization')?.substring(0, 20) + '...' || 'none',
-      cookie: request.headers.get('cookie') ? 'exists' : 'none'
-    },
-    // Log other potentially useful context
-    url: request.url,
-    method: request.method,
-    // Log all locals for debugging
-    allLocals: Object.keys(locals).filter(k => k !== 'user').reduce((acc, key) => {
-      acc[key] = locals[key];
-      return acc;
-    }, {} as Record<string, any>)
+    url: request.url
   });
-  
-  if (!locals.user) {
-    console.warn('[SSE] WARNING: No user in locals, connection will be anonymous');
-  } else {
-    console.log('[SSE] User authenticated:', {
-      userId: locals.user.userId,
-      username: locals.user.username,
-      role: locals.user.role
-    });
-  }
-  
-  // Set up SSE headers
-  const headers = new Headers({
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache, no-transform',
+
+  // Create a new response stream
+  const stream = new ReadableStream({
+    start(controller) {
+      const encoder = new TextEncoder();
+      let isConnected = true;
+
+      // Helper to send messages to the client
+      const send = (data: string) => {
+        if (!isConnected) return;
+        try {
+          controller.enqueue(encoder.encode(data));
+        } catch (error) {
+          console.error('[SSE] Error sending data:', error);
+          isConnected = false;
+          controller.close();
+        }
+      };
+
+      // Send initial connection message
+      const sendInitialMessage = () => {
+        const message = `event: connected\ndata: ${JSON.stringify({
+          message: 'Connection established',
+          timestamp: new Date().toISOString(),
+          userId: user.userId
+        })}\n\n`;
+        send(message);
+      };
+
+      // Set up ping interval
+      const pingInterval = setInterval(() => {
+        if (!isConnected) {
+          clearInterval(pingInterval);
+          return;
+        }
+        const pingMessage = `event: ping\ndata: ${JSON.stringify({
+          type: 'ping',
+          timestamp: Date.now()
+        })}\n\n`;
+        send(pingMessage);
+      }, 30000);
+
+      // Set up the client
+      const client: Client = {
+        userId: user.userId,
+        username: user.username,
+        ip: clientAddress,
+        connectedAt: new Date().toISOString(),
+        send: (data: string) => {
+          if (isConnected) {
+            send(`data: ${data}\n\n`);
+          }
+        }
+      };
+
+      // Register the client
+      const { cleanup } = basePointEventService.registerClient(client);
+
+      // Initial setup
+      sendInitialMessage();
+      console.log(`[SSE] Client ${user.userId} connected`);
+
+      // Cleanup on stream cancellation
+      const cleanupAndClose = () => {
+        if (!isConnected) return;
+        isConnected = false;
+        clearInterval(pingInterval);
+        cleanup();
+        console.log(`[SSE] Client ${user.userId} disconnected`);
+        controller.close();
+      };
+
+      // Handle client disconnect
+      request.signal.addEventListener('abort', cleanupAndClose);
+
+      // Cleanup on stream close
+      return () => {
+        cleanupAndClose();
+        request.signal.removeEventListener('abort', cleanupAndClose);
+      };
+    }
+  });
+
+  // Return the response with proper headers
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Content-Encoding': 'none',
+      'X-Accel-Buffering': 'no'
+    }
+  });
+});
     'Connection': 'keep-alive',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Credentials': 'true'
@@ -97,6 +160,20 @@ export const GET = withAuth(async (event: SSEEvent) => {
   console.log(`[SSE] Registered client ${currentUser.userId} (${clientAddress})`);
   
   // Send initial connection message
+  const sendMessage = (event: string, data: any) => {
+    const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+    console.log(`[SSE] Sending ${event} event to client ${currentUser.userId}`);
+    send(message);
+  };
+  
+  // Send initial connection message
+  sendMessage('connected', { 
+    message: 'Connection established',
+    timestamp: new Date().toISOString(),
+    userId: currentUser.userId
+  });
+  
+  // Send initial connection message
   const sendMessage = async (event: string, data: any) => {
     const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
     console.log(`[SSE] Sending ${event} event to client ${currentUser.userId}`);
@@ -111,16 +188,13 @@ export const GET = withAuth(async (event: SSEEvent) => {
   console.log('[SSE] Connection established, setting up ping interval');
   
   // Send a ping event to keep the connection alive
-  let keepAlive: NodeJS.Timeout | null = setInterval(() => {
+  const keepAlive = setInterval(() => {
     const pingEvent = {
       type: 'ping',
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      message: 'ping'
     };
-    const pingMessage = `event: ping\ndata: ${JSON.stringify(pingEvent)}\n\n`;
-    console.log('[SSE] Sending ping event at', new Date().toISOString());
-    writer.write(pingMessage)
-      .then(() => console.log('[SSE] Ping sent successfully'))
-      .catch(err => console.error('[SSE] Error sending ping:', err));
+    sendMessage('ping', pingEvent);
   }, 30000); // Send a ping every 30 seconds
 
   // Get the user from the event (set by withAuth middleware)
@@ -242,7 +316,12 @@ export const GET = withAuth(async (event: SSEEvent) => {
   };
 
   // Set up request close handler
-  request.signal.addEventListener('abort', handleDisconnect);
+  request.signal.addEventListener('abort', () => {
+    console.log('[SSE] Client disconnected, cleaning up...');
+    clearInterval(keepAlive);
+    cleanup();
+    console.log(`[SSE] Client ${currentUser.userId} disconnected`);
+  });
   
   // Set up process exit handlers for graceful shutdown
   const handleExit = () => {
