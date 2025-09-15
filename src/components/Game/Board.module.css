@@ -33,6 +33,21 @@
   animation: spin 1s linear infinite;
 }
 
+/* Position Indicator */
+.positionIndicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #333;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-family: monospace;
+  z-index: 5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
 /* Boundary Message */
 .boundaryMessage {
   position: absolute;

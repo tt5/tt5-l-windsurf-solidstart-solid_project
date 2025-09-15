@@ -13,10 +13,10 @@ export const BOARD_CONFIG = {
     MAX_Y: WORLD_RADIUS,
   } as const,
   DIRECTION_MAP: {
-    'ArrowUp': 'up',
-    'ArrowDown': 'down',
-    'ArrowLeft': 'left',
-    'ArrowRight': 'right'
+    'ArrowUp': 'down',
+    'ArrowDown': 'up',
+    'ArrowLeft': 'right',
+    'ArrowRight': 'left'
   },
   BUTTONS: [
     { label: 'Random', className: 'randomButton' },

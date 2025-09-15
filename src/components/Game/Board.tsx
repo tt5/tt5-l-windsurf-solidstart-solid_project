@@ -500,6 +500,9 @@ const Board: Component = () => {
           You've reached the edge of the world!
         </div>
       )}
+      <div class={styles.positionIndicator}>
+        Position: ({currentPosition()[0]}, {currentPosition()[1]})
+      </div>
       <div class={styles.grid}>
         {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
           const x = index % BOARD_CONFIG.GRID_SIZE;
