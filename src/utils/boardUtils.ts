@@ -141,7 +141,7 @@ export const handleDirection = async (
 
     // Calculate the opposite border in the direction of movement
     const borderSquares = [];
-    const gridSize = BOARD_CONFIG.GRID_SIZE;
+    const gridSize = BOARD_CONFIG.GRID_SIZE; // 15x15
     
     // Get the row or column indices for the opposite border
     switch(dir) {
@@ -192,8 +192,14 @@ export const handleDirection = async (
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data?.squares && Array.isArray(result.data.squares)) {
-          // Combine newIndices with the border indices from the API, excluding any base points
-          const allIndices = [...new Set([...newIndices, ...result.data.squares])];
+          // Check for duplicate indices between newIndices and result.data.squares
+          const duplicates = newIndices.filter(index => result.data.squares.includes(index));
+          if (duplicates.length > 0) {
+            throw new Error(`Duplicate restricted squares found: ${duplicates.join(', ')}`);
+          }
+          
+          // Combine indices (no duplicates expected due to check above)
+          const allIndices = [...newIndices, ...result.data.squares];
           const [offsetX, offsetY] = currentPosition();
           
           // Filter out indices that are base points

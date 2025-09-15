@@ -79,10 +79,16 @@ export const POST = withAuth(async ({ request, user }) => {
       });
     });
     
+    // Filter to only include squares that are in both newSquares and borderIndices
+    const borderIndicesSet = new Set(borderIndices);
+    const filteredSquares = [...new Set(newSquares)].filter(square => 
+      borderIndicesSet.has(square)
+    );
+
     const responseData = {
       success: true,
       data: {
-        squares: [...new Set(newSquares)]
+        squares: filteredSquares
       }
     };
     
