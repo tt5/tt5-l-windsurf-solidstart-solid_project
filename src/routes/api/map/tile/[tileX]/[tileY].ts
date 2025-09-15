@@ -50,16 +50,47 @@ export const GET = withAuth(async (event) => {
     validateTileCoords(tileX, tileY);
     
     // Try to get tile from cache first
-    let tile = tileCacheService.get(tileX, tileY);
+    let tile: MapTile | null = null;
     let fromCache = true;
-
-    // If not in cache, generate and cache it
+    
+    try {
+      // Try to get from cache
+      tile = await tileCacheService.get(tileX, tileY);
+      
+      if (tile) {
+        console.log(`[Tile API] Found tile in cache:`, {
+          hasData: !!tile.data,
+          dataType: tile.data?.constructor?.name,
+          version: tile.version,
+          lastUpdatedMs: tile.lastUpdatedMs
+        });
+      } else {
+        // If not in cache, generate and cache it
+        console.log(`[Tile API] Tile not in cache, generating new tile (${tileX}, ${tileY})`);
+        const tileRepo = await getMapTileRepository();
+        tile = await tileGenerationService.generateTile(tileX, tileY);
+        
+        if (tile) {
+          console.log(`[Tile API] Generated tile:`, {
+            hasData: !!tile.data,
+            dataType: tile.data?.constructor?.name,
+            version: tile.version,
+            lastUpdatedMs: tile.lastUpdatedMs
+          });
+          await tileRepo.saveTile(tile);
+          await tileCacheService.set(tile);
+          fromCache = false;
+        } else {
+          throw new Error('Failed to generate tile');
+        }
+      }
+    } catch (error) {
+      console.error(`[Tile API] Error processing tile (${tileX}, ${tileY}):`, error);
+      throw error;
+    }
+    
     if (!tile) {
-      const tileRepo = await getMapTileRepository();
-      tile = await tileGenerationService.generateTile(tileX, tileY);
-      await tileRepo.saveTile(tile);
-      tileCacheService.set(tile);
-      fromCache = false;
+      throw new Error('Tile not found and could not be generated');
     }
     
     // Prepare response data
@@ -68,9 +99,9 @@ export const GET = withAuth(async (event) => {
       data: {
         tileX: tile.tileX,
         tileY: tile.tileY,
-        data: Array.from(tile.data).join(','), // Convert Uint8Array to comma-separated string for JSON
-        version: tile.version,
-        lastUpdatedMs: tile.lastUpdatedMs,
+        data: tile.data ? Array.from(tile.data).join(',') : '', // Safely handle undefined data
+        version: tile.version || 1,
+        lastUpdatedMs: tile.lastUpdatedMs || Date.now(),
         fromCache,
         // Add tile bounds for client-side convenience
         bounds: {
@@ -84,11 +115,12 @@ export const GET = withAuth(async (event) => {
     };
 
     // Set cache headers (10 seconds client cache, 10 seconds CDN cache)
+    const lastUpdated = tile.lastUpdatedMs || Date.now();
     const headers = new Headers({
       'Content-Type': 'application/json',
       'Cache-Control': 'public, max-age=10, s-maxage=10',
-      'ETag': `"${tile.lastUpdatedMs}"`,
-      'Last-Modified': new Date(tile.lastUpdatedMs).toUTCString()
+      'ETag': `"${lastUpdated}"`,
+      'Last-Modified': new Date(lastUpdated).toUTCString()
     });
 
     return new Response(JSON.stringify(responseData), {

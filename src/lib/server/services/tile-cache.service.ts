@@ -1,5 +1,4 @@
-import { MapTile } from '~/lib/server/repositories/map-tile.repository';
-import { MapTileRepository } from '~/lib/server/repositories/map-tile.repository';
+import { MapTile, MapTileRepository } from '~/lib/server/repositories/map-tile.repository';
 
 interface CacheEntry<T> {
   data: T;
@@ -122,4 +121,32 @@ export class TileCacheService {
 }
 
 // Export a singleton instance
-export const tileCacheService = new TileCacheService();
+import { getDb } from '~/lib/server/db';
+
+// Lazy initialization pattern
+let _tileCacheService: TileCacheService | null = null;
+
+export async function getTileCacheService(): Promise<TileCacheService> {
+  if (!_tileCacheService) {
+    const db = await getDb();
+    const mapTileRepository = new MapTileRepository(db);
+    _tileCacheService = new TileCacheService(mapTileRepository);
+  }
+  return _tileCacheService;
+}
+
+// For backward compatibility
+export const tileCacheService = {
+  getOrGenerate: (...args: Parameters<TileCacheService['getOrGenerate']>) => 
+    getTileCacheService().then(service => service.getOrGenerate(...args)),
+  get: (...args: Parameters<TileCacheService['get']>) => 
+    getTileCacheService().then(service => service.get(...args)),
+  set: (...args: Parameters<TileCacheService['set']>) => 
+    getTileCacheService().then(service => service.set(...args)),
+  invalidate: (...args: Parameters<TileCacheService['invalidate']>) => 
+    getTileCacheService().then(service => service.invalidate(...args)),
+  clear: () => 
+    getTileCacheService().then(service => service.clear()),
+  getStats: () => 
+    getTileCacheService().then(service => service.getStats())
+};

@@ -17,7 +17,7 @@ export const POST = withAuth(async ({ user }) => {
     const slopes = getRandomSlopes(2);
     
     // Get and delete points in lines
-    const pointsToDelete = await getPointsInLines(db, slopes);
+    const { points: pointsToDelete, duration } = await getPointsInLines(db, slopes);
     
     if (pointsToDelete.length > 0) {
       await deletePoints(db, pointsToDelete);
