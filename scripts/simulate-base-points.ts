@@ -16,17 +16,8 @@ const debugLog = (...args: any[]) => {
   }
 };
 
-// Display move information and grid
-const displayMoveInfo = (moveNumber: number, direction: string, position: {x: number, y: number}) => {
-  const line = '='.repeat(40);
-  console.log(`\n${line}`);
-  console.log(` MOVE ${moveNumber}: ${direction.toUpperCase()}`);
-  console.log(` Position: (${position.x}, ${position.y})`);
-  console.log(line);
-};
-
 // Display restricted squares as a 15x15 ASCII grid
-const displayRestrictedGrid = (squares: number[], moveNumber: number, direction: string, position: {x: number, y: number}) => {
+const displayRestrictedGrid = (squares: number[], direction: string, position: {x: number, y: number}) => {
   const gridSize = 15;
   const grid: string[][] = Array(gridSize).fill(null).map(() => Array(gridSize).fill('.'));
   
@@ -47,7 +38,7 @@ const displayRestrictedGrid = (squares: number[], moveNumber: number, direction:
   const border = '+' + '-'.repeat(gridSize * 2 + 1) + '+';
   console.log('\n' + border);
   console.log('| ' + 'RESTRICTED SQUARES'.padEnd(gridSize * 2 - 1) + ' |');
-  console.log('| ' + `Move ${moveNumber}: ${direction}`.padEnd(gridSize * 2 - 1) + ' |');
+  console.log('| ' + `Direction: ${direction}`.padEnd(gridSize * 2 - 1) + ' |');
   console.log('| ' + `Pos: (${position.x},${position.y})`.padEnd(gridSize * 2 - 1) + ' |');
   console.log(border);
   
@@ -118,7 +109,8 @@ console.log('Debug mode:', argv.debug);
 console.log('Command line arguments:', process.argv);
 
 // Game constants
-const GRID_SIZE = Math.max(3, argv.gridSize + (argv.gridSize % 2 === 0 ? 1 : 0)); // Ensure odd number
+//const GRID_SIZE = Math.max(3, argv.gridSize + (argv.gridSize % 2 === 0 ? 1 : 0)); // Ensure odd number
+const GRID_SIZE = 15
 const VIEW_RADIUS = Math.floor(GRID_SIZE / 2); // How far the player can see
 
 // Load environment variables from the project root
@@ -187,7 +179,7 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
       debugLog('Received restricted squares:', data.data?.squares);
       if (data.success && data.data?.squares) {
         if (argv.debug) {
-          displayRestrictedGrid(data.data.squares, moveCount, direction, playerPosition);
+          displayRestrictedGrid(data.data.squares, direction, playerPosition);
         }
         // Convert 1D indices back to coordinates
         restrictedSquares = data.data.squares.map((index: number) => {
@@ -218,7 +210,9 @@ function isInView(x: number, y: number): boolean {
 // Check if a point is restricted based on existing base points
 function isRestricted(x: number, y: number): boolean {
   // Can't place on player's position
-  if (x === playerPosition.x && y === playerPosition.y) {
+  console.log(`--- ${x}, ${y}`)
+  console.log(`playerPosition: ${playerPosition.x + VIEW_RADIUS}, ${playerPosition.y + VIEW_RADIUS}`)
+  if (x === playerPosition.x + VIEW_RADIUS && y === playerPosition.y + VIEW_RADIUS) {
     return true;
   }
 
@@ -256,11 +250,6 @@ if (!USER_ID || !AUTH_TOKEN) {
 
 async function placeBasePoint(x: number, y: number): Promise<boolean> {
   debugLog('Attempting to place base point at:', { x, y });
-  // Check if the point is in the viewable area
-  if (!isInView(x, y)) {
-    console.log(`Skipping (${x}, ${y}) - outside viewable area`);
-    return false;
-  }
 
   // Check if the point is restricted
   if (isRestricted(x, y)) {
@@ -316,8 +305,9 @@ async function simulatePlayer() {
     attempts++;
     
     // Generate random coordinates within the viewable area
-    const x = playerPosition.x + randomInt(-VIEW_RADIUS, VIEW_RADIUS + 1);
-    const y = playerPosition.y + randomInt(-VIEW_RADIUS, VIEW_RADIUS + 1);
+    const x = -playerPosition.x + randomInt(-VIEW_RADIUS, VIEW_RADIUS + 1) + VIEW_RADIUS;
+    const y = -playerPosition.y + randomInt(-VIEW_RADIUS, VIEW_RADIUS + 1) + VIEW_RADIUS;
+    console.log(`--- x: ${x}, y: ${y}`)
     
     // Ensure coordinates are within world bounds
     if (x < -MAX_COORDINATE || x > MAX_COORDINATE || y < -MAX_COORDINATE || y > MAX_COORDINATE) {
@@ -343,50 +333,56 @@ async function simulatePlayer() {
 
 // Movement types and state
 type MoveDirection = 'right' | 'left' | 'up' | 'down';
-let moveDirection: MoveDirection = argv.direction as MoveDirection;
+const initialDirection: MoveDirection = argv.direction as MoveDirection;
+let moveDirection: MoveDirection = initialDirection;
 let moveCount = 0;
-const MOVE_BEFORE_TURN = 5; // How many steps to move in one direction before turning
 
-// Move player in a deliberate, grid-filling pattern
+// Move player one step in the current direction
 async function moveToNewPosition(): Promise<void> {
   let dx = 0;
   let dy = 0;
   
-  // Handle movement based on current direction
-  switch (moveDirection) {
-    case 'right':
-      dx = 1;
-      if (++moveCount >= MOVE_BEFORE_TURN) {
-        moveDirection = 'down';
-        moveCount = 0;
-      }
-      break;
-    case 'left':
-      dx = -1;
-      if (++moveCount >= MOVE_BEFORE_TURN) {
-        moveDirection = 'up';
-        moveCount = 0;
-      }
-      break;
-    case 'up':
-      dy = -1;
-      if (++moveCount >= MOVE_BEFORE_TURN) {
-        // After moving up, alternate between left and right based on previous horizontal direction
-        const previousDirection = dx > 0 ? 'right' : 'left';
-        moveDirection = previousDirection === 'right' ? 'left' : 'right';
-        moveCount = 0;
-      }
-      break;
-    case 'down':
-      dy = 1;
-      if (++moveCount >= MOVE_BEFORE_TURN) {
-        // After moving down, alternate between left and right based on previous horizontal direction
-        const previousDirection = dx > 0 ? 'right' : 'left';
-        moveDirection = previousDirection === 'right' ? 'left' : 'right';
-        moveCount = 0;
-      }
-      break;
+  // Define possible movement directions for each direction
+  const directionOptions = {
+    right: [
+      { dx: 1, dy: 0 },   // right
+      { dx: 0, dy: -1 },  // up
+      { dx: 0, dy: 1 }    // down
+    ],
+    left: [
+      { dx: -1, dy: 0 },  // left
+      { dx: 0, dy: -1 },  // up
+      { dx: 0, dy: 1 }    // down
+    ],
+    up: [
+      { dx: 0, dy: -1 },  // up
+      { dx: -1, dy: 0 },  // left
+      { dx: 1, dy: 0 }    // right
+    ],
+    down: [
+      { dx: 0, dy: 1 },   // down
+      { dx: -1, dy: 0 },  // left
+      { dx: 1, dy: 0 }    // right
+    ]
+  };
+
+  // Change direction every 200 moves
+  if (moveCount % 200 === 0 && moveCount > 0) {
+    // Get all possible directions except the current one
+    const allDirections: MoveDirection[] = ['right', 'left', 'up', 'down'];
+    const otherDirections = allDirections.filter(d => d !== moveDirection);
+    moveDirection = otherDirections[Math.floor(Math.random() * otherDirections.length)];
+    console.log(`Changed direction to: ${moveDirection} after ${moveCount} moves`);
   }
+  
+  // Get the possible directions for the current movement direction
+  const possibleDirections = directionOptions[moveDirection];
+  
+  // Randomly select one of the possible directions
+  const randomDir = possibleDirections[Math.floor(Math.random() * possibleDirections.length)];
+  moveCount++;
+  dx = randomDir.dx;
+  dy = randomDir.dy;
   
   // Calculate new position (reverse the movement direction)
   const newX = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, playerPosition.x - dx));
@@ -395,11 +391,10 @@ async function moveToNewPosition(): Promise<void> {
   // Show move information in debug mode or if we actually moved
   totalMoves++; // Increment total move counter
   if (argv.debug) {
-    const moveNumber = moveCount + 1;  // Add 1 to make it 1-based for display
     const line = '='.repeat(40);
     console.log(`\n${line}`);
-    console.log(` MOVE ${totalMoves} (${moveNumber}/${MOVE_BEFORE_TURN} ${moveDirection.toUpperCase()})`);
-    console.log(` Position: (${newX}, ${newY})`);
+    console.log(` MOVE ${totalMoves}: ${moveDirection.toUpperCase()}`);
+    console.log(` New position: (${newX}, ${newY})`);
     console.log(` Total moves: ${totalMoves}`);
     console.log(line);
   } else if (newX !== playerPosition.x || newY !== playerPosition.y) {
@@ -431,25 +426,13 @@ async function moveToNewPosition(): Promise<void> {
   // Fetch restricted squares for the new position
   await fetchRestrictedSquares(borderDirection);
   
-  // Show debug grid if debug mode is enabled
+  // Debug information without duplicating the grid display
   if (argv.debug) {
-    console.log('\n=== DEBUG GRID ===');
+    console.log('\n=== MOVE INFO ===');
     console.log(`Player position: (${playerPosition.x}, ${playerPosition.y})`);
-    console.log(`Move count: ${moveCount}, Direction: ${moveDirection}`);
-    
-    // Get all squares in the viewport
-    const viewportSize = GRID_SIZE;
-    const halfViewport = Math.floor(viewportSize / 2);
-    const viewportIndices = [];
-    
-    // Add some sample restricted squares for visualization
-    viewportIndices.push(0, 1, 2, 3, 14, 15, 16, 17, 30, 31, 32, 45, 46, 60);
-    
-    console.log(`Displaying grid with ${viewportIndices.length} restricted squares`);
-    
-    // Display the grid with the current position in the center
-    displayRestrictedGrid(viewportIndices, moveCount, moveDirection, playerPosition);
-    console.log('=== END DEBUG GRID ===\n');
+    console.log(`Moving ${moveDirection}`);
+    console.log('Grid will be displayed when fetching restricted squares');
+    console.log('==================\n');
   }
 }
 
@@ -490,7 +473,6 @@ async function main() {
   console.log(`- Starting position: [${argv.startX}, ${argv.startY}]`);
   console.log(`- Target points: ${NUM_POINTS}`);
   console.log(`- Initial direction: ${moveDirection}`);
-  console.log(`- Moves before turn: ${MOVE_BEFORE_TURN}`);
   console.log(`- Move delay: ${MOVE_DELAY}ms`);
   
   try {

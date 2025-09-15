@@ -2,6 +2,8 @@
 
 This document explains how to use the test user simulation script to test the game mechanics.
 
+Works only when map empty.
+
 ## Basic Usage
 
 ### Running the Simulation
