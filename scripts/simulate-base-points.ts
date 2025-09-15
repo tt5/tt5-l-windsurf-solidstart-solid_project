@@ -32,8 +32,30 @@ let restrictedSquares: Array<[number, number]> = [];
 // Fetch restricted squares from server
 async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right' = 'up'): Promise<void> {
   try {
-    // Calculate border indices that are newly visible in the direction of movement
-    // For now, we'll let the server handle this calculation
+    // Calculate the viewport bounds
+    const viewportSize = 15; // Should match GRID_SIZE
+    const halfViewport = Math.floor(viewportSize / 2);
+    
+    // Calculate the viewport bounds in world coordinates
+    const viewport = {
+      left: playerPosition.x - halfViewport,
+      right: playerPosition.x + halfViewport,
+      top: playerPosition.y - halfViewport,
+      bottom: playerPosition.y + halfViewport
+    };
+    
+    // Get all squares in the viewport
+    const viewportSquares: number[] = [];
+    for (let y = viewport.top; y <= viewport.bottom; y++) {
+      for (let x = viewport.left; x <= viewport.right; x++) {
+        // Convert world coordinates to grid indices (0-14 for a 15x15 grid)
+        const gridX = ((x % viewportSize) + viewportSize) % viewportSize;
+        const gridY = ((y % viewportSize) + viewportSize) % viewportSize;
+        const index = gridY * viewportSize + gridX;
+        viewportSquares.push(index);
+      }
+    }
+    
     const response = await fetch(`${BASE_URL}/api/calculate-squares`, {
       method: 'POST',
       headers: {
@@ -41,7 +63,7 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
         'Authorization': `Bearer ${AUTH_TOKEN}`,
       },
       body: JSON.stringify({
-        borderIndices: [], // Let server calculate based on viewport
+        borderIndices: viewportSquares,
         currentPosition: [playerPosition.x, playerPosition.y],
         direction: direction
       })
@@ -205,20 +227,17 @@ async function simulatePlayer() {
 // Move player one unit in a random direction
 async function moveToNewPosition(): Promise<void> {
   // Choose a random direction (up, down, left, right, or diagonals)
-  const direction = randomInt(0, 8);
+  // Only 4 possible directions: right, left, down, up
+  const direction = randomInt(0, 4);
   let dx = 0;
   let dy = 0;
   
-  // Convert direction to dx,dy
+  // Convert direction to dx,dy (only horizontal/vertical)
   switch(direction) {
     case 0: dx = 1; break;  // right
     case 1: dx = -1; break; // left
     case 2: dy = 1; break;  // down
     case 3: dy = -1; break; // up
-    case 4: dx = 1; dy = 1; break;    // down-right
-    case 5: dx = -1; dy = 1; break;   // down-left
-    case 6: dx = 1; dy = -1; break;   // up-right
-    case 7: dx = -1; dy = -1; break;  // up-left
   }
   
   // Calculate new position

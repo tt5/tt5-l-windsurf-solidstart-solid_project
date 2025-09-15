@@ -11,6 +11,8 @@ type CalculateSquaresRequest = {
   direction: 'up' | 'down' | 'left' | 'right';
 };
 
+// The directionMap is kept for potential future use with direction-based calculations
+// Currently, direction is only used to determine which border to calculate
 const directionMap = {
   'up': [0, 0],
   'down': [0, 0],
