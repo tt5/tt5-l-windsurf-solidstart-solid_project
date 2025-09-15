@@ -9,6 +9,13 @@ import { hideBin } from 'yargs/helpers';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Debug logging helper
+const debugLog = (...args: any[]) => {
+  if (argv.debug) {
+    console.log('[DEBUG]', ...args);
+  }
+};
+
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
   .option('grid-size', {
@@ -37,6 +44,11 @@ const argv = yargs(hideBin(process.argv))
     type: 'number',
     default: 0,
     description: 'Delay between moves in milliseconds'
+  })
+  .option('debug', {
+    type: 'boolean',
+    default: false,
+    description: 'Enable debug logging'
   })
   .option('direction', {
     alias: 'd',
@@ -103,6 +115,7 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
       }
     }
     
+    debugLog('Fetching restricted squares for direction:', direction);
     const response = await fetch(`${BASE_URL}/api/calculate-squares`, {
       method: 'POST',
       headers: {
@@ -118,12 +131,16 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
 
     if (response.ok) {
       const data = await response.json();
-      // Convert 1D indices back to coordinates
-      restrictedSquares = data.data.squares.map((index: number) => {
-        const x = (index % GRID_SIZE) - Math.floor(GRID_SIZE / 2) + playerPosition.x;
-        const y = Math.floor(index / GRID_SIZE) - Math.floor(GRID_SIZE / 2) + playerPosition.y;
-        return [x, y] as [number, number];
-      });
+      debugLog('Received restricted squares:', data.data?.squares);
+      if (data.success && data.data?.squares) {
+        // Convert 1D indices back to coordinates
+        restrictedSquares = data.data.squares.map((index: number) => {
+          const x = (index % GRID_SIZE) - Math.floor(GRID_SIZE / 2) + playerPosition.x;
+          const y = Math.floor(index / GRID_SIZE) - Math.floor(GRID_SIZE / 2) + playerPosition.y;
+          return [x, y] as [number, number];
+        });
+        console.log(`Fetched ${restrictedSquares.length} restricted squares`);
+      }
       console.log(`Fetched ${restrictedSquares.length} restricted squares`);
     } else {
       console.error('Failed to fetch restricted squares:', await response.text());
@@ -183,6 +200,7 @@ if (!USER_ID || !AUTH_TOKEN) {
 }
 
 async function placeBasePoint(x: number, y: number): Promise<boolean> {
+  debugLog('Attempting to place base point at:', { x, y });
   // Check if the point is in the viewable area
   if (!isInView(x, y)) {
     console.log(`Skipping (${x}, ${y}) - outside viewable area`);
