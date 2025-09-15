@@ -1,24 +1,32 @@
 # TODO
 
-- containerization
-- bots (random mover) (same as user)
+- bots
 - teleport (randomly) new players
 - delete account and clean up base points
-- notify user about removed base points
 - check cleanup (getRandomSlopes) for floating point precision issues
+- auto add basepoint with space bar
+
+## notifications
+
+- notify user about removed base points
+- list users
+- total number of base points
 
 ## unclear
 
 - score system
-- production build
-  - migrations
-- db backups
 - component testing
+- http prefetching, websockets
+
+## production
+
+- production build
+- db backups
+- containerization
 
 ## map
 
 - world borders in the map
-- total number of base points
 - map: load at current position
 
 ## in progres
@@ -29,13 +37,3 @@
 - unit testing
 - styles
 - performance testing, metrics, logging
-
-## Devtools
-
-- npm dev:no-devtools
-- reset user
-- reset game
-- change user
-- list users
-- create/delete/logout/login user
-- run users interaction sequence
