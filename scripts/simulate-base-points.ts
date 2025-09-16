@@ -22,7 +22,7 @@ const displayRestrictedGrid = (squares: number[], direction: string, position: {
   const gridSize = 15;
   const grid: string[][] = Array(gridSize).fill(null).map(() => Array(gridSize).fill('.'));
   
-  // Mark restricted squares
+  // Mark restricted squares with 'x'
   squares.forEach(index => {
     const x = index % gridSize;
     const y = Math.floor(index / gridSize);
@@ -31,8 +31,17 @@ const displayRestrictedGrid = (squares: number[], direction: string, position: {
     }
   });
   
-  // Mark player position (center of the grid)
+  // Mark base points with 'o'
   const center = Math.floor(gridSize / 2);
+  placedBasePoints.forEach(point => {
+    const gridX = point.x - position.x;
+    const gridY = point.y - position.y;
+    if (gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize) {
+      grid[gridY][gridX] = 'o';
+    }
+  });
+  
+  // Mark player position (center of the grid)
   grid[center][center] = 'P';
   
   // Print column headers (hex)
@@ -126,7 +135,7 @@ let playerPosition = { x: 0, y: 0 };
 let totalMoves = 0; // Track total number of moves in the simulation
 
 // Track placed base points
-const placedBasePoints: Array<{x: number, y: number}> = [];
+const placedBasePoints: Array<{x: number, y: number}> = [{x: 0,y: 0}];
 
 // Track restricted squares from server
 let restrictedSquares: Array<[number, number]> = [];
