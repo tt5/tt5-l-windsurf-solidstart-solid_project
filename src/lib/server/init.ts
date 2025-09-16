@@ -66,7 +66,7 @@ class ServerInitializer {
 
         if (pointsToDelete.length > 0) {
           console.log(`[Cleanup] Removing ${pointsToDelete.length} points in batches...`);
-          const BATCH_SIZE = 50; // Adjust based on your needs
+          const BATCH_SIZE = 10; // Adjust based on your needs
           const repository = await getBasePointRepository();
           let deletedCount = 0;
           const deleteStartTime = performance.now();
@@ -110,7 +110,7 @@ class ServerInitializer {
       } catch (error) {
         console.error('[Cleanup] Error:', error);
       }
-    }, 10000);
+    }, 20000);
   }
 }
 

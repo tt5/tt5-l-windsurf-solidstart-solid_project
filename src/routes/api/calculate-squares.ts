@@ -68,6 +68,7 @@ export const POST = withAuth(async ({ request, user }) => {
         if (xdiff === 0 || ydiff === 0 || xdiff === ydiff
           || (2 * xdiff === ydiff) || (2 * ydiff === xdiff)
           || (3 * xdiff === ydiff) || (3 * ydiff === xdiff)
+          || (5 * xdiff === ydiff) || (5 * ydiff === xdiff)
           ) {
           const nx = x + currentPosition[0] + dx;
           const ny = y + currentPosition[1] + dy;
