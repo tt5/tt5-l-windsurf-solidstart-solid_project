@@ -64,6 +64,12 @@ const SidePanel: Component<SidePanelProps> = (props) => {
   };
 
   const handleMessage = (event: MessageEvent) => {
+    console.log('[SSE] Raw event received:', {
+      type: event.type,
+      data: event.data,
+      readyState: eventSource?.readyState,
+      url: eventSource?.url
+    });
     try {
 
       // Skip empty events
@@ -137,8 +143,25 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         }
       }
       // Handle cleanup events with total base points
-      else if (eventToProcess.type === 'cleanup' && eventToProcess.totalBasePoints !== undefined) {
-        setTotalBasePoints(eventToProcess.totalBasePoints);
+      console.log('Event to process:', eventToProcess);
+      
+      // Check both 'type' and 'event' for compatibility
+      if ((eventToProcess.type === 'cleanup' || eventToProcess.event === 'cleanup') && 
+          (eventToProcess.totalBasePoints !== undefined || eventToProcess.initialCount !== undefined)) {
+        const count = eventToProcess.initialCount !== undefined 
+          ? eventToProcess.initialCount 
+          : eventToProcess.totalBasePoints;
+          
+        console.log('[SSE] Processing cleanup event with count:', { 
+          initialCount: eventToProcess.initialCount,
+          totalBasePoints: eventToProcess.totalBasePoints,
+          usingCount: count
+        });
+        
+        setTotalBasePoints(prev => {
+          console.log('[SSE] Updating totalBasePoints from', prev, 'to', count);
+          return count;
+        });
       }
       
     } catch (error) {
@@ -254,7 +277,7 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       }
       
       // Define event types to listen for
-      const eventTypes = ['created', 'updated', 'deleted', 'ping'] as const;
+      const eventTypes = ['created', 'updated', 'deleted', 'ping', 'cleanup'] as const;
       
       // Add event listeners
       eventTypes.forEach(eventType => {
@@ -405,12 +428,10 @@ const SidePanel: Component<SidePanelProps> = (props) => {
                   <span class={`${styles.counterNumber} ${styles.deleted}`}>{deletedCount()}</span>
                   <span class={styles.counterLabel}>Removed</span>
                 </div>
-                {totalBasePoints() !== null && (
                   <div class={styles.counter}>
                     <span class={`${styles.counterNumber} ${styles.total}`}>{totalBasePoints()}</span>
                     <span class={styles.counterLabel}>Total</span>
                   </div>
-                )}
               </div>
             </div>
           </div>

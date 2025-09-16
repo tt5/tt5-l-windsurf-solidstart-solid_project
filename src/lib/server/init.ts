@@ -47,14 +47,22 @@ class ServerInitializer {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
     }
+    
+    console.log('[Cleanup] Setting up cleanup interval (every 10s)');
 
     // Schedule cleanup
     this.cleanupInterval = setInterval(async () => {
+      console.log('[Cleanup] Cleanup interval triggered');
       const startTime = Date.now();
       try {
         const db = await getDb();
+        const repository = await getBasePointRepository();
         const slopes = getRandomSlopes(16);
         const cleanupStartTime = performance.now();
+        
+        // Get initial count before any deletions
+        const initialCount = await repository.getTotalCount();
+        console.log(`[Cleanup] Initial count: ${initialCount}`);
         
         // Get unique base slopes as whole numbers
         const uniqueBaseSlopes = [...new Set(slopes
@@ -105,23 +113,27 @@ class ServerInitializer {
           }
           
           console.log(`[Cleanup] Removed ${deletedCount} points in ${deleteTime.toFixed(2)}ms (total: ${totalTime.toFixed(2)}ms)`);
-          
-          // Get total count of base points after cleanup
-          const totalBasePoints = await repository.getTotalCount();
-          
-          // Broadcast cleanup event with the total count
-          const { basePointEventService } = await import('./events/base-point-events');
-          basePointEventService.broadcast('cleanup', {
-            type: 'cleanup',
-            totalBasePoints,
-            timestamp: new Date().toISOString()
-          });
         }
+        
+        // Get final count after cleanup
+        const finalCount = await repository.getTotalCount();
+        console.log(`[Cleanup] Final count: ${finalCount}`);
+        
+        // Broadcast cleanup event with both counts
+        const { basePointEventService } = await import('./events/base-point-events');
+        const eventData = {
+          type: 'cleanup',
+          initialCount,
+          totalBasePoints: finalCount,
+          timestamp: new Date().toISOString()
+        };
+        console.log('[Cleanup] Broadcasting cleanup event:', eventData);
+        basePointEventService.broadcast('cleanup', eventData);
         
       } catch (error) {
         console.error('[Cleanup] Error:', error);
       }
-    }, 20000);
+    }, 10000);
   }
 }
 
