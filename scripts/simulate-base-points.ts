@@ -34,15 +34,8 @@ const displayRestrictedGrid = (squares: number[], direction: string, position: {
   const center = Math.floor(gridSize / 2);
   grid[center][center] = 'P';
   
-  // Print the grid with borders
-  const border = '+' + '-'.repeat(gridSize * 2 + 1) + '+';
-  console.log('\n' + border);
-  console.log('| ' + 'RESTRICTED SQUARES'.padEnd(gridSize * 2 - 1) + ' |');
-  console.log('| ' + `Direction: ${direction}`.padEnd(gridSize * 2 - 1) + ' |');
-  console.log('| ' + `Pos: (${position.x},${position.y})`.padEnd(gridSize * 2 - 1) + ' |');
-  console.log(border);
-  
   // Print column headers (hex)
+  console.log("\n")
   console.log('  ' + Array(gridSize).fill(0).map((_, i) => i.toString(16)).join(' '));
   
   // Print grid rows with row headers
@@ -50,9 +43,6 @@ const displayRestrictedGrid = (squares: number[], direction: string, position: {
     console.log(y.toString(16) + ' ' + row.join(' '));
   });
   
-  // Add legend
-  console.log('\nLegend: P = Player, x = Restricted');
-  console.log(border + '\n');
 };
 
 // Parse command line arguments
@@ -168,7 +158,7 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
         'Authorization': `Bearer ${AUTH_TOKEN}`,
       },
       body: JSON.stringify({
-        borderIndices: viewportSquares,
+        borderIndices: viewportSquares, // 15x15, wasteful but ok
         currentPosition: [-playerPosition.x, -playerPosition.y],
         direction: direction
       })
@@ -176,18 +166,18 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
 
     if (response.ok) {
       const data = await response.json();
-      debugLog('Received restricted squares:', data.data?.squares);
       if (data.success && data.data?.squares) {
         if (argv.debug) {
           displayRestrictedGrid(data.data.squares, direction, playerPosition);
         }
+
+        console.log(`--- playerPosition ${playerPosition.x} ${playerPosition.y}$`)
         // Convert 1D indices back to coordinates
         restrictedSquares = data.data.squares.map((index: number) => {
-          const x = (index % GRID_SIZE) - Math.floor(GRID_SIZE / 2) - playerPosition.x;
-          const y = Math.floor(index / GRID_SIZE) - Math.floor(GRID_SIZE / 2) - playerPosition.y;
+          const x = (index % GRID_SIZE) + playerPosition.x;
+          const y = Math.floor(index / GRID_SIZE) + playerPosition.y;
           return [x, y] as [number, number];
         });
-        console.log(`Fetched ${restrictedSquares.length} restricted squares`);
       }
     } else {
       console.error('Failed to fetch restricted squares:', await response.text());
@@ -197,40 +187,17 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
   }
 }
 
-// Check if a point is restricted based on existing base points
+// Check if a point is restricted based on restricted squares from the server
 function isRestricted(x: number, y: number): boolean {
   // Can't place on player's position
-  console.log(`--- ${x}, ${y}`)
-  //console.log(`playerPosition: ${playerPosition.x + VIEW_RADIUS}, ${playerPosition.y + VIEW_RADIUS}`)
   if (x === -playerPosition.x + VIEW_RADIUS && y === -playerPosition.y + VIEW_RADIUS) {
     return true;
   }
-
-  // Check against all existing base points
-  for (const point of placedBasePoints) {
-    const dx = Math.abs(x - point.x);
-    const dy = Math.abs(y - point.y);
-    
-    // Skip if it's the same point
-    if (dx === 0 && dy === 0) continue;
-    
-    // Check for straight lines and diagonals
-    if (dx === 0 || dy === 0 || dx === dy) {
-      return true;
-    }
-    
-    // Check for 2:1 and 1:2 slopes
-    if (dx === 2 * dy || 2 * dx === dy) {
-      return true;
-    }
-  }
   
   // Check if it's in the restricted squares from the server
-  if (restrictedSquares.some(([sx, sy]) => sx === x && sy === y)) {
-    return true;
-  }
-
-  return false;
+  console.log(`checking ${x}, ${y}`)
+  console.log(restrictedSquares)
+  return restrictedSquares.some(([sx, sy]) => sx === x && sy === y);
 }
 
 if (!USER_ID || !AUTH_TOKEN) {
@@ -295,8 +262,8 @@ async function simulatePlayer() {
     attempts++;
     
     // Generate random coordinates within the viewable area
-    const x = -playerPosition.x + randomInt(-VIEW_RADIUS, VIEW_RADIUS + 1) + VIEW_RADIUS;
-    const y = -playerPosition.y + randomInt(-VIEW_RADIUS, VIEW_RADIUS + 1) + VIEW_RADIUS;
+    const x = playerPosition.x + randomInt(-VIEW_RADIUS, VIEW_RADIUS) + VIEW_RADIUS;
+    const y = playerPosition.y + randomInt(-VIEW_RADIUS, VIEW_RADIUS) + VIEW_RADIUS;
     console.log(`--- x: ${x}, y: ${y}`)
     
     // Ensure coordinates are within world bounds
@@ -399,7 +366,7 @@ async function moveToNewPosition(): Promise<void> {
   }
   
   // Update position
-  playerPosition = { x: newX, y: newY };
+  playerPosition = { x: -newX, y: -newY };
   
   // Add delay if specified
   if (MOVE_DELAY > 0) {
