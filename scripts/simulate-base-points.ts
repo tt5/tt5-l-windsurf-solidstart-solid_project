@@ -177,7 +177,6 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
 
     if (response.ok) {
       const data = await response.json();
-      debugLog('Received restricted squares:', data.data?.squares);
       if (data.success && data.data?.squares) {
         if (argv.debug) {
           displayRestrictedGrid(data.data.squares, direction, playerPosition);
@@ -235,6 +234,14 @@ async function isRestricted(x: number, y: number): Promise<boolean> {
 
     const responseData = await response.json();
     const basePoints = responseData.data?.basePoints || [];
+    
+    if (basePoints.length > 0) {
+      console.log(`Fetched ${basePoints.length} base points near (${centerX}, ${centerY}):`, 
+        basePoints.map((p: {x: number, y: number}) => `(${p.x},${p.y})`).join(', ')
+      );
+    } else {
+      console.log('No base points found in the area');
+    }
     
     if (!Array.isArray(basePoints)) {
       console.error('Unexpected response format from API:', responseData);
