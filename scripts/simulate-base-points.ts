@@ -18,7 +18,7 @@ const debugLog = (...args: any[]) => {
 
 // Display restricted squares as a 15x15 ASCII grid
 const displayRestrictedGrid = (squares: number[], direction: string, position: {x: number, y: number}) => {
-  console.log("\x1b[H")
+  //console.log("\x1b[H")
   const gridSize = 15;
   const grid: string[][] = Array(gridSize).fill(null).map(() => Array(gridSize).fill('.'));
   
@@ -59,6 +59,12 @@ const argv = yargs(hideBin(process.argv))
     type: 'number',
     default: 10,
     description: 'Number of base points to create'
+  })
+  .option('new-attempts', {
+    alias: 'n',
+    type: 'number',
+    default: 100,
+    description: 'Number of new attempts to make before giving up'
   })
   .option('start-x', {
     type: 'number',
@@ -110,6 +116,7 @@ config({ path: join(__dirname, '../.env') });
 const BASE_URL = process.env.API_URL || 'http://localhost:3000';
 const MAX_COORDINATE = 1000; // Match the server-side limit
 const NUM_POINTS = argv.points;
+const MAX_NEW_ATTEMPTS = argv.newAttempts;
 const MOVE_DELAY = argv.delay;
 const USER_ID = process.env.TEST_USER_ID; // Set this in your .env file
 const AUTH_TOKEN = process.env.TEST_AUTH_TOKEN; // Set this in your .env file
@@ -234,7 +241,8 @@ async function placeBasePoint(x: number, y: number): Promise<boolean> {
     }
 
     const data = await response.json();
-    console.log(`✅ Placed base point at (${x}, ${y}) with ID:`, data.data.basePoint.id);
+    //console.log(`✅ Placed base point at (${x}, ${y}) with ID:`, data.data.basePoint.id);
+    console.log(`✅ `);
     
     // Track the placed base point
     placedBasePoints.push({ x, y });
@@ -253,10 +261,18 @@ async function simulatePlayer() {
   
   let successCount = 0;
   let attempts = 0;
+  let newAttempts = 0;
   const MAX_ATTEMPTS = NUM_POINTS * 100; // Prevent infinite loops
   
-  while (successCount < NUM_POINTS && attempts < MAX_ATTEMPTS) {
+  // Loop
+  while (successCount < NUM_POINTS && attempts < MAX_ATTEMPTS && newAttempts < MAX_NEW_ATTEMPTS) {
     attempts++;
+    newAttempts++;
+
+
+    // Round down to nearest 10s place
+    const roundedAttempts = Math.floor(newAttempts / 10) * 10;
+    console.log(`--- New attempts: ${String(roundedAttempts).padStart(4, ' ')}+`);
     
     // Generate random coordinates within the viewable area
     const x = playerPosition.x + randomInt(-VIEW_RADIUS, VIEW_RADIUS) + VIEW_RADIUS;
@@ -270,6 +286,7 @@ async function simulatePlayer() {
     const success = await placeBasePoint(x, y);
     if (success) {
       successCount++;
+      newAttempts = 0;
     }
     
     // Always move after each attempt, regardless of success
@@ -278,7 +295,6 @@ async function simulatePlayer() {
   
   if (successCount < NUM_POINTS) {
     console.log(`\n⚠️  Simulation complete with partial success. Placed ${successCount}/${NUM_POINTS} base points after ${attempts} attempts.`);
-    console.log('This might be due to restricted areas or rate limiting.');
   } else {
     console.log(`\n🎉 Simulation complete! Successfully placed ${successCount}/${NUM_POINTS} base points.`);
   }
@@ -300,21 +316,21 @@ async function moveToNewPosition(): Promise<void> {
     right: [
       { dx: 1, dy: 0 },   // right
       { dx: 0, dy: -1 },  // up
-      { dx: 0, dy: 1 }    // down
+      //{ dx: 0, dy: 1 }    // down
     ],
     left: [
       { dx: -1, dy: 0 },  // left
-      { dx: 0, dy: -1 },  // up
+      //{ dx: 0, dy: -1 },  // up
       { dx: 0, dy: 1 }    // down
     ],
     up: [
       { dx: 0, dy: -1 },  // up
       { dx: -1, dy: 0 },  // left
-      { dx: 1, dy: 0 }    // right
+      //{ dx: 1, dy: 0 }    // right
     ],
     down: [
       { dx: 0, dy: 1 },   // down
-      { dx: -1, dy: 0 },  // left
+      //{ dx: -1, dy: 0 },  // left
       { dx: 1, dy: 0 }    // right
     ]
   };
