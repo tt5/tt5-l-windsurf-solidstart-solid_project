@@ -18,7 +18,9 @@ const debugLog = (...args: any[]) => {
 
 // Display restricted squares as a 15x15 ASCII grid
 const displayRestrictedGrid = (squares: number[], direction: string, position: {x: number, y: number}) => {
-  //console.log("\x1b[H")
+  if (argv.animate) {
+    console.log("\x1b[H")
+  }
   const gridSize = 15;
   const grid: string[][] = Array(gridSize).fill(null).map(() => Array(gridSize).fill('.'));
   
@@ -57,20 +59,14 @@ const displayRestrictedGrid = (squares: number[], direction: string, position: {
 
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
-  .option('grid-size', {
-    alias: 'g',
-    type: 'number',
-    default: 15,
-    description: 'Size of the game grid (must be odd)'
-  })
   .option('points', {
     alias: 'p',
     type: 'number',
     default: 10,
     description: 'Number of base points to create'
   })
-  .option('new-attempts', {
-    alias: 'n',
+  .option('newattempts', {
+    alias: 'a',
     type: 'number',
     default: 100,
     description: 'Number of new attempts to make before giving up'
@@ -94,6 +90,11 @@ const argv = yargs(hideBin(process.argv))
     type: 'boolean',
     default: false,
     description: 'Enable debug logging'
+  })
+  .option('animate', {
+    type: 'boolean',
+    default: false,
+    description: 'Enable animation'
   })
   .option('direction', {
     alias: 'd',
@@ -125,7 +126,7 @@ config({ path: join(__dirname, '../.env') });
 const BASE_URL = process.env.API_URL || 'http://localhost:3000';
 const MAX_COORDINATE = 1000; // Match the server-side limit
 const NUM_POINTS = argv.points;
-const MAX_NEW_ATTEMPTS = argv.newAttempts;
+const MAX_NEW_ATTEMPTS = argv.newattempts;
 const MOVE_DELAY = argv.delay;
 const USER_ID = process.env.TEST_USER_ID; // Set this in your .env file
 const AUTH_TOKEN = process.env.TEST_AUTH_TOKEN; // Set this in your .env file
