@@ -189,7 +189,8 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
           displayRestrictedGrid(data.data.squares, direction, playerPosition);
         }
 
-        console.log(`\n--- playerPosition ${playerPosition.x} ${playerPosition.y}`)
+        console.log(`\n--- playerPosition ${String(playerPosition.x).padStart(4, ' ')} ${String(playerPosition.y).padStart(4, ' ')}`)
+
         // Convert 1D indices back to coordinates
         restrictedSquares = data.data.squares.map((index: number) => {
           const x = (index % GRID_SIZE) + playerPosition.x;

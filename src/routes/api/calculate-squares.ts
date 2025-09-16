@@ -65,8 +65,10 @@ export const POST = withAuth(async ({ request, user }) => {
         const ydiff = Math.abs(y - by);
         
         // Check for straight lines (horizontal/vertical/diagonal) or slopes 2:1 and 1:2
-        if (xdiff === 0 || ydiff === 0 || xdiff === ydiff || 
-            (xdiff === ydiff / 2) || (ydiff === xdiff / 2)) {
+        if (xdiff === 0 || ydiff === 0 || xdiff === ydiff
+          || (2 * xdiff === ydiff) || (2 * ydiff === xdiff)
+          || (3 * xdiff === ydiff) || (3 * ydiff === xdiff)
+          ) {
           const nx = x + currentPosition[0] + dx;
           const ny = y + currentPosition[1] + dy;
           
