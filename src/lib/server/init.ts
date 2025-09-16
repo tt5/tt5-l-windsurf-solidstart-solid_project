@@ -105,6 +105,17 @@ class ServerInitializer {
           }
           
           console.log(`[Cleanup] Removed ${deletedCount} points in ${deleteTime.toFixed(2)}ms (total: ${totalTime.toFixed(2)}ms)`);
+          
+          // Get total count of base points after cleanup
+          const totalBasePoints = await repository.getTotalCount();
+          
+          // Broadcast cleanup event with the total count
+          const { basePointEventService } = await import('./events/base-point-events');
+          basePointEventService.broadcast('cleanup', {
+            type: 'cleanup',
+            totalBasePoints,
+            timestamp: new Date().toISOString()
+          });
         }
         
       } catch (error) {

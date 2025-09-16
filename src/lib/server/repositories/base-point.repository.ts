@@ -19,6 +19,16 @@ export class BasePointRepository {
     return results || [];
   }
 
+  /**
+   * Get the total count of all base points in the database
+   */
+  async getTotalCount(): Promise<number> {
+    const result = await this.db.get<{count: number}>(
+      'SELECT COUNT(*) as count FROM base_points'
+    );
+    return result?.count || 0;
+  }
+
   async getPointsInBounds(minX: number, minY: number, maxX: number, maxY: number): Promise<BasePoint[]> {
     const results = await this.db.all<BasePoint[]>(
       `SELECT id, user_id as userId, x, y, created_at_ms as createdAtMs 

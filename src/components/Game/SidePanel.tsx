@@ -20,10 +20,11 @@ interface SidePanelProps {
 }
 
 const SidePanel: Component<SidePanelProps> = (props) => {
-  // Initialize notifications state
+  // Initialize state
   const [notifications, setNotifications] = createSignal<Notification[]>([]);
   const [addedCount, setAddedCount] = createSignal(0);
   const [deletedCount, setDeletedCount] = createSignal(0);
+  const [totalBasePoints, setTotalBasePoints] = createSignal<number | null>(null);
   
   // Store the EventSource instance and reconnection state
   let eventSource: EventSource | null = null;
@@ -122,10 +123,22 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           // Update counters
           if (isDeletion) {
             setDeletedCount(prev => prev + count);
+            // Update total points if available
+            if (totalBasePoints() !== null) {
+              setTotalBasePoints(prev => Math.max(0, (prev || 0) - count));
+            }
           } else {
             setAddedCount(prev => prev + count);
+            // Update total points if available
+            if (totalBasePoints() !== null) {
+              setTotalBasePoints(prev => (prev || 0) + count);
+            }
           }
         }
+      }
+      // Handle cleanup events with total base points
+      else if (eventToProcess.type === 'cleanup' && eventToProcess.totalBasePoints !== undefined) {
+        setTotalBasePoints(eventToProcess.totalBasePoints);
       }
       
     } catch (error) {
@@ -392,6 +405,12 @@ const SidePanel: Component<SidePanelProps> = (props) => {
                   <span class={`${styles.counterNumber} ${styles.deleted}`}>{deletedCount()}</span>
                   <span class={styles.counterLabel}>Removed</span>
                 </div>
+                {totalBasePoints() !== null && (
+                  <div class={styles.counter}>
+                    <span class={`${styles.counterNumber} ${styles.total}`}>{totalBasePoints()}</span>
+                    <span class={styles.counterLabel}>Total</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
