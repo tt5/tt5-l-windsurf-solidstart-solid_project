@@ -63,41 +63,50 @@ class ServerInitializer {
         )];
         console.log(`[Cleanup] Starting cleanup with slopes: ${uniqueBaseSlopes.join(', ')}`);
         const { points: pointsToDelete, duration } = await getPointsInLines(db, slopes);
-        
+
         if (pointsToDelete.length > 0) {
-          console.log(`[Cleanup] Removing ${pointsToDelete.length} points...`);
-          
-          // Use the repository to delete points - it will handle event emission
+          console.log(`[Cleanup] Removing ${pointsToDelete.length} points in batches...`);
+          const BATCH_SIZE = 50; // Adjust based on your needs
           const repository = await getBasePointRepository();
+          let deletedCount = 0;
+          const deleteStartTime = performance.now();
           
-          try {
-            if (pointsToDelete.length > 1) {
-              // Use batch delete for multiple points
-              await repository.deletePoints(pointsToDelete);
-              console.log(`[Cleanup] Successfully deleted ${pointsToDelete.length} points`);
-            } else if (pointsToDelete.length === 1) {
-              // Use single delete for one point
-              await repository.deleteBasePoint(pointsToDelete[0].id);
-              console.log(`[Cleanup] Successfully deleted 1 point`);
+          for (let i = 0; i < pointsToDelete.length; i += BATCH_SIZE) {
+            const batch = pointsToDelete.slice(i, i + BATCH_SIZE);
+            try {
+              if (batch.length > 1) {
+                await repository.deletePoints(batch);
+              } else if (batch.length === 1) {
+                await repository.deleteBasePoint(batch[0].id);
+              }
+              deletedCount += batch.length;
+              
+              // Log progress every 5 batches
+              if (i % (BATCH_SIZE * 5) === 0) {
+                console.log(`[Cleanup] Progress: ${deletedCount}/${pointsToDelete.length} points...`);
+              }
+              
+              // Small delay to allow other operations
+              if (i + BATCH_SIZE < pointsToDelete.length) {
+                await new Promise(resolve => setTimeout(resolve, 10));
+              }
+            } catch (error) {
+              console.error(`[Cleanup] Error in batch ${i/BATCH_SIZE + 1}:`, error);
+              // Continue with next batch
             }
-            
-            const totalTime = performance.now() - cleanupStartTime;
-            if (totalTime > 5000) {
-              console.warn(`[Cleanup] WARNING: Cleanup took ${(totalTime/1000).toFixed(2)}s (over 5s threshold)`);
-            }
-            console.log(`[Cleanup] Removed ${pointsToDelete.length} points in ${duration.toFixed(2)}ms (total: ${totalTime.toFixed(2)}ms)`);
-          } catch (error) {
-            console.error('[Cleanup] Error during point deletion:', error);
-            const totalTime = performance.now() - cleanupStartTime;
-            console.error(`[Cleanup] Failed after ${totalTime.toFixed(2)}ms`);
           }
-        } else {
+          
+          const deleteTime = performance.now() - deleteStartTime;
           const totalTime = performance.now() - cleanupStartTime;
+          
+          // Keep the warning for long cleanups
           if (totalTime > 5000) {
             console.warn(`[Cleanup] WARNING: Cleanup took ${(totalTime/1000).toFixed(2)}s (over 5s threshold)`);
           }
-          console.log(`[Cleanup] No points to remove (took ${totalTime.toFixed(2)}ms)`);
+          
+          console.log(`[Cleanup] Removed ${deletedCount} points in ${deleteTime.toFixed(2)}ms (total: ${totalTime.toFixed(2)}ms)`);
         }
+        
       } catch (error) {
         console.error('[Cleanup] Error:', error);
       }

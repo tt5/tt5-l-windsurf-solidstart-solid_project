@@ -1,0 +1,29 @@
+# 1600 placed, ~500 db, ~1200ms cleanup
+
+npx tsx scripts/simulate-base-points.ts --debug -p 1600 -a 3200 --animate  --delay 10
+
+simulation calls calculate-square with 15x15 squares, takes < 3ms
+
+clean-up: 16
+calculate-square: 3 (highest)
+
+# 3200
+
+npx tsx scripts/simulate-base-points.ts --debug -p 3200 -a 3200 --animate  --delay 10
+
+Placed 1204/3200 base points after 50387 attempts.
+
+npx tsx scripts/simulate-base-points.ts --debug -p 3200 -a 6400 --animate  --delay 10
+
+calculate-squares: ~6ms
+cleanup: 550 point, ~1600ms
+600,700 point, ~2500ms
+
+2500 added, 2000 removed
+problem with player position and border?
+
+npx tsx scripts/simulate-base-points.ts --debug -p 3200 -a 6400 --animate  --delay 9
+
+Simulation complete with partial success. Placed 1838/3200 base points after 144524 attempts.
+
+npx tsx scripts/simulate-base-points.ts --debug -p 3200 -a 12800 --animate  --delay 8

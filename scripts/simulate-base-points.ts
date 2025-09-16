@@ -189,7 +189,16 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
           displayRestrictedGrid(data.data.squares, direction, playerPosition);
         }
 
-        console.log(`\n--- playerPosition ${String(playerPosition.x).padStart(4, ' ')} ${String(playerPosition.y).padStart(4, ' ')}`)
+        console.log(`\n--- 
+          playerPosition
+          ${String(playerPosition.x).padStart(4, ' ')}
+          ${String(playerPosition.y).padStart(4, ' ')}
+        `)
+        // Exit if position exceeds bounds
+        if (Math.abs(playerPosition.x) > 1002 || Math.abs(playerPosition.y) > 1002) {
+          console.error(`Position out of bounds: (${playerPosition.x}, ${playerPosition.y})`);
+          process.exit(1);
+        }
 
         // Convert 1D indices back to coordinates
         restrictedSquares = data.data.squares.map((index: number) => {
@@ -273,10 +282,10 @@ async function simulatePlayer() {
   let successCount = 0;
   let attempts = 0;
   let newAttempts = 0;
-  const MAX_ATTEMPTS = NUM_POINTS * 100; // Prevent infinite loops
+//  const MAX_ATTEMPTS = NUM_POINTS * 100; // Prevent infinite loops
   
   // Loop
-  while (successCount < NUM_POINTS && attempts < MAX_ATTEMPTS && newAttempts < MAX_NEW_ATTEMPTS) {
+  while (successCount < NUM_POINTS  && newAttempts < MAX_NEW_ATTEMPTS) {
     attempts++;
     newAttempts++;
 
@@ -368,25 +377,11 @@ async function moveToNewPosition(): Promise<void> {
   const newX = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, -playerPosition.x - dx));
   const newY = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, -playerPosition.y - dy));
   
-  // Show move information in debug mode or if we actually moved
-  totalMoves++; // Increment total move counter
-  if (argv.debug) {
-    const line = '='.repeat(40);
-    console.log(`\n${line}`);
-    console.log(` MOVE ${totalMoves}: ${moveDirection.toUpperCase()}`);
-    console.log(` Total moves: ${totalMoves}`);
-    console.log(line);
-  } else if (newX !== -playerPosition.x || newY !== -playerPosition.y) {
-    // Only log non-debug movement if we actually moved
-    console.log(`🌍 [${totalMoves}] Moving ${moveDirection} to (${newX}, ${newY})`);
-  }
-  
-  // Skip if we hit the world boundary and not in debug mode
-  if (newX === -playerPosition.x && newY === -playerPosition.y) {
-    if (!argv.debug) return;
-    // In debug mode, continue to show the grid even if we didn't move
-  }
-  
+  totalMoves++;
+
+  console.log(` MOVE ${totalMoves}`);
+  console.log(` Total moves: ${totalMoves}`);
+
   // Update position
   playerPosition = { x: -newX, y: -newY };
   
