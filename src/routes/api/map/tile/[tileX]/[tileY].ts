@@ -58,25 +58,12 @@ export const GET = withAuth(async (event) => {
       tile = await tileCacheService.get(tileX, tileY);
       
       if (tile) {
-        console.log(`[Tile API] Found tile in cache:`, {
-          hasData: !!tile.data,
-          dataType: tile.data?.constructor?.name,
-          version: tile.version,
-          lastUpdatedMs: tile.lastUpdatedMs
-        });
       } else {
         // If not in cache, generate and cache it
-        console.log(`[Tile API] Tile not in cache, generating new tile (${tileX}, ${tileY})`);
         const tileRepo = await getMapTileRepository();
         tile = await tileGenerationService.generateTile(tileX, tileY);
         
         if (tile) {
-          console.log(`[Tile API] Generated tile:`, {
-            hasData: !!tile.data,
-            dataType: tile.data?.constructor?.name,
-            version: tile.version,
-            lastUpdatedMs: tile.lastUpdatedMs
-          });
           await tileRepo.saveTile(tile);
           await tileCacheService.set(tile);
           fromCache = false;

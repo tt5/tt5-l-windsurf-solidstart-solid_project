@@ -116,8 +116,7 @@ const VIEW_RADIUS = Math.floor(GRID_SIZE / 2); // How far the player can see
 // Load environment variables from the project root
 config({ path: join(__dirname, '../.env') });
 
-// Base URL for API requests
-const BASE_API_URL = process.env.API_URL || 'http://localhost:3000';
+const BASE_URL = process.env.API_URL || 'http://localhost:3000';
 const MAX_COORDINATE = 1000; // Match the server-side limit
 const NUM_POINTS = argv.points;
 const MOVE_DELAY = argv.delay;
@@ -143,10 +142,10 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
     
     // Calculate the viewport bounds in world coordinates
     const viewport = {
-      left: playerPosition.x - halfViewport,
-      right: playerPosition.x + halfViewport,
-      top: playerPosition.y - halfViewport,
-      bottom: playerPosition.y + halfViewport
+      left: -playerPosition.x - halfViewport,
+      right: -playerPosition.x + halfViewport,
+      top: -playerPosition.y - halfViewport,
+      bottom: -playerPosition.y + halfViewport
     };
     
     // Get all squares in the viewport
@@ -162,7 +161,7 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
     }
     
     debugLog('Fetching restricted squares for direction:', direction);
-    const response = await fetch(`${BASE_API_URL}/api/calculate-squares`, {
+    const response = await fetch(`${BASE_URL}/api/calculate-squares`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -170,21 +169,22 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
       },
       body: JSON.stringify({
         borderIndices: viewportSquares,
-        currentPosition: [playerPosition.x, playerPosition.y],
+        currentPosition: [-playerPosition.x, -playerPosition.y],
         direction: direction
       })
     });
 
     if (response.ok) {
       const data = await response.json();
+      debugLog('Received restricted squares:', data.data?.squares);
       if (data.success && data.data?.squares) {
         if (argv.debug) {
           displayRestrictedGrid(data.data.squares, direction, playerPosition);
         }
         // Convert 1D indices back to coordinates
         restrictedSquares = data.data.squares.map((index: number) => {
-          const x = (index % GRID_SIZE) - Math.floor(GRID_SIZE / 2) + playerPosition.x;
-          const y = Math.floor(index / GRID_SIZE) - Math.floor(GRID_SIZE / 2) + playerPosition.y;
+          const x = (index % GRID_SIZE) - Math.floor(GRID_SIZE / 2) - playerPosition.x;
+          const y = Math.floor(index / GRID_SIZE) - Math.floor(GRID_SIZE / 2) - playerPosition.y;
           return [x, y] as [number, number];
         });
         console.log(`Fetched ${restrictedSquares.length} restricted squares`);
@@ -197,78 +197,37 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
   }
 }
 
-// Calculate if a point is in the viewable area
-function isInView(x: number, y: number): boolean {
-  return (
-    x >= playerPosition.x - VIEW_RADIUS && 
-    x <= playerPosition.x + VIEW_RADIUS &&
-    y >= playerPosition.y - VIEW_RADIUS &&
-    y <= playerPosition.y + VIEW_RADIUS
-  );
-}
-
-// Check if a point is restricted based on base points in the database
-async function isRestricted(x: number, y: number): Promise<boolean> {
+// Check if a point is restricted based on existing base points
+function isRestricted(x: number, y: number): boolean {
   // Can't place on player's position
-  if (x === playerPosition.x + VIEW_RADIUS && y === playerPosition.y + VIEW_RADIUS) {
+  console.log(`--- ${x}, ${y}`)
+  //console.log(`playerPosition: ${playerPosition.x + VIEW_RADIUS}, ${playerPosition.y + VIEW_RADIUS}`)
+  if (x === -playerPosition.x + VIEW_RADIUS && y === -playerPosition.y + VIEW_RADIUS) {
     return true;
   }
 
-  try {
-    // Calculate the center point (player's position adjusted by VIEW_RADIUS)
-    const centerX = playerPosition.x + VIEW_RADIUS;
-    const centerY = playerPosition.y + VIEW_RADIUS;
-    const radius = 20; // Match the app's VIEW_RADIUS
-
-    // Fetch base points from the database in the vicinity using the app's approach
-    const response = await fetch(`${BASE_API_URL}/api/base-points?x=${centerX}&y=${centerY}`, {
-      headers: {
-        'Authorization': `Bearer ${AUTH_TOKEN}`
-      }
-    });
-
-    if (!response.ok) {
-      console.error('Failed to fetch base points for restriction check');
-      return true; // Default to restricted if we can't check
-    }
-
-    const responseData = await response.json();
-    const basePoints = responseData.data?.basePoints || [];
+  // Check against all existing base points
+  for (const point of placedBasePoints) {
+    const dx = Math.abs(x - point.x);
+    const dy = Math.abs(y - point.y);
     
-    if (basePoints.length > 0) {
-      console.log(`Fetched ${basePoints.length} base points near (${centerX}, ${centerY}):`, 
-        basePoints.map((p: {x: number, y: number}) => `(${p.x},${p.y})`).join(', ')
-      );
-    } else {
-      console.log('No base points found in the area');
-    }
+    // Skip if it's the same point
+    if (dx === 0 && dy === 0) continue;
     
-    if (!Array.isArray(basePoints)) {
-      console.error('Unexpected response format from API:', responseData);
-      return true; // Default to restricted on unexpected format
-    }
-
-    // Check against all base points in the area
-    for (const point of basePoints) {
-      const dx = Math.abs(x - point.x);
-      const dy = Math.abs(y - point.y);
-      
-      // Skip if it's the same point
-      if (dx === 0 && dy === 0) continue;
-      
-      // Check for straight lines, diagonals, and 2:1/1:2 slopes
-      if (dx === 0 || dy === 0 || dx === dy || dx === 2 * dy || 2 * dx === dy) {
-        return true;
-      }
-    }
-  
-    // Check if it's in the restricted squares from the server
-    if (restrictedSquares.some(([sx, sy]) => sx === x && sy === y)) {
+    // Check for straight lines and diagonals
+    if (dx === 0 || dy === 0 || dx === dy) {
       return true;
     }
-  } catch (error) {
-    console.error('Error checking restrictions:', error);
-    return true; // Default to restricted on error
+    
+    // Check for 2:1 and 1:2 slopes
+    if (dx === 2 * dy || 2 * dx === dy) {
+      return true;
+    }
+  }
+  
+  // Check if it's in the restricted squares from the server
+  if (restrictedSquares.some(([sx, sy]) => sx === x && sy === y)) {
+    return true;
   }
 
   return false;
@@ -283,8 +242,7 @@ async function placeBasePoint(x: number, y: number): Promise<boolean> {
   debugLog('Attempting to place base point at:', { x, y });
 
   // Check if the point is restricted
-  const restricted = await isRestricted(x, y);
-  if (restricted) {
+  if (isRestricted(x, y)) {
     console.log(`Skipping (${x}, ${y}) - in restricted area`);
     return false;
   }
@@ -296,7 +254,7 @@ async function placeBasePoint(x: number, y: number): Promise<boolean> {
   }
 
   try {
-    const response = await fetch(`${BASE_API_URL}/api/base-points`, {
+    const response = await fetch(`${BASE_URL}/api/base-points`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -417,8 +375,8 @@ async function moveToNewPosition(): Promise<void> {
   dy = randomDir.dy;
   
   // Calculate new position (reverse the movement direction)
-  const newX = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, playerPosition.x - dx));
-  const newY = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, playerPosition.y - dy));
+  const newX = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, -playerPosition.x - dx));
+  const newY = Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, -playerPosition.y - dy));
   
   // Show move information in debug mode or if we actually moved
   totalMoves++; // Increment total move counter
@@ -429,13 +387,13 @@ async function moveToNewPosition(): Promise<void> {
     console.log(` New position: (${newX}, ${newY})`);
     console.log(` Total moves: ${totalMoves}`);
     console.log(line);
-  } else if (newX !== playerPosition.x || newY !== playerPosition.y) {
+  } else if (newX !== -playerPosition.x || newY !== -playerPosition.y) {
     // Only log non-debug movement if we actually moved
     console.log(`🌍 [${totalMoves}] Moving ${moveDirection} to (${newX}, ${newY})`);
   }
   
   // Skip if we hit the world boundary and not in debug mode
-  if (newX === playerPosition.x && newY === playerPosition.y) {
+  if (newX === -playerPosition.x && newY === -playerPosition.y) {
     if (!argv.debug) return;
     // In debug mode, continue to show the grid even if we didn't move
   }
@@ -471,7 +429,7 @@ async function moveToNewPosition(): Promise<void> {
 // Delete all base points for the test user
 async function deleteAllBasePoints(): Promise<void> {
   try {
-    const response = await fetch(`${BASE_API_URL}/api/base-points`, {
+    const response = await fetch(`${BASE_URL}/api/base-points`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

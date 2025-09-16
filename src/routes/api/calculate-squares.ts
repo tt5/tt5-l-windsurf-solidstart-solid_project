@@ -84,6 +84,8 @@ export const POST = withAuth(async ({ request, user }) => {
     const filteredSquares = [...new Set(newSquares)].filter(square => 
       borderIndicesSet.has(square)
     );
+    //TODO: why two times?
+    //console.log(filteredSquares)
 
     const responseData = {
       success: true,
