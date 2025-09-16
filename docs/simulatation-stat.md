@@ -41,3 +41,7 @@ Total moves: 13'755'520
 npx tsx scripts/simulate-base-points.ts --debug -p 3200 -a 12800 --animate  --delay 7
 calculate-squares: (0,1,2,3,5) 10ms
 cleanup: every 20s, (0,1 and two out of "primes between 3 and 2000")
+
+MOVE 322635
+2870 Added
+2089 Removed

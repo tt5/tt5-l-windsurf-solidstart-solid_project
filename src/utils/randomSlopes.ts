@@ -81,6 +81,18 @@ export function getSlopeConditions(slopes: number[]): string {
   }
   
   const conditions: string[] = [];
+  const EPSILON = 1e-10; // Small value for floating-point comparison
+  
+  // Helper function to compare floating point numbers with epsilon
+  const almostEqual = (a: string, b: string) => `ABS(${a} - ${b}) < ${EPSILON}`;
+  
+  // Add vertical and horizontal lines (exact matches)
+  conditions.push('(p1.x = p2.x)'); // Vertical
+  conditions.push('(p1.y = p2.y)'); // Horizontal
+  
+  // Add main diagonal and anti-diagonal
+  conditions.push('(p1.x - p1.y = p2.x - p2.y)'); // Main diagonal (slope 1)
+  conditions.push('(p1.x + p1.y = p2.x + p2.y)'); // Anti-diagonal (slope -1)
   
   for (const prime of slopes) {
     // Skip invalid numbers
@@ -89,20 +101,29 @@ export function getSlopeConditions(slopes: number[]): string {
     const absPrime = Math.abs(prime);
     const sign = prime < 0 ? -1 : 1;
     
-    // Slope prime:1 (dx * prime = dy)
-    conditions.push(`((p2.x - p1.x) * ${absPrime} * ${sign} = (p2.y - p1.y) AND (p2.x - p1.x) != 0)`);
+    // For each prime, we'll check four variants:
+    // 1. prime:1 (dx * prime = dy)
+    // 2. -prime:1 (dx * -prime = dy)
+    // 3. 1:prime (dx = dy * prime)
+    // 4. -1:prime (dx = dy * -prime)
     
-    // Slope -prime:1 (dx * -prime = dy)
-    conditions.push(`((p2.x - p1.x) * ${absPrime} * ${-sign} = (p2.y - p1.y) AND (p2.x - p1.x) != 0)`);
+    // Using cross-multiplication to avoid division and floating point issues
+    // For slope m = dy/dx, we check dy = m*dx using cross-multiplication: dy*1 = m*dx*1
     
-    // Skip if prime is 0 to avoid division by zero
+    // 1. prime:1 (dy = prime * dx)
+    conditions.push(`(ABS((p2.y - p1.y) - (${absPrime * sign} * (p2.x - p1.x))) < ${EPSILON} AND (p2.x - p1.x) != 0)`);
+    
+    // 2. -prime:1 (dy = -prime * dx)
+    conditions.push(`(ABS((p2.y - p1.y) - (${-absPrime * sign} * (p2.x - p1.x))) < ${EPSILON} AND (p2.x - p1.x) != 0)`);
+    
+    // Skip if prime is 0 to avoid division by zero in the next conditions
     if (prime === 0) continue;
     
-    // Slope 1:prime (dx = dy * prime)
-    conditions.push(`((p2.x - p1.x) = (p2.y - p1.y) * ${absPrime} * ${sign} AND (p2.y - p1.y) != 0)`);
+    // 3. 1:prime (dx = prime * dy)
+    conditions.push(`(ABS((p2.x - p1.x) - (${absPrime * sign} * (p2.y - p1.y))) < ${EPSILON} AND (p2.y - p1.y) != 0)`);
     
-    // Slope -1:prime (dx = dy * -prime)
-    conditions.push(`((p2.x - p1.x) = (p2.y - p1.y) * ${absPrime} * ${-sign} AND (p2.y - p1.y) != 0)`);
+    // 4. -1:prime (dx = -prime * dy)
+    conditions.push(`(ABS((p2.x - p1.x) - (${-absPrime * sign} * (p2.y - p1.y))) < ${EPSILON} AND (p2.y - p1.y) != 0)`);
   }
   
   // If no valid conditions were added, return false condition
