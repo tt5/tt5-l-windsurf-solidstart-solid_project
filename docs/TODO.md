@@ -1,7 +1,6 @@
 # TODO
 
 - auto place base points periodically
-- teleport (randomly) new players
 - delete account and clean up base points
 - check cleanup (getRandomSlopes) for floating point precision issues
 - auto add basepoint with space bar
@@ -30,8 +29,9 @@
 
 ## map
 
-- world borders in the map
+- world borders in the map, max and min zoom
 - map: load at current position
+- player can move to any square
 
 ## in progres
 
