@@ -10,7 +10,6 @@ import {
   type Direction, 
   type Point, 
   type BasePoint,
-  type BoardConfig,
   type RestrictedSquares,
   type AddBasePointResponse,
   createPoint
@@ -31,7 +30,7 @@ const Board: Component = () => {
   const currentUser = user();
   const [currentPosition, setCurrentPosition] = createSignal<Point>(createPoint(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]));
   const [basePoints, setBasePoints] = createSignal<BasePoint[]>([]);
-  const [lastFetchTime, setLastFetchTime] = createSignal<number>(0);
+  const [lastFetchTime, setLastFetchTime] = createSignal<number>(0); // base points, rate limiting
   const [isFetching, setIsFetching] = createSignal<boolean>(false);
   const [isMoving, setIsMoving] = createSignal<boolean>(false);
   const [isSaving, setIsSaving] = createSignal<boolean>(false);
@@ -92,7 +91,7 @@ const Board: Component = () => {
   
   // Initialize on mount
   onMount(() => {
-    console.log(`[Board]: onMount - Initializing board`);
+    console.log(`[Board]: onMount1 - setBasePoints([]), fetchBasePoints()`);
     // Set CSS variable for grid size
     document.documentElement.style.setProperty('--grid-size', BOARD_CONFIG.GRID_SIZE.toString());
     
@@ -101,7 +100,7 @@ const Board: Component = () => {
     
     // Cleanup function
     return () => {
-      console.log(`[Board]: onUnmount - Cleaning up`);
+      console.log(`[Board]: onUnmount1`);
     };
   });
   
@@ -111,7 +110,7 @@ const Board: Component = () => {
   // Fetch base points with proper error handling and loading states
   const fetchBasePoints = async () => {
     const promise = fetchBasePointsUtil({
-      user,
+      user: () => currentUser,
       currentPosition,
       lastFetchTime,
       isFetching,
@@ -161,7 +160,7 @@ const Board: Component = () => {
     // Skip if we don't have a user or if this is the initial render
     if (!currentUser) return;
     
-    console.log(`[Board] Position changed to [${x}, ${y}], fetching base points`);
+    console.log(`[Board] Effect1 - Position changed to [${x}, ${y}], fetching base points`);
     
     // Use requestIdleCallback to batch the fetch with the position update
     const id = requestIdleCallback(() => {
@@ -170,13 +169,6 @@ const Board: Component = () => {
     
     return () => cancelIdleCallback(id);
   });
-  
-  // Derived state with explicit return types
-  const gridSize = (): number => BOARD_CONFIG.GRID_SIZE;
-  const gridIndices = (): number[] => Array.from({ length: gridSize() * gridSize() });
-  const username = (): string => currentUser?.username || 'User';
-  
-  const resetPosition = () => setCurrentPosition(BOARD_CONFIG.DEFAULT_POSITION);
   
   // Event handler types
   type KeyboardHandler = (e: KeyboardEvent) => void;
@@ -203,7 +195,7 @@ const Board: Component = () => {
   
   // Setup and cleanup event listeners
   onMount(() => {
-    console.log("[Board]onMount2")
+    console.log("[Board] onMount2 - event listeners")
     const eventListeners: [string, EventListener][] = [
       ['keydown', handleKeyDown as EventListener],
       ['keyup', handleKeyUp as EventListener]
@@ -319,13 +311,6 @@ const Board: Component = () => {
   };
 
   const handleSquareClick = async (index: number) => {
-    // Validate before proceeding
-    const validation = validateSquarePlacement(index);
-    if (!validation.isValid) {
-      setError(validation.reason || 'Invalid placement');
-      return;
-    }
-
     // Calculate grid position from index
     const gridX = index % BOARD_CONFIG.GRID_SIZE;
     const gridY = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
@@ -333,61 +318,28 @@ const Board: Component = () => {
     const worldX = gridX - offsetX;
     const worldY = gridY - offsetY;
 
-    console.log(`[Board] Placing base point at world coordinates:`, { x: worldX, y: worldY });
+    console.log(`[Board] handleSquareClick - Attempting to add base point at:`, { x: worldX, y: worldY });
     
     try {
-      setIsSaving(true);
-      setError(null);
+      const response = await handleAddBasePoint(worldX, worldY);
       
-      const response = await fetch('/api/base-points', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          x: worldX,
-          y: worldY,
-          userId: currentUser?.id
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `Failed to save base point: ${response.status} ${response.statusText}`;
-        console.error('Error response:', errorMessage);
-        setError(errorMessage);
-        return;
+      if (response.success && response.data) {
+        console.log('Successfully added base point:', response.data);
+        
+        // Recalculate restricted squares with the new base point
+        const newRestrictedSquares = calculateRestrictedSquares(
+          createPoint(worldX, worldY),
+          restrictedSquares()
+        );
+        setRestrictedSquares(newRestrictedSquares);
+      } else if (response.error) {
+        console.error('Error adding base point:', response.error);
+        setError(response.error);
       }
-      
-      const responseData = await response.json();
-      
-      if (responseData.success && responseData.data?.basePoint) {
-        console.log('Successfully added base point:', responseData.data.basePoint);
-        
-        // Update restricted squares
-        const pB: BasePoint = responseData.data.basePoint;
-        const p = {x: pB.x + currentPosition()[0], y: pB.y + currentPosition()[1]};
-        setRestrictedSquares(calculateRestrictedSquares(createPoint(p.x, p.y), restrictedSquares()));
-        
-        // Update base points
-        setBasePoints(prev => [...prev, responseData.data.basePoint]);
-        
-        // Clear any previous errors
-        setError(null);
-      } else {
-        const errorMessage = responseData.error || 'Invalid response format from server';
-        console.error('Unexpected response format:', responseData);
-        setError(errorMessage);
-      }
-      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      console.error('Error in handleSquareClick:', error);
+      console.error('Error in handleSquareClick:', errorMessage);
       setError(errorMessage);
-    } finally {
-      setIsSaving(false);
     }
   };
 
