@@ -123,13 +123,18 @@ class ServerInitializer {
         const finalCount = await repository.getTotalCount();
         console.log(`[Cleanup] Final count: ${finalCount}`);
         
-        // Broadcast cleanup event with both counts
+        // Get the oldest prime timestamp
+        const { getOldestPrimeTimestamp } = await import('~/utils/randomSlopes');
+        const oldestPrimeTimestamp = getOldestPrimeTimestamp();
+        
+        // Broadcast cleanup event with counts and timestamp info
         const { basePointEventService } = await import('./events/base-point-events');
         const eventData = {
           type: 'cleanup',
           initialCount,
           totalBasePoints: finalCount,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          oldestPrimeTimestamp: oldestPrimeTimestamp
         };
         basePointEventService.broadcast('cleanup', eventData);
         

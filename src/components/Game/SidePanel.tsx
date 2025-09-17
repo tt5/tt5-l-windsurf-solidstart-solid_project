@@ -25,6 +25,7 @@ const SidePanel: Component<SidePanelProps> = (props) => {
   const [addedCount, setAddedCount] = createSignal(0);
   const [deletedCount, setDeletedCount] = createSignal(0);
   const [totalBasePoints, setTotalBasePoints] = createSignal<number | null>(null);
+  const [oldestPrimeTimestamp, setOldestPrimeTimestamp] = createSignal<number | null>(null);
   const [isOpen, setIsOpen] = createSignal(false);
   let panelRef: HTMLDivElement | undefined;
   
@@ -66,12 +67,6 @@ const SidePanel: Component<SidePanelProps> = (props) => {
   };
 
   const handleMessage = (event: MessageEvent) => {
-    console.log('[SSE] Raw event received:', {
-      type: event.type,
-      data: event.data,
-      readyState: eventSource?.readyState,
-      url: eventSource?.url
-    });
     try {
 
       // Skip empty events
@@ -148,22 +143,20 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       console.log('Event to process:', eventToProcess);
       
       // Check both 'type' and 'event' for compatibility
-      if ((eventToProcess.type === 'cleanup' || eventToProcess.event === 'cleanup') && 
-          (eventToProcess.totalBasePoints !== undefined || eventToProcess.initialCount !== undefined)) {
-        const count = eventToProcess.initialCount !== undefined 
-          ? eventToProcess.initialCount 
-          : eventToProcess.totalBasePoints;
-          
-        console.log('[SSE] Processing cleanup event with count:', { 
-          initialCount: eventToProcess.initialCount,
-          totalBasePoints: eventToProcess.totalBasePoints,
-          usingCount: count
-        });
+      if ((eventToProcess.type === 'cleanup' || eventToProcess.event === 'cleanup')) {
+        // Update total base points if available
+        if (eventToProcess.totalBasePoints !== undefined || eventToProcess.initialCount !== undefined) {
+          const count = eventToProcess.initialCount !== undefined 
+            ? eventToProcess.initialCount 
+            : eventToProcess.totalBasePoints;
+            
+          setTotalBasePoints(prev => count);
+        }
         
-        setTotalBasePoints(prev => {
-          console.log('[SSE] Updating totalBasePoints from', prev, 'to', count);
-          return count;
-        });
+        // Update oldest prime timestamp if available
+        if (eventToProcess.oldestPrimeTimestamp !== undefined) {
+          setOldestPrimeTimestamp(eventToProcess.oldestPrimeTimestamp);
+        }
       }
       
     } catch (error) {
@@ -468,10 +461,18 @@ const SidePanel: Component<SidePanelProps> = (props) => {
                   <span class={`${styles.counterNumber} ${styles.deleted}`}>{deletedCount()}</span>
                   <span class={styles.counterLabel}>Removed</span>
                 </div>
+                <div class={styles.counter}>
+                  <span class={`${styles.counterNumber} ${styles.total}`}>{totalBasePoints()}</span>
+                  <span class={styles.counterLabel}>Total</span>
+                </div>
+                <Show when={oldestPrimeTimestamp() !== null}>
                   <div class={styles.counter}>
-                    <span class={`${styles.counterNumber} ${styles.total}`}>{totalBasePoints()}</span>
-                    <span class={styles.counterLabel}>Total</span>
+                    <span class={`${styles.counterNumber} ${styles.timestamp}`}>
+                      {new Date(oldestPrimeTimestamp()!).toLocaleTimeString()}
+                    </span>
+                    <span class={styles.counterLabel}>Oldest Prime</span>
                   </div>
+                </Show>
               </div>
             </div>
           </div>

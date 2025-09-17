@@ -31,6 +31,17 @@ function updatePrimeTimestamp(prime: number, timestamp: number = Date.now()) {
   primeTimestamps.set(prime, timestamp);
 }
 
+// Function to get the oldest timestamp from all primes
+export function getOldestPrimeTimestamp(): number | null {
+  let oldest: number | null = null;
+  for (const timestamp of primeTimestamps.values()) {
+    if (timestamp > 0 && (oldest === null || timestamp < oldest)) {
+      oldest = timestamp;
+    }
+  }
+  return oldest;
+}
+
 // Initialize timestamps for all primes to 0 (never used)
 PRIMES.forEach(prime => {
   if (!primeTimestamps.has(prime)) {
