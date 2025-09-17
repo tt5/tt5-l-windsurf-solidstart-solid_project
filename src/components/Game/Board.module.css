@@ -137,6 +137,13 @@
 }
 
 /* Loading State */
+/* Interactive states */
+.square.interactive {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+}
+
 .square.loading {
   position: relative;
   cursor: wait;

@@ -1,10 +1,11 @@
 import { 
-  Component, 
+  type Component, 
   createEffect, 
   createSignal, 
   onMount,
   on 
 } from 'solid-js';
+import type { JSX } from 'solid-js/jsx-runtime';
 import { useAuth } from '../../contexts/auth';
 import { 
   type Direction, 
@@ -364,6 +365,18 @@ const Board: Component = () => {
     });
   };
 
+  const handleGridClick = (e: MouseEvent) => {
+    if (!(e.target instanceof HTMLElement)) return;
+    
+    // If the click wasn't on a square button, log it
+    if (!e.target.closest('button')) {
+      console.log('Grid click (not on button):', {
+        target: e.target,
+        position: { x: e.clientX, y: e.clientY }
+      });
+    }
+  };
+
   return (
     <div class={styles.board}>
       {reachedBoundary() && (
@@ -374,7 +387,7 @@ const Board: Component = () => {
       <div class={styles.positionIndicator}>
         Position: ({currentPosition()[0]}, {currentPosition()[1]})
       </div>
-      <div class={styles.grid}>
+      <div class={styles.grid} onClick={handleGridClick}>
         {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
           const x = index % BOARD_CONFIG.GRID_SIZE;
           const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
@@ -444,20 +457,115 @@ const Board: Component = () => {
             return classes.join(' ');
           };
 
+          // Enhanced click handler with detailed logging
+          // Track if we should process the click
+          let shouldProcessClick = true;
+          let isMouseDown = false;
+          let mouseDownTime = 0;
+          const MAX_CLICK_DURATION = 300; // ms
+          
+          const handleMouseDown = (e: MouseEvent) => {
+            console.log('Button mousedown');
+            // Only process left mouse button clicks
+            shouldProcessClick = e.button === 0;
+            isMouseDown = true;
+            mouseDownTime = Date.now();
+            e.preventDefault();
+          };
+          
+          const handleClick = (e: MouseEvent) => {
+            console.log('Button click started');
+            e.stopPropagation();
+            e.preventDefault();
+            
+            if (!shouldProcessClick) {
+              console.log('Click processing skipped (mouseup was outside or button was released)');
+              return;
+            }
+            
+            // Calculate grid position from index
+            const gridX = squareIndex % BOARD_CONFIG.GRID_SIZE;
+            const gridY = Math.floor(squareIndex / BOARD_CONFIG.GRID_SIZE);
+            
+            console.group('Square Clicked');
+            console.log('Square Info:', {
+              index: squareIndex,
+              gridPos: { x: gridX, y: gridY },
+              worldPos: { x: worldX, y: worldY },
+              isSelected,
+              isSaving: isSaving(),
+              isBasePoint: isBasePoint(worldX, worldY),
+              isRestricted: restrictedSquares().includes(squareIndex)
+            });
+            
+            if (isSelected) {
+              console.log('Click ignored: Square is already selected');
+              console.groupEnd();
+              return;
+            }
+            
+            if (isSaving()) {
+              console.log('Click ignored: Currently saving');
+              console.groupEnd();
+              return;
+            }
+            
+            if (isBasePoint(worldX, worldY)) {
+              console.log('Click ignored: Already a base point');
+              console.groupEnd();
+              return;
+            }
+            
+            if (restrictedSquares().includes(squareIndex)) {
+              console.log('Click ignored: Square is restricted');
+              console.groupEnd();
+              return;
+            }
+            
+            console.log('Processing click...');
+            handleSquareClick(squareIndex)
+              .then(() => console.log('Click processed successfully'))
+              .catch(err => console.error('Error processing click:', err))
+              .finally(() => console.groupEnd());
+          };
+          
           return (
             <button
               class={squareClass()}
-              onClick={() => {
-                if (isSelected || isSaving() || isBasePoint(worldX, worldY)) return;
-                handleSquareClick(squareIndex);
-              }}
-              onMouseEnter={() => handleSquareHover(index)}
-              onMouseLeave={() => handleSquareHover(null)}
-              onContextMenu={(e) => {
+              onClick={handleClick}
+              onMouseDown={handleMouseDown}
+              onMouseUp={(e) => {
+                console.log('Button mouseup');
+                const clickDuration = Date.now() - mouseDownTime;
+                isMouseDown = false;
+                
+                // Only prevent click if mouseup happened outside the button and it was a quick click
+                if (!e.currentTarget.contains(e.target as Node) && clickDuration < MAX_CLICK_DURATION) {
+                  shouldProcessClick = false;
+                }
                 e.preventDefault();
-                // Right click does nothing now
+              }}
+              onMouseLeave={() => {
+                handleSquareHover(null);
+                
+                // If mouse leaves while button is down, only cancel if it's a long press
+                if (isMouseDown) {
+                  const pressDuration = Date.now() - mouseDownTime;
+                  if (pressDuration < MAX_CLICK_DURATION) {
+                    shouldProcessClick = false;
+                  }
+                }
+              }}
+              onContextMenu={(e) => {
+                console.log('Button contextmenu');
+                e.preventDefault();
               }}
               disabled={isSaving()}
+              classList={{
+                [styles.square]: true,
+                [styles.saving]: isSaving(),
+                [styles.interactive]: !isSaving()
+              }}
             >
               {isBP ? (
                 <div class={styles.basePointMarker} />
