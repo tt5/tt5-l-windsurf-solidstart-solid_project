@@ -25,6 +25,8 @@ const SidePanel: Component<SidePanelProps> = (props) => {
   const [addedCount, setAddedCount] = createSignal(0);
   const [deletedCount, setDeletedCount] = createSignal(0);
   const [totalBasePoints, setTotalBasePoints] = createSignal<number | null>(null);
+  const [isOpen, setIsOpen] = createSignal(false);
+  let panelRef: HTMLDivElement | undefined;
   
   // Store the EventSource instance and reconnection state
   let eventSource: EventSource | null = null;
@@ -396,8 +398,46 @@ const SidePanel: Component<SidePanelProps> = (props) => {
     return new Date(timestamp).toLocaleTimeString();
   };
 
+  // Close panel when clicking outside
+  const handleClickOutside = (event: MouseEvent) => {
+    if (panelRef && !panelRef.contains(event.target as Node)) {
+      setIsOpen(false);
+    }
+  };
+
+  // Add click outside listener
+  createEffect(() => {
+    if (isOpen()) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    
+    onCleanup(() => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    });
+  });
+
+  // Close panel when tab changes on mobile
+  createEffect(() => {
+    if (isOpen()) {
+      setIsOpen(false);
+    }
+  });
+
   return (
-    <div class={styles.sidePanel}>
+    <>
+      <button 
+        class={styles.menuToggle} 
+        onClick={() => setIsOpen(!isOpen())}
+        aria-label="Toggle menu"
+      >
+        ☰
+      </button>
+      <div 
+        class={`${styles.sidePanel} ${isOpen() ? styles.open : ''}`} 
+        ref={panelRef}
+      >
       <div class={styles.tabs}>
         <button 
           class={`${styles.tab} ${props.activeTab === 'info' ? styles.active : ''}`}
@@ -445,7 +485,12 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           </div>
         </Show>
       </div>
-    </div>
+      </div>
+      <div 
+        class={`${styles.overlay} ${isOpen() ? styles.open : ''}`} 
+        onClick={() => setIsOpen(false)}
+      />
+    </>
   );
 };
 

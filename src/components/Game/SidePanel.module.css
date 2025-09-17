@@ -1,10 +1,65 @@
 .sidePanel {
-  width: 250px;
+  --side-panel-width: 250px;
+  width: var(--side-panel-width);
   background-color: #f5f5f5;
   border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
   height: 100%;
+  position: relative;
+  transition: transform 0.3s ease, width 0.3s ease;
+  z-index: 10;
+}
+
+/* Mobile menu toggle button */
+.menuToggle {
+  display: none;
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  background: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .sidePanel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    transform: translateX(calc(-1 * var(--side-panel-width)));
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+  }
+
+  .sidePanel.open {
+    transform: translateX(0);
+  }
+
+  .menuToggle {
+    display: block;
+  }
+
+  .overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 5;
+  }
+
+  .sidePanel.open + .overlay {
+    display: block;
+  }
 }
 
 .tabs {
@@ -37,6 +92,9 @@
 .tabContent {
   flex: 1;
   padding: 16px;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  padding-left: env(safe-area-inset-left, 16px);
+  padding-right: env(safe-area-inset-right, 16px);
   overflow-y: auto;
 }
 
