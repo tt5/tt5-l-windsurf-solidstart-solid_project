@@ -18,6 +18,26 @@ const PRIMES = [
 1993, 1997, 1999
 ];
 
+// Track when prime numbers were last used
+const primeTimestamps = new Map<number, number>();
+
+// Function to get a prime's last used timestamp
+function getPrimeTimestamp(prime: number): number {
+  return primeTimestamps.get(prime) || 0; // Return 0 if never used
+}
+
+// Function to update a prime's timestamp
+function updatePrimeTimestamp(prime: number, timestamp: number = Date.now()) {
+  primeTimestamps.set(prime, timestamp);
+}
+
+// Initialize timestamps for all primes to 0 (never used)
+PRIMES.forEach(prime => {
+  if (!primeTimestamps.has(prime)) {
+    primeTimestamps.set(prime, 0);
+  }
+});
+
 // Slopes and their reciprocals that we want to keep together
 const SLOPE_PAIRS = PRIMES.map(prime => [prime, 1/prime] as [number, number]);
 
@@ -52,17 +72,21 @@ export function getRandomSlopes(count: number = 4): number[] {
   // Select exactly 'count' unique primes from PRIMES
   const availablePrimes = [...PRIMES];
   const selectedPrimes: number[] = [];
+  const now = Date.now();
   
   // Ensure we don't try to select more primes than available
   const primesToSelect = Math.min(count, availablePrimes.length);
   
-  // Select the primes
-  for (let i = 0; i < primesToSelect; i++) {
+  // Select random primes
+  for (let i = 0; i < primesToSelect && availablePrimes.length > 0; i++) {
     const randomIndex = Math.floor(Math.random() * availablePrimes.length);
     const prime = availablePrimes.splice(randomIndex, 1)[0];
     selectedPrimes.push(prime);
     
-    // Add all four variants of this prime
+    // Update the timestamp for this prime
+    updatePrimeTimestamp(prime, now);
+    
+    // Add all variants of this prime
     addSlopeWithVariants(prime);
   }
   
