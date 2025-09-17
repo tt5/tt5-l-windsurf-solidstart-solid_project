@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { BasePoint } from '~/types/board';
 
-type BasePointEvent = 'created' | 'updated' | 'deleted';
+type BasePointEvent = 'created' | 'updated' | 'deleted' | 'worldReset';
 interface Client {
   send: (data: string) => void;
   userId: string;

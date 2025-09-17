@@ -157,6 +157,32 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         if (eventToProcess.oldestPrimeTimestamp !== undefined) {
           setOldestPrimeTimestamp(eventToProcess.oldestPrimeTimestamp);
         }
+      } 
+      // Handle world reset event
+      else if (eventToProcess.type === 'worldReset' || eventToProcess.event === 'worldReset') {
+        console.log('[World Reset] Received world reset event:', eventToProcess);
+        
+        // Reset the total base points counter
+        setTotalBasePoints(0);
+        
+        // Reset added/deleted counters
+        setAddedCount(0);
+        setDeletedCount(0);
+        
+        // Show a notification to the user
+        const notification: Notification = {
+          id: Date.now(),
+          message: `World has been reset! ${eventToProcess.pointsBeforeReset} points were cleared.`,
+          timestamp: Date.now()
+        };
+        
+        // Add the notification to the top of the list
+        setNotifications(prev => [notification, ...prev]);
+        
+        // Update oldest prime timestamp if available
+        if (eventToProcess.oldestPrimeTimestamp !== undefined) {
+          setOldestPrimeTimestamp(eventToProcess.oldestPrimeTimestamp);
+        }
       }
       
     } catch (error) {

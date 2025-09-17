@@ -125,21 +125,51 @@ class ServerInitializer {
         const finalTotal = await repository.getTotalCount();
         console.log(`[Cleanup] Final count: ${finalCount} (excluding origin), ${finalTotal} (total)`);
         
-        // Get the oldest prime timestamp
-        const { getOldestPrimeTimestamp } = await import('~/utils/randomSlopes');
-        const oldestPrimeTimestamp = getOldestPrimeTimestamp();
-        
-        // Broadcast cleanup event with counts and timestamp info
-        const { basePointEventService } = await import('./events/base-point-events');
-        const eventData = {
-          type: 'cleanup',
-          initialCount,
-          totalBasePoints: finalCount,  // This now excludes (0,0) points
-          totalIncludingOrigin: finalTotal,  // Include total for reference
-          timestamp: new Date().toISOString(),
-          oldestPrimeTimestamp: oldestPrimeTimestamp
-        };
-        basePointEventService.broadcast('cleanup', eventData);
+        // Check if we've reached the reset threshold (800 non-origin points)
+        const RESET_THRESHOLD = 800;
+        if (finalCount >= RESET_THRESHOLD) {
+          console.log(`[World Reset] Triggering world reset - ${finalCount} non-origin points reached the threshold of ${RESET_THRESHOLD}`);
+          
+          // Delete all base points except (0,0)
+          await db.run('DELETE FROM base_points WHERE x != 0 OR y != 0');
+          
+          // Reset map tiles
+          await db.run('DELETE FROM map_tiles');
+          
+          // Get the oldest prime timestamp
+          const { getOldestPrimeTimestamp } = await import('~/utils/randomSlopes');
+          const oldestPrimeTimestamp = getOldestPrimeTimestamp();
+          
+          // Broadcast world reset event
+          const { basePointEventService } = await import('./events/base-point-events');
+          const resetEvent = {
+            type: 'worldReset',
+            reason: 'base_point_threshold_reached',
+            threshold: RESET_THRESHOLD,
+            pointsBeforeReset: finalCount,
+            timestamp: new Date().toISOString(),
+            oldestPrimeTimestamp: oldestPrimeTimestamp
+          };
+          basePointEventService.broadcast('worldReset', resetEvent);
+          
+          console.log(`[World Reset] World has been reset. All non-origin base points and map tiles have been cleared.`);
+        } else {
+          // Regular cleanup event if no reset was needed
+          const { getOldestPrimeTimestamp } = await import('~/utils/randomSlopes');
+          const oldestPrimeTimestamp = getOldestPrimeTimestamp();
+          
+          // Broadcast cleanup event with counts and timestamp info
+          const { basePointEventService } = await import('./events/base-point-events');
+          const eventData = {
+            type: 'cleanup',
+            initialCount,
+            totalBasePoints: finalCount,  // This excludes (0,0) points
+            totalIncludingOrigin: finalTotal,  // Include total for reference
+            timestamp: new Date().toISOString(),
+            oldestPrimeTimestamp: oldestPrimeTimestamp
+          };
+          basePointEventService.broadcast('cleanup', eventData);
+        }
         
       } catch (error) {
         console.error('[Cleanup] Error:', error);
