@@ -1,6 +1,6 @@
 import { Database } from 'sqlite';
 
-export const name = '0001_initial_schema';
+export const name = '20250902_000000_initial_schema';
 
 export async function up(db: Database): Promise<void> {
   console.log('Creating initial database schema...');
