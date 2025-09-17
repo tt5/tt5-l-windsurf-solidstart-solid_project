@@ -219,25 +219,6 @@ const Board: Component = () => {
     };
   });
   
-  // Helper function to create a properly typed API response
-  const createResponse = <T,>(success: boolean, data?: T, error?: string): ApiResponse<T> => ({
-    success,
-    ...(data && { data }),
-    ...(error && { error }),
-    timestamp: Date.now()
-  });
-
-  // Helper function to create a timeout promise
-  const withTimeout = <T,>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> => {
-    const timeout = new Promise<never>((_, reject) => {
-      const timer = setTimeout(() => {
-        clearTimeout(timer);
-        reject(new Error(errorMessage));
-      }, ms);
-    });
-    return Promise.race([promise, timeout]);
-  };
-
   // Validate grid coordinates
   const isValidCoordinate = (value: number): boolean => {
     return Number.isInteger(value) && value >= 0 && value < BOARD_CONFIG.GRID_SIZE;
@@ -298,8 +279,6 @@ const Board: Component = () => {
   // Initial squares for a single quadrant with (0,0) at the center
   // Using only positive x and y coordinates (top-right quadrant)
   const localGridSize = 15;
-  const centerX = 0;  // Center is at (0,0)
-  const centerY = 0;
   
   // Helper function to convert (x,y) to grid index for bottom-right quadrant
   const toIndex = (x: number, y: number): number => {
@@ -336,11 +315,9 @@ const Board: Component = () => {
 
   INITIAL_SQUARES.push(toIndex(0, 0));
 
-  // Track if we have a manual update in progress
-  const [isManualUpdate, setIsManualUpdate] = createSignal(false);
-  
   // Initialize squares on mount
   createEffect(() => {
+    console.log("[Board] Effect - initial squares")
     // Initialize restricted squares if empty
     if (restrictedSquares().length === 0) {
       setRestrictedSquares(INITIAL_SQUARES);
@@ -359,6 +336,7 @@ const Board: Component = () => {
 
   // Handle direction movement
   const handleDirection = async (dir: Direction): Promise<void> => {
+    console.log("[Board] handleDirection")
     setReachedBoundary(false); // Reset boundary flag on new movement
     
     const [x, y] = currentPosition();
@@ -382,7 +360,6 @@ const Board: Component = () => {
       restrictedSquares,
       setRestrictedSquares,
       setIsMoving,
-      setIsManualUpdate,
       isBasePoint
     });
   };
@@ -471,7 +448,7 @@ const Board: Component = () => {
             <button
               class={squareClass()}
               onClick={() => {
-                if (isSelected || isSaving()) return;
+                if (isSelected || isSaving() || isBasePoint(worldX, worldY)) return;
                 handleSquareClick(squareIndex);
               }}
               onMouseEnter={() => handleSquareHover(index)}
@@ -481,9 +458,6 @@ const Board: Component = () => {
                 // Right click does nothing now
               }}
               disabled={isSaving()}
-              title={isBP ? 'Base Point' : 
-                     !validation.isValid ? validation.reason : 
-                     'Left-click to add base point\nRight-click to select'}
             >
               {isBP ? (
                 <div class={styles.basePointMarker} />

@@ -27,6 +27,7 @@ export const handleAddBasePoint = async ({
 }: AddBasePointOptions): Promise<ApiResponse<BasePoint>> => {
   if (!currentUser) return { success: false, error: 'User not authenticated', timestamp: Date.now() };
   if (isSaving()) return { success: false, error: 'Operation already in progress', timestamp: Date.now() };
+
   
   // Validate input coordinates
   if (!isValidCoordinate(x) || !isValidCoordinate(y)) {
@@ -47,6 +48,7 @@ export const handleAddBasePoint = async ({
   }
   
   try {
+    console.log("[Board:handleAddBasePoint] setIsSaving(true)")
     setIsSaving(true);
     const response = await fetch('/api/base-points', {
       method: 'POST',
@@ -189,7 +191,6 @@ export type HandleDirectionOptions = {
   restrictedSquares: Accessor<number[]>;
   setRestrictedSquares: (value: number[] | ((prev: number[]) => number[])) => void;
   setIsMoving: (value: boolean | ((prev: boolean) => boolean)) => void;
-  setIsManualUpdate: (value: boolean | ((prev: boolean) => boolean)) => void;
   isBasePoint: (x: number, y: number) => boolean;
 };
 
@@ -204,7 +205,6 @@ export const handleDirection = async (
     restrictedSquares,
     setRestrictedSquares,
     setIsMoving,
-    setIsManualUpdate,
     isBasePoint
   } = options;
 
@@ -213,7 +213,6 @@ export const handleDirection = async (
   }
   
   setIsMoving(true);
-  setIsManualUpdate(true);
   
   try {
     const [x, y] = currentPosition();
@@ -341,7 +340,6 @@ export const handleDirection = async (
   } finally {
     // Small delay to prevent rapid successive movements
     setTimeout(() => {
-      setIsManualUpdate(false);
       setIsMoving(false);
     }, 20);
   }

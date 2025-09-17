@@ -69,7 +69,11 @@ class ServerInitializer {
           .filter(s => Math.abs(s) >= 1)  // Only take values >= 1 to avoid reciprocals
           .map(s => Math.round(Math.abs(s)))  // Round to nearest integer
         )];
-        console.log(`[Cleanup] Starting cleanup with slopes: ${uniqueBaseSlopes.join(', ')}`);
+        // Sort slopes in ascending order for consistent logging
+        const sortedSlopes = [...uniqueBaseSlopes].sort((a, b) => a - b);
+        console.log(`
+          [Cleanup] Starting cleanup with slopes: ${sortedSlopes.join(', ')}
+        `);
         const { points: pointsToDelete, duration } = await getPointsInLines(db, slopes);
 
         if (pointsToDelete.length > 0) {
@@ -127,7 +131,6 @@ class ServerInitializer {
           totalBasePoints: finalCount,
           timestamp: new Date().toISOString()
         };
-        console.log('[Cleanup] Broadcasting cleanup event:', eventData);
         basePointEventService.broadcast('cleanup', eventData);
         
       } catch (error) {
