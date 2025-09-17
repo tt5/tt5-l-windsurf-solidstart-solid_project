@@ -2,6 +2,107 @@ import { BOARD_CONFIG } from '../constants/game';
 import { createPoint, Point, BasePoint, Direction } from '../types/board';
 import type { Accessor, Setter } from 'solid-js';
 import { moveSquares } from './directionUtils';
+import type { ApiResponse } from './api';
+
+type AddBasePointOptions = {
+  x: number;
+  y: number;
+  currentUser: { id: string } | null;
+  isSaving: () => boolean;
+  setIsSaving: (value: boolean | ((prev: boolean) => boolean)) => void;
+  setBasePoints: (value: BasePoint[] | ((prev: BasePoint[]) => BasePoint[])) => void;
+  isDuplicateBasePoint: (x: number, y: number) => boolean;
+  isValidCoordinate: (value: number) => boolean;
+};
+
+export const handleAddBasePoint = async ({
+  x,
+  y,
+  currentUser,
+  isSaving,
+  setIsSaving,
+  setBasePoints,
+  isDuplicateBasePoint,
+  isValidCoordinate
+}: AddBasePointOptions): Promise<ApiResponse<BasePoint>> => {
+  if (!currentUser) return { success: false, error: 'User not authenticated', timestamp: Date.now() };
+  if (isSaving()) return { success: false, error: 'Operation already in progress', timestamp: Date.now() };
+  
+  // Validate input coordinates
+  if (!isValidCoordinate(x) || !isValidCoordinate(y)) {
+    return {
+      success: false, 
+      error: `Coordinates must be integers between 0 and ${BOARD_CONFIG.GRID_SIZE - 1} (inclusive)`,
+      timestamp: Date.now()
+    };
+  }
+  
+  // Check for duplicate base point
+  if (isDuplicateBasePoint(x, y)) {
+    return {
+      success: false,
+      error: 'Base point already exists at these coordinates',
+      timestamp: Date.now()
+    };
+  }
+  
+  try {
+    setIsSaving(true);
+    const response = await fetch('/api/base-points', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ x, y })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: errorData.error || `Failed to save base point: ${response.status} ${response.statusText}`,
+        timestamp: Date.now()
+      };
+    }
+
+    const responseData = await response.json();
+    
+    if (!responseData.success) {
+      return {
+        success: false,
+        error: responseData.error || 'Failed to save base point',
+        timestamp: Date.now()
+      };
+    }
+    
+    const newBasePoint: BasePoint = {
+      x,
+      y,
+      userId: responseData.data?.userId || currentUser.id,
+      createdAtMs: responseData.data?.createdAtMs || Date.now(),
+      id: responseData.data?.id || 0
+    };
+    
+    setBasePoints(prev => [...prev, newBasePoint]);
+    return {
+      success: true,
+      data: newBasePoint,
+      timestamp: Date.now()
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to save base point',
+      timestamp: Date.now()
+    };
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
 export const calculateRestrictedSquares = (
   p: Point,

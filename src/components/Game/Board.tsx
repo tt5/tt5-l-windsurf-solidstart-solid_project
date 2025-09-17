@@ -15,7 +15,12 @@ import {
   createPoint
 } from '../../types/board';
 import type { ApiResponse } from '../../utils/api';
-import { calculateRestrictedSquares, fetchBasePoints as fetchBasePointsUtil, handleDirection as handleDirectionUtil } from '../../utils/boardUtils';
+import { 
+  calculateRestrictedSquares, 
+  fetchBasePoints as fetchBasePointsUtil, 
+  handleDirection as handleDirectionUtil,
+  handleAddBasePoint 
+} from '../../utils/boardUtils';
 import styles from './Board.module.css';
 
 // Import shared board configuration
@@ -246,69 +251,7 @@ const Board: Component = () => {
   };
 
   // Handle adding a new base point with proper typing and error handling
-  const handleAddBasePoint = async (x: number, y: number): Promise<ApiResponse<BasePoint>> => {
-    if (!currentUser) return createResponse<BasePoint>(false, undefined, 'User not authenticated');
-    if (isSaving()) return createResponse<BasePoint>(false, undefined, 'Operation already in progress');
-    
-    // Validate input coordinates
-    if (!isValidCoordinate(x) || !isValidCoordinate(y)) {
-      return createResponse<BasePoint>(
-        false, 
-        undefined, 
-        `Coordinates must be integers between 0 and ${BOARD_CONFIG.GRID_SIZE - 1} (inclusive)`
-      );
-    }
-    
-    // Check for duplicate base point
-    if (isDuplicateBasePoint(x, y)) {
-      return createResponse<BasePoint>(
-        false,
-        undefined,
-        'Base point already exists at these coordinates'
-      );
-    }
-    
-    try {
-      setIsSaving(true);
-      const response = await withTimeout<AddBasePointResponse>(
-        fetch('/api/base-points', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify({ x, y })
-        }).then(res => res.json()),
-        10000, // 10 second timeout
-        'Request timed out'
-      );
-      
-      if (!response.success) {
-        return createResponse<BasePoint>(false, undefined, response.error || 'Failed to save base point');
-      }
-      
-      const newBasePoint: BasePoint = {
-        x,
-        y,
-        userId: response.data?.userId || currentUser.id,
-        createdAtMs: response.data?.createdAtMs || Date.now(),
-        id: 0
-      };
-      
-      setBasePoints(prev => [...prev, newBasePoint]);
-      return createResponse<BasePoint>(true, newBasePoint);
-      
-    } catch (error) {
-      return createResponse<BasePoint>(
-        false,
-        undefined,
-        error instanceof Error ? error.message : 'Failed to save base point'
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  // handleAddBasePoint has been moved to boardUtils.ts
 
   const handleSquareClick = async (index: number) => {
     // Calculate grid position from index
@@ -321,7 +264,16 @@ const Board: Component = () => {
     console.log(`[Board] handleSquareClick - Attempting to add base point at:`, { x: worldX, y: worldY });
     
     try {
-      const response = await handleAddBasePoint(worldX, worldY);
+      const response = await handleAddBasePoint({
+        x: worldX,
+        y: worldY,
+        currentUser,
+        isSaving,
+        setIsSaving,
+        setBasePoints,
+        isDuplicateBasePoint,
+        isValidCoordinate
+      });
       
       if (response.success && response.data) {
         console.log('Successfully added base point:', response.data);
