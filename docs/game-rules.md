@@ -1,13 +1,31 @@
+# game rules
 
-bad base point: away from other base points
-good base point: close to other base points
+When a player has not added for a base point for 30 min the player is removed from the game.
 
-close points form a cluster
+A player can always chose to leave the game.
 
-add base point: pointes depend on: is it a part of a big cluster?
+When a player leaves the game the player has to reenter as a new player.
 
-game stops when a cluster is big enough or 800 base points are in the world
+When a new player sets his first base point this point is his home base point.
 
-game starts: player gets a starting point assigned.
+The home base point start a new cluster. A cluster has a radius which is the distance from the home base point to the neares empty square.
 
-There is a bot playing all the time.
+## first start / reset
+
+There is always a bot playing.
+
+All waiting player start at different position.
+
+## new players
+
+new player start 5min before the beginning of the world.
+
+The beginning of the world is the smallest value of all timetamps of the slope primes.
+
+## game reset
+
+The game resets when 800 total base points are in the world (as seen by the cleanup event).
+
+## goal
+
+The goal is to make a cluster out of the home base point.
