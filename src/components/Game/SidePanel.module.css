@@ -159,8 +159,10 @@
 /* Counters */
 .counters {
   display: flex;
-  gap: 20px;
+  gap: 8px; /* Reduced gap between counters */
   margin-top: 12px;
+  padding: 0 4px; /* Add some padding to prevent touching the edges */
+  box-sizing: border-box;
 }
 
 .counter {
@@ -168,11 +170,13 @@
   flex-direction: column;
   align-items: center;
   flex: 1;
-  padding: 12px;
-  border-radius: 8px;
+  min-width: 0; /* Allow flex items to shrink below their content size */
+  padding: 8px 4px; /* Reduced padding */
+  border-radius: 6px;
   background-color: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
 }
 
 .counter:hover {
@@ -181,9 +185,14 @@
 }
 
 .counterNumber {
-  font-size: 24px;
+  font-size: 18px; /* Slightly smaller font */
   font-weight: 700;
-  margin-bottom: 4px;
+  margin-bottom: 2px; /* Reduced margin */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  text-align: center;
   transition: transform 0.3s ease;
 }
 
@@ -196,8 +205,13 @@
 }
 
 .counterLabel {
-  font-size: 12px;
+  font-size: 11px; /* Slightly smaller label */
   color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 500;
