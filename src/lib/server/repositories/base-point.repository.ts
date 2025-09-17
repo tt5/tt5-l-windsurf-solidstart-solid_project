@@ -29,6 +29,16 @@ export class BasePointRepository {
     return result?.count || 0;
   }
 
+  /**
+   * Gets the count of base points excluding the origin (0,0)
+   */
+  async getCountExcludingOrigin(): Promise<number> {
+    const result = await this.db.get<{count: number}>(
+      'SELECT COUNT(*) as count FROM base_points WHERE x != 0 OR y != 0'
+    );
+    return result?.count || 0;
+  }
+
   async getPointsInBounds(minX: number, minY: number, maxX: number, maxY: number): Promise<BasePoint[]> {
     const results = await this.db.all<BasePoint[]>(
       `SELECT id, user_id as userId, x, y, created_at_ms as createdAtMs 

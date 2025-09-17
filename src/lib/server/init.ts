@@ -60,9 +60,10 @@ class ServerInitializer {
         const slopes = getRandomSlopes(16);
         const cleanupStartTime = performance.now();
         
-        // Get initial count before any deletions
-        const initialCount = await repository.getTotalCount();
-        console.log(`[Cleanup] Initial count: ${initialCount}`);
+        // Get initial count before any deletions (excluding origin)
+        const initialCount = await repository.getCountExcludingOrigin();
+        const totalIncludingOrigin = await repository.getTotalCount();
+        console.log(`[Cleanup] Initial count: ${initialCount} (excluding origin), ${totalIncludingOrigin} (total)`);
         
         // Get unique base slopes as whole numbers
         const uniqueBaseSlopes = [...new Set(slopes
@@ -119,9 +120,10 @@ class ServerInitializer {
           console.log(`[Cleanup] Removed ${deletedCount} points in ${deleteTime.toFixed(2)}ms (total: ${totalTime.toFixed(2)}ms)`);
         }
         
-        // Get final count after cleanup
-        const finalCount = await repository.getTotalCount();
-        console.log(`[Cleanup] Final count: ${finalCount}`);
+        // Get final counts after cleanup
+        const finalCount = await repository.getCountExcludingOrigin();
+        const finalTotal = await repository.getTotalCount();
+        console.log(`[Cleanup] Final count: ${finalCount} (excluding origin), ${finalTotal} (total)`);
         
         // Get the oldest prime timestamp
         const { getOldestPrimeTimestamp } = await import('~/utils/randomSlopes');
@@ -132,7 +134,8 @@ class ServerInitializer {
         const eventData = {
           type: 'cleanup',
           initialCount,
-          totalBasePoints: finalCount,
+          totalBasePoints: finalCount,  // This now excludes (0,0) points
+          totalIncludingOrigin: finalTotal,  // Include total for reference
           timestamp: new Date().toISOString(),
           oldestPrimeTimestamp: oldestPrimeTimestamp
         };
