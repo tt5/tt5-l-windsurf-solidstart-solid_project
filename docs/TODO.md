@@ -11,13 +11,10 @@
 
 ## notifications
 
-- notify user about removed base points
-- list users
-- total number of base points
+- number of active players
 
 ## unclear
 
-- score system
 - component testing
 - http prefetching, websockets
 
@@ -30,8 +27,8 @@
 ## map
 
 - world borders in the map, max and min zoom
-- map: load at current position
-- player can move to any square
+- load at current position
+- player can move to any position
 
 ## in progres
 

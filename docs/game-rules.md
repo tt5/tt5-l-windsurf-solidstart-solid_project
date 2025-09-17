@@ -2,11 +2,11 @@
 bad base point: away from other base points
 good base point: close to other base points
 
-add base point: +1
+close points form a cluster
 
-removed base point (by the cleanup): -1 for the owner.
+add base point: pointes depend on: is it a part of a big cluster?
 
-game stops when 800 (1000?) base points total in the world 
+game stops when a cluster is big enough or 800 base points are in the world
 
 game starts: player gets a starting point assigned.
 

@@ -77,7 +77,6 @@ type FetchBasePointsOptions = {
   setBasePoints: (value: BasePoint[] | ((prev: BasePoint[]) => BasePoint[])) => void;
   setLastFetchTime: (value: number | ((prev: number) => number)) => void;
   setIsFetching: (value: boolean | ((prev: boolean) => boolean)) => void;
-  setIsLoading: (value: boolean | ((prev: boolean) => boolean)) => void;
   setRestrictedSquares: (value: number[] | ((prev: number[]) => number[])) => void;
   restrictedSquares: () => number[];
 }
@@ -90,7 +89,6 @@ export type HandleDirectionOptions = {
   setRestrictedSquares: (value: number[] | ((prev: number[]) => number[])) => void;
   setIsMoving: (value: boolean | ((prev: boolean) => boolean)) => void;
   setIsManualUpdate: (value: boolean | ((prev: boolean) => boolean)) => void;
-  setIsLoading: (value: boolean | ((prev: boolean) => boolean)) => void;
   isBasePoint: (x: number, y: number) => boolean;
 };
 
@@ -106,7 +104,6 @@ export const handleDirection = async (
     setRestrictedSquares,
     setIsMoving,
     setIsManualUpdate,
-    setIsLoading,
     isBasePoint
   } = options;
 
@@ -116,7 +113,6 @@ export const handleDirection = async (
   
   setIsMoving(true);
   setIsManualUpdate(true);
-  setIsLoading(true);
   
   try {
     const [x, y] = currentPosition();
@@ -242,7 +238,6 @@ export const handleDirection = async (
     // Re-throw to be handled by the caller if needed
     throw error;
   } finally {
-    setIsLoading(false);
     // Small delay to prevent rapid successive movements
     setTimeout(() => {
       setIsManualUpdate(false);
@@ -279,15 +274,13 @@ export const fetchBasePoints = async ({
   setBasePoints,
   setLastFetchTime,
   setIsFetching,
-  setIsLoading,
   setRestrictedSquares,
   restrictedSquares
 }: FetchBasePointsOptions): Promise<void> => {
   const currentUser = user();
   if (!currentUser) {
-    console.log("[Board:fetchBasePoints] setBasePoints([]) setIsLoading(false)")
+    console.log("[Board:fetchBasePoints] setBasePoints([])")
     setBasePoints([]);
-    setIsLoading(false);
     return;
   }
 
@@ -337,6 +330,5 @@ export const fetchBasePoints = async ({
     console.error('Error fetching base points:', error);
   } finally {
     setIsFetching(false);
-    setIsLoading(false);
   }
 };

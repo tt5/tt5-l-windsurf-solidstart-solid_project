@@ -23,7 +23,6 @@ import styles from './Board.module.css';
 import { BOARD_CONFIG } from '~/constants/game';
 
 const Board: Component = () => {
-  const [board, setBoard] = createSignal<BoardConfig>(BOARD_CONFIG);
   
   // Hooks
   const { user } = useAuth();
@@ -32,7 +31,6 @@ const Board: Component = () => {
   const currentUser = user();
   const [currentPosition, setCurrentPosition] = createSignal<Point>(createPoint(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]));
   const [basePoints, setBasePoints] = createSignal<BasePoint[]>([]);
-  const [isLoading, setIsLoading] = createSignal<boolean>(true);
   const [lastFetchTime, setLastFetchTime] = createSignal<number>(0);
   const [isFetching, setIsFetching] = createSignal<boolean>(false);
   const [isMoving, setIsMoving] = createSignal<boolean>(false);
@@ -92,23 +90,18 @@ const Board: Component = () => {
     }
   };
   
-  // Initialize loading state on mount
+  // Initialize on mount
   onMount(() => {
-    console.log(`[Board]:
-      onMount1
-      setIsLoading setBasePoints([]) fetchBasePoints()
-    `)
+    console.log(`[Board]: onMount - Initializing board`);
     // Set CSS variable for grid size
     document.documentElement.style.setProperty('--grid-size', BOARD_CONFIG.GRID_SIZE.toString());
     
-    setIsLoading(true);
     setBasePoints([]);
     fetchBasePoints();
     
     // Cleanup function
     return () => {
-      console.log(`[Board]:onUnmount setIsLoading(false)`)
-      setIsLoading(false);
+      console.log(`[Board]: onUnmount - Cleaning up`);
     };
   });
   
@@ -126,7 +119,6 @@ const Board: Component = () => {
       setBasePoints,
       setLastFetchTime,
       setIsFetching,
-      setIsLoading,
       setRestrictedSquares,
       restrictedSquares
     });
@@ -444,12 +436,11 @@ const Board: Component = () => {
   const [isManualUpdate, setIsManualUpdate] = createSignal(false);
   
   // Initialize squares on mount
-  onMount(() => {
-    console.log("[Board] onMount3")
+  createEffect(() => {
+    // Initialize restricted squares if empty
     if (restrictedSquares().length === 0) {
       setRestrictedSquares(INITIAL_SQUARES);
     }
-    setIsLoading(false);
   });
   
   // Calculate movement deltas based on direction
@@ -488,7 +479,6 @@ const Board: Component = () => {
       setRestrictedSquares,
       setIsMoving,
       setIsManualUpdate,
-      setIsLoading,
       isBasePoint
     });
   };
