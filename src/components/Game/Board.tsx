@@ -258,7 +258,6 @@ const Board: Component = () => {
       });
       
       if (response.success && response.data) {
-        console.log('Successfully added base point:', response.data);
         
         // Recalculate restricted squares with the new base point
         const newRestrictedSquares = calculateRestrictedSquares(
@@ -465,7 +464,6 @@ const Board: Component = () => {
           const MAX_CLICK_DURATION = 300; // ms
           
           const handleMouseDown = (e: MouseEvent) => {
-            console.log('Button mousedown');
             // Only process left mouse button clicks
             shouldProcessClick = e.button === 0;
             isMouseDown = true;
@@ -474,12 +472,10 @@ const Board: Component = () => {
           };
           
           const handleClick = (e: MouseEvent) => {
-            console.log('Button click started');
             e.stopPropagation();
             e.preventDefault();
             
             if (!shouldProcessClick) {
-              console.log('Click processing skipped (mouseup was outside or button was released)');
               return;
             }
             
@@ -487,42 +483,22 @@ const Board: Component = () => {
             const gridX = squareIndex % BOARD_CONFIG.GRID_SIZE;
             const gridY = Math.floor(squareIndex / BOARD_CONFIG.GRID_SIZE);
             
-            console.group('Square Clicked');
-            console.log('Square Info:', {
-              index: squareIndex,
-              gridPos: { x: gridX, y: gridY },
-              worldPos: { x: worldX, y: worldY },
-              isSelected,
-              isSaving: isSaving(),
-              isBasePoint: isBasePoint(worldX, worldY),
-              isRestricted: restrictedSquares().includes(squareIndex)
-            });
-            
             if (isSelected) {
-              console.log('Click ignored: Square is already selected');
-              console.groupEnd();
               return;
             }
             
             if (isSaving()) {
-              console.log('Click ignored: Currently saving');
-              console.groupEnd();
               return;
             }
             
             if (isBasePoint(worldX, worldY)) {
-              console.log('Click ignored: Already a base point');
-              console.groupEnd();
               return;
             }
             
             if (restrictedSquares().includes(squareIndex)) {
-              console.log('Click ignored: Square is restricted');
-              console.groupEnd();
               return;
             }
             
-            console.log('Processing click...');
             handleSquareClick(squareIndex)
               .then(() => console.log('Click processed successfully'))
               .catch(err => console.error('Error processing click:', err))
@@ -535,7 +511,6 @@ const Board: Component = () => {
               onClick={handleClick}
               onMouseDown={handleMouseDown}
               onMouseUp={(e) => {
-                console.log('Button mouseup');
                 const clickDuration = Date.now() - mouseDownTime;
                 isMouseDown = false;
                 
@@ -557,7 +532,6 @@ const Board: Component = () => {
                 }
               }}
               onContextMenu={(e) => {
-                console.log('Button contextmenu');
                 e.preventDefault();
               }}
               disabled={isSaving()}
