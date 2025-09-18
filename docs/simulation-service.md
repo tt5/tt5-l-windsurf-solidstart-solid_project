@@ -1,66 +1,54 @@
-# Simulation Service Plan
+# Simulation Service Integration
 
-## Overview
-This document outlines the plan for integrating the base point simulation into the server startup process.
+## Purpose
+Integrate the base point simulation into the server startup process to run automatically in non-production environments.
 
-## Key Requirements
-1. **Maintain Existing Behavior**:
-   - Keep the current movement and point placement logic
-   - **Change**: Default start direction will be random (up/down/left/right) in the new implementation
-   - Run infinite attempts for point placement
+## Core Functionality
+- Continuous simulation of point placement
+- Random start position (X/Y between -900 and 900)
+- Random initial movement direction (up/down/left/right)
+- Infinite point placement attempts
+- Configurable via environment variables
 
-2. **Configuration**:
-   - Move from CLI arguments to environment variables
-   - Support essential simulation parameters (excluding debug mode)
-   - Enable/disable simulation via environment variable
-
-## Implementation Plan
-
-### 1. Environment Variables
+## Configuration
 ```bash
 # .env
 # Enable/disable simulation
 ENABLE_SIMULATION=true
 
-# Core simulation parameters
-SIMULATION_GRID_SIZE=100
-SIMULATION_NUM_POINTS=10
-SIMULATION_START_X=0
-SIMULATION_START_Y=0
-SIMULATION_MOVE_DELAY=1000
-SIMULATION_ANIMATE=false
-SIMULATION_DEBUG=false
+# Simulation parameters
+SIMULATION_NUM_POINTS=800  # Set to a high number for continuous simulation
+SIMULATION_MOVE_DELAY=1000  # Delay between moves in ms
 
-# Authentication (from existing script)
+# Optional: Set specific start position (random if not set)
+SIMULATION_START_X=
+SIMULATION_START_Y=
+
+# Required authentication
 TEST_USER_ID=your_user_id
 TEST_AUTH_TOKEN=your_auth_token
 ```
 
-### 2. Simulation Service
-Create `src/lib/server/services/simulation.service.ts` with:
-- Singleton pattern
-- Core simulation logic from `simulate-base-points.ts`
-- Environment variable configuration
-- Proper TypeScript types
-- Basic logging for important events
+## Implementation
 
-### 3. Server Integration
-Update `src/lib/server/init.ts` to:
-- Import and initialize the simulation service
-- Start simulation based on `ENABLE_SIMULATION`
-- Handle cleanup on server shutdown
+### Simulation Service (`src/lib/server/services/simulation.service.ts`)
+- Singleton service managing the simulation lifecycle
+- Handles movement and point placement logic
+- Processes environment variables
+- Manages simulation state
 
-### 4. Error Handling
-- Add proper error boundaries
-- Implement retry logic for API calls
-- Log errors appropriately
+### Server Integration (`src/lib/server/init.ts`)
+- Initializes simulation service on startup
+- Respects `ENABLE_SIMULATION` flag
+- Handles proper cleanup on shutdown
 
-## Testing Plan
-1. Unit tests for core simulation logic
-2. Integration test with the server
-3. Manual verification of simulation behavior
+### Error Handling
+- **Network Issues**: Automatic retries with backoff for transient network problems
+- **Server Errors (5xx)**: Fail hard and stop the simulation
+- **Client Errors (4xx)**: Log and continue (treated as invalid moves)
+- **Comprehensive Logging**: All errors are logged with relevant context
 
-## Rollback Plan
-- Keep the original `simulate-base-points.ts` script
-- Make the simulation opt-in via environment variable
-- Document how to disable if issues arise
+## Rollback Strategy
+- Simulation is opt-in via `ENABLE_SIMULATION`
+- Original `simulate-base-points.ts` script remains available
+- Can be disabled by setting `ENABLE_SIMULATION=false`
