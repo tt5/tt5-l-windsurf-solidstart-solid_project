@@ -10,7 +10,7 @@ interface BasePoint {
 export async function getPointsInLines(db: any, slopes: number[] = []): Promise<{points: BasePoint[], duration: number}> {
   const startTime = performance.now();
   // Get all points first
-  const allPoints = await db.all('SELECT id, x, y FROM base_points ORDER BY id');
+  const allPoints = await db.all('SELECT game_created_at_ms as id, x, y FROM base_points ORDER BY game_created_at_ms');
   console.log(`[Cleanup] Checking ${allPoints.length} points`);
   
   if (allPoints.length <= 1) {

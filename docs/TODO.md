@@ -1,17 +1,11 @@
 # TODO
 
-- auto place base points periodically
+- auto place base points periodically, integrate with scripts/simulate-base-points.ts
 - delete account and clean up base points
-- check cleanup (getRandomSlopes) for floating point precision issues
 - auto add basepoint with space bar
 - optimize calculate-square endpoint
-  - algo
   - is it necessary to call it with all viewport squares?
 
-
-## notifications
-
-- number of active players
 
 ## unclear
 
