@@ -234,13 +234,15 @@ if (!USER_ID || !AUTH_TOKEN) {
 async function placeBasePoint(x: number, y: number): Promise<boolean> {
   debugLog({ x, y });
 
-  // Check if the point is restricted
-  if (isRestricted(x, y)) {
+  // Check if there's already a base point here in our local tracking
+  if (placedBasePoints.some(p => p.x === x && p.y === y)) {
+    console.log(`ℹ️  Base point at (${x},${y}) already exists in local tracking`);
     return false;
   }
 
-  // Check if there's already a base point here
-  if (placedBasePoints.some(p => p.x === x && p.y === y)) {
+  // Check if the point is restricted
+  if (isRestricted(x, y)) {
+    console.log(`⛔ Point (${x},${y}) is in a restricted area`);
     return false;
   }
 
@@ -254,15 +256,18 @@ async function placeBasePoint(x: number, y: number): Promise<boolean> {
       body: JSON.stringify({ x, y }),
     });
 
+    const responseData = await response.json().catch(() => ({}));
+    
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      console.error(`Failed to place base point at (${x}, ${y}):`, response.status, error);
+      console.error(`❌ Failed to place base point at (${x}, ${y}):`, {
+        status: response.status,
+        statusText: response.statusText,
+        error: responseData
+      });
       return false;
     }
 
-    const data = await response.json();
-    //console.log(`✅ Placed base point at (${x}, ${y}) with ID:`, data.data.basePoint.id);
-    console.log(`✅ `);
+    console.log(`✅ Successfully placed base point at (${x}, ${y})`);
     
     // Track the placed base point
     placedBasePoints.push({ x, y });
@@ -404,6 +409,11 @@ async function moveToNewPosition(): Promise<void> {
 // Delete all base points for the test user
 async function deleteAllBasePoints(): Promise<void> {
   try {
+    // First, clear local tracking
+    placedBasePoints.length = 0;
+    console.log('🧹 Cleared local base points tracking');
+    
+    // Delete all base points from the server
     const response = await fetch(`${BASE_URL}/api/base-points`, {
       method: 'DELETE',
       headers: {
@@ -413,12 +423,24 @@ async function deleteAllBasePoints(): Promise<void> {
     });
 
     if (response.ok) {
-      console.log('✅ Successfully deleted all base points');
+      console.log('✅ Successfully deleted all base points from server');
+      
+      // Add (0,0) back to local tracking since we know it will be the first point
+      placedBasePoints.push({ x: 0, y: 0 });
+      
+      // Then, ensure (0,0) base point exists on the server
+      console.log('Ensuring (0,0) base point exists on server...');
+      const success = await placeBasePoint(0, 0);
+      if (success) {
+        console.log('✅ Successfully added (0,0) base point');
+      } else {
+        console.log('ℹ️  (0,0) base point already exists on server');
+      }
     } else {
       console.error('Failed to delete base points:', await response.text());
     }
   } catch (error) {
-    console.error('Error deleting base points:', error);
+    console.error('Error in deleteAllBasePoints:', error);
   }
 }
 
