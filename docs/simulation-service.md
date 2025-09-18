@@ -4,11 +4,11 @@
 Integrate the base point simulation into the server startup process to run automatically in non-production environments.
 
 ## Core Functionality
-- Continuous simulation of point placement
-- Random start position (X/Y between -900 and 900)
-- Random initial movement direction (up/down/left/right)
-- Infinite point placement attempts
-- Configurable via environment variables
+- **Exact Movement Logic**: Movement behavior must precisely match `simulate-base-points.ts`
+- **Random Start Position**: X/Y between -900 and 900
+- **Random Initial Direction**: Default direction is random (up/down/left/right) in server implementation (differs from script's default 'up')
+- **Infinite Placement**: Continuous point placement attempts
+- **Deterministic Behavior**: Same inputs must produce identical movement patterns as the script
 
 ## Configuration
 ```bash
@@ -32,10 +32,12 @@ TEST_AUTH_TOKEN=your_auth_token
 ## Implementation
 
 ### Simulation Service (`src/lib/server/services/simulation.service.ts`)
-- Singleton service managing the simulation lifecycle
-- Handles movement and point placement logic
-- Processes environment variables
-- Manages simulation state
+- **Movement Logic**: Must be an exact copy from `simulate-base-points.ts`
+- **Direction Handling**: 
+  - Default direction is random (up/down/left/right)
+  - All other movement rules must match the script exactly
+- **State Management**: Maintains the same state machine as the script
+- **Environment Variables**: Processes configuration while preserving script behavior
 
 ### Server Integration (`src/lib/server/init.ts`)
 - Initializes simulation service on startup
