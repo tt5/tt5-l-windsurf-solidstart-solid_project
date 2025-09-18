@@ -4,11 +4,14 @@
 Integrate the base point simulation into the server startup process to run automatically in non-production environments.
 
 ## Core Functionality
-- **Exact Movement Logic**: Movement behavior must precisely match `simulate-base-points.ts`
-- **Random Start Position**: X/Y between -900 and 900
-- **Random Initial Direction**: Default direction is random (up/down/left/right) in server implementation (differs from script's default 'up')
-- **Infinite Placement**: Continuous point placement attempts
-- **Deterministic Behavior**: Same inputs must produce identical movement patterns as the script
+- **Exact Movement Logic**:
+  - All movement-related code is copied verbatim from `simulate-base-points.ts`
+  - Includes identical state management (`moveCount`, `moveDirection`, etc.)
+  - Preserves the exact movement decision tree and state transitions
+  - Only modification: Initial direction is random (up/down/left/right) instead of default 'up'
+- **Deterministic Behavior**:
+  - Same inputs (including RNG seed) produce identical movement patterns
+  - Movement logic is isolated from error handling and retry mechanisms
 
 ## Configuration
 ```bash
@@ -32,12 +35,16 @@ TEST_AUTH_TOKEN=your_auth_token
 ## Implementation
 
 ### Simulation Service (`src/lib/server/services/simulation.service.ts`)
-- **Movement Logic**: Must be an exact copy from `simulate-base-points.ts`
-- **Direction Handling**: 
-  - Default direction is random (up/down/left/right)
-  - All other movement rules must match the script exactly
-- **State Management**: Maintains the same state machine as the script
-- **Environment Variables**: Processes configuration while preserving script behavior
+- **Code Preservation**:
+  - Direct copy of movement logic from `simulate-base-points.ts`
+  - No modifications to movement-related functions or state variables
+  - Error handling wraps but doesn't modify movement logic
+- **State Management**:
+  - All state variables (`moveCount`, `moveDirection`, etc.) preserved exactly
+  - State transitions remain identical to the original script
+- **Initialization**:
+  - Only difference: Initial direction is randomly selected if not specified
+  - All other initialization parameters match the script's defaults
 
 ### Server Integration (`src/lib/server/init.ts`)
 - Initializes simulation service on startup
