@@ -44,12 +44,19 @@ export class SimulationService {
     const moveDelay = parseInt(process.env.SIMULATION_MOVE_DELAY || '1000', 10);
     const numPoints = parseInt(process.env.SIMULATION_NUM_POINTS || '800', 10);
     
-    // Set initial position from environment if provided
+    // Set initial position from environment if provided, otherwise use random position
     if (process.env.SIMULATION_START_X && process.env.SIMULATION_START_Y) {
       this.playerPosition = {
         x: parseInt(process.env.SIMULATION_START_X, 10),
         y: parseInt(process.env.SIMULATION_START_Y, 10)
       };
+    } else {
+      // Generate random starting position within valid bounds
+      this.playerPosition = {
+        x: randomInt(-this.MAX_COORDINATE, this.MAX_COORDINATE + 1),
+        y: randomInt(-this.MAX_COORDINATE, this.MAX_COORDINATE + 1)
+      };
+      console.log(`Using random starting position: [${this.playerPosition.x}, ${this.playerPosition.y}]`);
     }
     
     console.log('🚀 Starting simulation service with:');
