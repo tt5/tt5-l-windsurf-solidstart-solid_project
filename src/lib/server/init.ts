@@ -57,7 +57,7 @@ class ServerInitializer {
       try {
         const db = await getDb();
         const repository = await getBasePointRepository();
-        const slopes = getRandomSlopes(64);
+        const slopes = getRandomSlopes(16);
         const cleanupStartTime = performance.now();
         
         // Get initial count before any deletions (excluding origin)

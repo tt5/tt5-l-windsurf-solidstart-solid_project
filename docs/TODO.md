@@ -32,3 +32,4 @@
 - unit testing
 - styles
 - performance testing, metrics, logging
+- enhance error handling in cleanup process (in progress)

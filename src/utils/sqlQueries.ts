@@ -126,17 +126,35 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
       }
     }
     
-    // 3. Find lines with specific slopes
-    const diagonalLines = await db.all(`
-      SELECT 
-        p1.id as p1_id, p1.x as p1_x, p1.y as p1_y,
-        p2.id as p2_id, p2.x as p2_x, p2.y as p2_y
-      FROM base_points p1
-      JOIN base_points p2 ON p1.id < p2.id
-      WHERE ${slopeConditions}
-        AND NOT (p1.x = 0 AND p1.y = 0)  -- Exclude (0,0) from cleanup
-        AND NOT (p2.x = 0 AND p2.y = 0)  -- Exclude (0,0) from cleanup
-    `);
+    // 3. Find lines with specific slopes - process in batches to avoid SQLite expression tree limits
+    const BATCH_SIZE = 5; // Process 5 slopes at a time
+    const diagonalLines = [];
+    
+    // Process slopes in batches
+    for (let i = 0; i < activeSlopes.length; i += BATCH_SIZE) {
+      const batchSlopes = activeSlopes.slice(i, i + BATCH_SIZE);
+      const batchSlopeConditions = getSlopeConditions(batchSlopes);
+      
+      console.log(`[Cleanup] Processing slopes batch ${i/BATCH_SIZE + 1}/${Math.ceil(activeSlopes.length/BATCH_SIZE)}`);
+      
+      try {
+        const batchResults = await db.all(`
+          SELECT 
+            p1.id as p1_id, p1.x as p1_x, p1.y as p1_y,
+            p2.id as p2_id, p2.x as p2_x, p2.y as p2_y
+          FROM base_points p1
+          JOIN base_points p2 ON p1.id < p2.id
+          WHERE ${batchSlopeConditions}
+            AND NOT (p1.x = 0 AND p1.y = 0)  -- Exclude (0,0) from cleanup
+            AND NOT (p2.x = 0 AND p2.y = 0)  -- Exclude (0,0) from cleanup
+        `);
+        
+        diagonalLines.push(...batchResults);
+      } catch (error) {
+        console.error(`[Cleanup] Error processing slopes batch ${i/BATCH_SIZE + 1}:`, error);
+        // Continue with next batch even if one fails
+      }
+    }
     
     // Process diagonal lines
     const diagonalGroups = new Map<string, Array<{id: number, x: number, y: number}>>();
@@ -195,6 +213,12 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
   } catch (error) {
     const endTime = performance.now();
     const duration = endTime - startTime;
+    console.error('[Cleanup] Error in getPointsInLines:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      duration: `${duration.toFixed(2)}ms`,
+      timestamp: new Date().toISOString()
+    });
     return { points: [], duration };
   }
   
