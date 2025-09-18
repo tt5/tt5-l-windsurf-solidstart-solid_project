@@ -1,6 +1,7 @@
 # TODO
 
-- auto place base points periodically, integrate with scripts/simulate-base-points.ts
+- join and leave game
+  - multiple players join between world time ticks
 - delete account and clean up base points
 - auto add basepoint with space bar
 - optimize calculate-square endpoint
