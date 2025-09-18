@@ -53,7 +53,7 @@ class ServerInitializer {
     // Schedule cleanup
     this.cleanupInterval = setInterval(async () => {
       console.log('[Cleanup] Cleanup interval triggered');
-      const startTime = Date.now();
+      const startTime = performance.now();
       try {
         const db = await getDb();
         const repository = await getBasePointRepository();
@@ -169,7 +169,10 @@ class ServerInitializer {
             oldestPrimeTimestamp: oldestPrimeTimestamp
           };
           basePointEventService.broadcast('cleanup', eventData);
+
         }
+      const endTime = performance.now();
+      console.log(`[Cleanup] Cleanup completed in ${(endTime - startTime).toFixed(0)}ms`);
         
       } catch (error) {
         console.error('[Cleanup] Error:', error);

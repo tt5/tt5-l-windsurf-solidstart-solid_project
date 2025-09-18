@@ -139,8 +139,6 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           }
         }
       }
-      // Handle cleanup events with total base points
-      console.log('Event to process:', eventToProcess);
       
       // Check both 'type' and 'event' for compatibility
       if ((eventToProcess.type === 'cleanup' || eventToProcess.event === 'cleanup')) {
