@@ -7,7 +7,7 @@
   - Keep all other logic identical
 
 ## 2. Environment Setup
-- [ ] Add to `.env`:
+- [x] Add to `.env`:
   ```
   ENABLE_SIMULATION=true
   SIMULATION_MOVE_DELAY=1000

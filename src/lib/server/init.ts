@@ -2,6 +2,7 @@ import { getDb, getBasePointRepository } from './db';
 import { getRandomSlopes } from '~/utils/randomSlopes';
 import { getPointsInLines } from '~/utils/sqlQueries';
 import { tileInvalidationService } from './services/tile-invalidation.service';
+import { simulationService } from './services/simulation.service';
 
 class ServerInitializer {
   private static instance: ServerInitializer;
@@ -34,12 +35,37 @@ class ServerInitializer {
       tileInvalidationService.initialize();
       console.log('Migrations completed successfully');
 
+      // Start simulation service if enabled
+      if (process.env.ENABLE_SIMULATION === 'true') {
+        try {
+          await simulationService.start();
+          console.log('Simulation service started');
+        } catch (error) {
+          console.error('Failed to start simulation service:', error);
+        }
+      }
+
       this.setupCleanupInterval();
       console.log('Server initialization complete');
     } catch (error) {
       console.error('Failed to initialize server:', error);
       process.exit(1);
     }
+  }
+
+  public async cleanup() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    
+    // Stop the simulation service if it's running
+    if (process.env.ENABLE_SIMULATION === 'true' && simulationService.isSimulationRunning()) {
+      simulationService.stop();
+      console.log('Simulation service stopped');
+    }
+    
+    this.isInitialized = false;
   }
 
   private setupCleanupInterval() {
