@@ -54,7 +54,6 @@ const displayRestrictedGrid = (squares: number[], direction: string, position: {
   grid.forEach((row, y) => {
     console.log(y.toString(16) + ' ' + row.join(' '));
   });
-  
 };
 
 // Parse command line arguments
@@ -189,7 +188,7 @@ async function fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right
           displayRestrictedGrid(data.data.squares, direction, playerPosition);
         }
 
-        console.log(`\n--- 
+        debugLog(`\n--- 
           playerPosition
           ${String(playerPosition.x).padStart(4, ' ')}
           ${String(playerPosition.y).padStart(4, ' ')}
@@ -239,13 +238,11 @@ async function placeBasePoint(x: number, y: number): Promise<boolean> {
   
   // For non-origin points, check local tracking
   if (!isOrigin && placedBasePoints.some(p => p.x === x && p.y === y)) {
-    console.log(`ℹ️  Base point at (${x},${y}) already exists in local tracking`);
     return false;
   }
 
   // Check if the point is restricted
   if (isRestricted(x, y)) {
-    console.log(`⛔ Point (${x},${y}) is in a restricted area`);
     return false;
   }
 
@@ -270,7 +267,7 @@ async function placeBasePoint(x: number, y: number): Promise<boolean> {
       return false;
     }
 
-    console.log(`✅ Successfully placed base point at (${x}, ${y})`);
+    debugLog(`✅ Successfully placed base point at (${x}, ${y})`);
     
     // Track the placed base point
     placedBasePoints.push({ x, y });
@@ -300,7 +297,8 @@ async function simulatePlayer() {
 
     // Round down to nearest 10s place
     const roundedAttempts = Math.floor(newAttempts / 10) * 10;
-    console.log(`--- New attempts: ${String(roundedAttempts).padStart(4, ' ')}+`);
+
+    debugLog(`--- New attempts: ${String(roundedAttempts).padStart(4, ' ')}+`);
     
     // Generate random coordinates within the viewable area
     const x = playerPosition.x + randomInt(-VIEW_RADIUS, VIEW_RADIUS) + VIEW_RADIUS;
@@ -387,8 +385,8 @@ async function moveToNewPosition(): Promise<void> {
   
   totalMoves++;
 
-  console.log(` MOVE ${totalMoves}`);
-  console.log(` Total moves: ${totalMoves}`);
+  debugLog(` MOVE ${totalMoves}`);
+  debugLog(` Total moves: ${totalMoves}`);
 
   // Update position
   playerPosition = { x: -newX, y: -newY };
