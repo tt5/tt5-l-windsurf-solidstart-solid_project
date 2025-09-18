@@ -234,8 +234,11 @@ if (!USER_ID || !AUTH_TOKEN) {
 async function placeBasePoint(x: number, y: number): Promise<boolean> {
   debugLog({ x, y });
 
-  // Check if there's already a base point here in our local tracking
-  if (placedBasePoints.some(p => p.x === x && p.y === y)) {
+  // Special handling for (0,0) - we want to ensure our user has this point
+  const isOrigin = x === 0 && y === 0;
+  
+  // For non-origin points, check local tracking
+  if (!isOrigin && placedBasePoints.some(p => p.x === x && p.y === y)) {
     console.log(`ℹ️  Base point at (${x},${y}) already exists in local tracking`);
     return false;
   }
@@ -409,12 +412,11 @@ async function moveToNewPosition(): Promise<void> {
 // Delete all base points for the test user
 async function deleteAllBasePoints(): Promise<void> {
   try {
-    // First, clear local tracking
+    console.log('🧹 Clearing local base points tracking...');
     placedBasePoints.length = 0;
-    console.log('🧹 Cleared local base points tracking');
     
-    // Delete all base points from the server
-    const response = await fetch(`${BASE_URL}/api/base-points`, {
+    console.log('🗑️  Deleting all base points for test user...');
+    const deleteResponse = await fetch(`${BASE_URL}/api/base-points`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -422,22 +424,36 @@ async function deleteAllBasePoints(): Promise<void> {
       },
     });
 
-    if (response.ok) {
-      console.log('✅ Successfully deleted all base points from server');
-      
-      // Add (0,0) back to local tracking since we know it will be the first point
-      placedBasePoints.push({ x: 0, y: 0 });
-      
-      // Then, ensure (0,0) base point exists on the server
-      console.log('Ensuring (0,0) base point exists on server...');
-      const success = await placeBasePoint(0, 0);
-      if (success) {
-        console.log('✅ Successfully added (0,0) base point');
-      } else {
-        console.log('ℹ️  (0,0) base point already exists on server');
-      }
+    if (!deleteResponse.ok) {
+      console.error('Failed to delete base points:', await deleteResponse.text());
+      return;
+    }
+
+    console.log('✅ Successfully deleted all base points from server');
+    
+    // Add (0,0) to local tracking
+    placedBasePoints.push({ x: 0, y: 0 });
+    
+    // Add (0,0) point for this user, regardless of other users' points
+    console.log('Adding (0,0) base point for test user...');
+    const addResponse = await fetch(`${BASE_URL}/api/base-points`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AUTH_TOKEN}`,
+      },
+      body: JSON.stringify({ x: 0, y: 0 }),
+    });
+
+    if (addResponse.ok) {
+      console.log('✅ Successfully added (0,0) base point for test user');
     } else {
-      console.error('Failed to delete base points:', await response.text());
+      const error = await addResponse.json().catch(() => ({}));
+      console.error('Failed to add (0,0) base point:', {
+        status: addResponse.status,
+        statusText: addResponse.statusText,
+        error
+      });
     }
   } catch (error) {
     console.error('Error in deleteAllBasePoints:', error);
