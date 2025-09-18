@@ -64,6 +64,10 @@ export class SimulationService {
     console.log(`- Target points: ${numPoints}`);
     console.log(`- Move delay: ${moveDelay}ms`);
     
+    // Reset base points before starting simulation
+    console.log('🔄 Preparing simulation environment...');
+    await this.resetBasePoints();
+    
     // Initial fetch of restricted squares
     await this.fetchRestrictedSquares();
     
@@ -106,6 +110,66 @@ export class SimulationService {
     
     // Always move after each attempt
     await this.moveToNewPosition();
+  }
+
+  private async resetBasePoints(): Promise<void> {
+    try {
+      console.log('🧹 Resetting base points for test user...');
+      
+      // Delete all base points
+      const deleteResponse = await fetch(`${process.env.API_URL || 'http://localhost:3000'}/api/base-points`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}`,
+        },
+      });
+
+      if (!deleteResponse.ok) {
+        const error = await deleteResponse.json().catch(() => ({}));
+        console.error('Failed to delete base points:', {
+          status: deleteResponse.status,
+          statusText: deleteResponse.statusText,
+          error
+        });
+        throw new Error('Failed to delete base points');
+      }
+
+      console.log('✅ Successfully deleted all base points from server');
+      
+      // Clear local tracking
+      this.placedBasePoints = [];
+      
+      // Add (0,0) point for this user
+      console.log('Adding (0,0) base point for test user...');
+      const addResponse = await fetch(`${process.env.API_URL || 'http://localhost:3000'}/api/base-points`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}`,
+        },
+        body: JSON.stringify({ x: 0, y: 0 }),
+      });
+
+      if (!addResponse.ok) {
+        const error = await addResponse.json().catch(() => ({}));
+        console.error('Failed to add (0,0) base point:', {
+          status: addResponse.status,
+          statusText: addResponse.statusText,
+          error
+        });
+        throw new Error('Failed to add (0,0) base point');
+      }
+
+      console.log('✅ Successfully added (0,0) base point for test user');
+      
+      // Update local tracking
+      this.placedBasePoints = [{ x: 0, y: 0 }];
+      
+    } catch (error) {
+      console.error('Error resetting base points:', error);
+      throw error;
+    }
   }
 
   private async fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right' = 'up'): Promise<void> {
