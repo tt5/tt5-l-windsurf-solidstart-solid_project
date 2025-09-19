@@ -93,27 +93,27 @@ export function useNavigation() {
      * Jump to a specific position in the game and fetch restricted squares
      * @param x The x-coordinate to jump to
      * @param y The y-coordinate to jump to
-     * @returns Promise with an object containing the new position and restricted squares, or null if there was an error
+     * @returns Promise with the restricted squares for the new position
      */
     jumpToPosition: async (x: number, y: number) => {
       try {
-        const newPosition = createPoint(
-          Math.floor(x),
-          Math.floor(y)
-        );
+        const targetPosition = createPoint(x, y);
+        console.log(`Jumping to position: [${x}, ${y}]`);
         
         // Fetch restricted squares for the new position
-        const restrictedSquares = await fetchRestrictedSquares(newPosition);
+        const restrictedSquares = await fetchRestrictedSquares(targetPosition);
+        
         if (restrictedSquares === null) {
           console.error('Failed to fetch restricted squares');
           return null;
         }
         
-        // Update the position
-        setPosition(newPosition);
-        
         console.log(`Jumped to position: [${x}, ${y}] with ${restrictedSquares.length} restricted squares`);
-        return { position: newPosition, restrictedSquares };
+        
+        // Note: We don't update the position here anymore
+        // The component that calls this function should update the position in the context
+        
+        return { restrictedSquares };
       } catch (error) {
         console.error('Failed to jump to position:', error);
         return null;

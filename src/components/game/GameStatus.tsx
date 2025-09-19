@@ -3,6 +3,7 @@ import { useUser } from '../../contexts/UserContext';
 import { useAuth } from '../../contexts/auth';
 import { usePlayerPosition } from '../../contexts/playerPosition';
 import { useNavigation } from '../../lib/utils/navigation';
+import { createPoint } from '../../types/board';
 import Button from '../ui/Button';
 import { useNavigate } from '@solidjs/router';
 
@@ -40,7 +41,7 @@ export function GameStatus() {
   const auth = useAuth();
   const navigate = useNavigate();
   const { jumpToPosition } = useNavigation();
-  const { setRestrictedSquares } = usePlayerPosition();
+  const { setPosition, setRestrictedSquares } = usePlayerPosition();
   
   // Update state helper
   const updateState = (updates: Partial<GameStatusState>) => {
@@ -131,18 +132,19 @@ export function GameStatus() {
       // Jump to home base coordinates if we have valid coordinates
       if (typeof data.homeX === 'number' && typeof data.homeY === 'number') {
         try {
-          // Use requestAnimationFrame to ensure the state update is processed
-          // before we try to jump
-          requestAnimationFrame(async () => {
-            const result = await jumpToPosition(data.homeX, data.homeY);
-            if (result) {
-              console.log(`Jumped to home base at (${data.homeX}, ${data.homeY})`);
-              console.log('Restricted squares:', result.restrictedSquares);
-              
-              // Update the restricted squares in the context
-              setRestrictedSquares(result.restrictedSquares);
-            }
-          });
+          // First update the position in the context
+          const newPosition = createPoint(data.homeX, data.homeY);
+          setPosition(newPosition);
+          
+          // Then fetch and update restricted squares
+          const result = await jumpToPosition(data.homeX, data.homeY);
+          if (result) {
+            console.log(`Jumped to home base at (${data.homeX}, ${data.homeY})`);
+            console.log('Restricted squares:', result.restrictedSquares);
+            
+            // Update the restricted squares in the context
+            setRestrictedSquares(result.restrictedSquares);
+          }
         } catch (error) {
           console.error('Failed to jump to home base:', error);
         }

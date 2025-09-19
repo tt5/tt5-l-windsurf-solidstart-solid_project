@@ -7,6 +7,7 @@ import {
 } from 'solid-js';
 import type { JSX } from 'solid-js/jsx-runtime';
 import { useAuth } from '../../contexts/auth';
+import { usePlayerPosition } from '../../contexts/playerPosition';
 import { 
   type Direction, 
   type Point, 
@@ -40,7 +41,32 @@ const Board: Component = () => {
   const [isFetching, setIsFetching] = createSignal<boolean>(false);
   const [isMoving, setIsMoving] = createSignal<boolean>(false);
   const [isSaving, setIsSaving] = createSignal<boolean>(false);
-  const [restrictedSquares, setRestrictedSquares] = createSignal<RestrictedSquares>([]);
+  // Get position and restricted squares from context
+  const { 
+    position: contextPosition, 
+    setPosition: setContextPosition,
+    restrictedSquares: contextRestrictedSquares 
+  } = usePlayerPosition();
+  
+  // Initialize position from context if available
+  onMount(() => {
+    const pos = contextPosition();
+    if (pos) {
+      setCurrentPosition(createPoint(pos.x, pos.y));
+    } else {
+      // If no position in context, set the default position to context
+      setContextPosition(createPoint(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]));
+    }
+  });
+
+  // Update position in both local state and context
+  const updatePosition = (newPosition: Point) => {
+    setCurrentPosition(newPosition);
+    setContextPosition(newPosition);
+  };
+  
+  // Use restricted squares from context
+  const restrictedSquaresList = contextRestrictedSquares;
   const [hoveredSquare, setHoveredSquare] = createSignal<number | null>(null);
   const [error, setError] = createSignal<string | null>(null);
   const [reachedBoundary, setReachedBoundary] = createSignal<boolean>(false);
