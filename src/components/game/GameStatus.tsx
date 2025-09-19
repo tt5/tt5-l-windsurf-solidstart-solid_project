@@ -1,5 +1,5 @@
 import { createSignal, createEffect, onMount, Show } from 'solid-js';
-import { useUser } from '~/contexts/UserContext';
+import { useUser } from '../../contexts/UserContext';
 import Button from '../ui/Button';
 import { useNavigate } from '@solidjs/router';
 
@@ -33,7 +33,7 @@ export function GameStatus() {
     message: null
   });
   
-  const user = useUser();
+  const { user } = useUser();
   const navigate = useNavigate();
   
   // Update state helper
