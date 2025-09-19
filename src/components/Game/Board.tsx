@@ -222,7 +222,9 @@ const Board: Component = () => {
   
   // Validate grid coordinates
   const isValidCoordinate = (value: number): boolean => {
-    return Number.isInteger(value) && value >= 0 && value < BOARD_CONFIG.GRID_SIZE;
+    return Number.isInteger(value) && 
+           value >= BOARD_CONFIG.WORLD_BOUNDS.MIN_X && 
+           value <= BOARD_CONFIG.WORLD_BOUNDS.MAX_X;
   };
 
   // Check if a base point already exists at the given coordinates

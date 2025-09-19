@@ -45,3 +45,24 @@ cleanup: every 20s, (0,1 and two out of "primes between 3 and 2000")
 MOVE 322635
 2870 Added
 2089 Removed
+
+# server integration
+
+531 Added
+317 Removed
+220 Total
+8400 moves
+cleanup: 10 s, 16 primes, 400 ms
+
+269 points
+13800 moves
+500 ms
+
+284 points
+16400 moves
+600 ms
+
+[Cleanup] Cleanup completed in 573ms
+Changed direction to: right after 18200 moves
+[Cleanup] Cleanup interval triggered
+[Cleanup] Initial count: 289 (excluding origin), 291 (total)
