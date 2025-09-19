@@ -1,7 +1,7 @@
 import { APIEvent, json } from 'solid-start';
 import { getDb } from '~/lib/server/db';
 import { GameService } from '~/lib/server/services/game.service';
-import { requireUser } from '~/lib/session';
+import { requireUser } from '~/lib/server/session';
 
 // Response types
 interface JoinGameResponse {
