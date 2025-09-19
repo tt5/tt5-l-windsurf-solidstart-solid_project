@@ -1,6 +1,7 @@
 # TODO
 
 
+- when a base point in the viewport is removed the restricted squares are not updated (deleted). Solution: update from the events. Also update added base point in the viewport from the events?
 - keep position when changing tabs
 - join and leave game
   - multiple players join between world time ticks
