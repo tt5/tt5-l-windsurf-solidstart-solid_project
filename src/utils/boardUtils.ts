@@ -386,16 +386,27 @@ export const fetchBasePoints = async ({
   const now = Date.now();
   const timeSinceLastFetch = now - lastFetchTime();
   
+  console.log("[Board:fetchBasePoints] setIsFetching(true)")
+  // Before the if statement, add:
+console.log('fetchBasePoints conditions:', {
+  isFetching: isFetching(),
+  isMoving: isMoving(),
+  timeSinceLastFetch,
+  shouldFetch: !(isFetching() || isMoving() || (timeSinceLastFetch < 100))
+});
   // Skip if we already have recent data or a request is in progress
-  if (isFetching() || isMoving() || (timeSinceLastFetch < 100)) {
+  if (isFetching() || (timeSinceLastFetch < 1000)) {
     return;
   }
 
-  console.log("[Board:fetchBasePoints] setIsFetching(true)")
   setIsFetching(true);
 
   try {
-    const [x, y] = currentPosition();
+    console.log(`[Board:fetchBasePoints] currentPosition: ${JSON.stringify(currentPosition())}`)
+    let [x, y] = currentPosition();
+    // moves opposite direction
+    x = -x;
+    y = -y;
     const response = await fetch(`/api/base-points?x=${x}&y=${y}`, {
       credentials: 'include',
       headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
