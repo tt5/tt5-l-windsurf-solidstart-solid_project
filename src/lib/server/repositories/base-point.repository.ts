@@ -206,12 +206,14 @@ export class BasePointRepository {
   }
 
   /**
-   * Gets the oldest base point by game_created_at_ms
+   * Gets the oldest base point by game_created_at_ms that is not at (0,0)
    */
   async getOldest(): Promise<BasePoint | null> {
     const result = await this.db.get<BasePoint>(
       'SELECT id, user_id as userId, x, y, game_created_at_ms as createdAtMs ' +
-      'FROM base_points ORDER BY game_created_at_ms ASC LIMIT 1'
+      'FROM base_points ' +
+      'WHERE x != 0 OR y != 0 ' +
+      'ORDER BY game_created_at_ms ASC LIMIT 1'
     );
     return result || null;
   }

@@ -88,9 +88,11 @@ export class GameService {
         // Calculate new position (spiral pattern)
         let x = 0, y = 0;
         if (oldestBase) {
+          console.log(`--- oldestBase: ${JSON.stringify(oldestBase)}`)
           // Simple spiral pattern - in a real game, you'd want a more sophisticated algorithm
-          x = oldestBase.x + (Math.random() > 0.5 ? 1 : -1) * 10;
-          y = oldestBase.y + (Math.random() > 0.5 ? 1 : -1) * 10;
+          // TODO: check if in world coordinates
+          x = oldestBase.x - 3;
+          y = oldestBase.y - 2;
         }
 
         // Set user's home position and mark as joined
@@ -102,6 +104,7 @@ export class GameService {
           userId,
           x,
           y,
+          // TODO: get oldest prime value -1 millisecond
           gameCreatedAtMs: Date.now()
         });
 
