@@ -5,7 +5,7 @@ interface PlayerPositionContextType {
   position: () => Point | null;
   setPosition: (pos: Point) => void;
   restrictedSquares: () => number[];
-  setRestrictedSquares: (squares: number[]) => void;
+  setRestrictedSquares: (value: number[] | ((prev: number[]) => number[])) => void;
 }
 
 const PlayerPositionContext = createContext<PlayerPositionContextType>();

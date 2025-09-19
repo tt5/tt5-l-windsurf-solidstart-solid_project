@@ -45,14 +45,15 @@ const Board: Component = () => {
   const { 
     position: contextPosition, 
     setPosition: setContextPosition,
-    restrictedSquares: contextRestrictedSquares 
+    restrictedSquares: getRestrictedSquares,
+    setRestrictedSquares
   } = usePlayerPosition();
   
   // Initialize position from context if available
   onMount(() => {
     const pos = contextPosition();
     if (pos) {
-      setCurrentPosition(createPoint(pos.x, pos.y));
+      setCurrentPosition(createPoint(pos[0], pos[1]));
     } else {
       // If no position in context, set the default position to context
       setContextPosition(createPoint(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]));
@@ -66,7 +67,6 @@ const Board: Component = () => {
   };
   
   // Use restricted squares from context
-  const restrictedSquaresList = contextRestrictedSquares;
   const [hoveredSquare, setHoveredSquare] = createSignal<number | null>(null);
   const [error, setError] = createSignal<string | null>(null);
   const [reachedBoundary, setReachedBoundary] = createSignal<boolean>(false);
@@ -99,7 +99,7 @@ const Board: Component = () => {
     }
 
     // Check if it's a restricted square
-    if (restrictedSquares().includes(index)) {
+    if (getRestrictedSquares().includes(index)) {
       return { isValid: false, reason: 'Cannot place in restricted area' };
     }
 
@@ -150,8 +150,8 @@ const Board: Component = () => {
       setBasePoints,
       setLastFetchTime,
       setIsFetching,
-      setRestrictedSquares,
-      restrictedSquares
+setRestrictedSquares,
+      restrictedSquares: getRestrictedSquares
     });
     
     if (promise) {
@@ -173,7 +173,7 @@ const Board: Component = () => {
       // Only reset restricted squares if user logs out
       if (!currentUserValue) {
         setRestrictedSquares([]);
-      } else if (restrictedSquares().length === 0) {
+      } else if (getRestrictedSquares().length === 0) {
         // Initialize with default restricted squares for new user session
         setRestrictedSquares(INITIAL_SQUARES);
       }
@@ -290,7 +290,7 @@ const Board: Component = () => {
         // Recalculate restricted squares with the new base point
         const newRestrictedSquares = calculateRestrictedSquares(
           createPoint(worldX, worldY),
-          restrictedSquares()
+          getRestrictedSquares()
         );
         setRestrictedSquares(newRestrictedSquares);
       } else if (response.error) {
@@ -345,9 +345,9 @@ const Board: Component = () => {
 
   // Initialize squares on mount
   createEffect(() => {
-    console.log("[Board] Effect - initial squares")
+    console.log("[Board] Effect - initial squares");
     // Initialize restricted squares if empty
-    if (restrictedSquares().length === 0) {
+    if (getRestrictedSquares().length === 0) {
       setRestrictedSquares(INITIAL_SQUARES);
     }
   });
@@ -385,7 +385,7 @@ const Board: Component = () => {
       isMoving,
       currentPosition,
       setCurrentPosition,
-      restrictedSquares,
+      restrictedSquares: getRestrictedSquares,
       setRestrictedSquares,
       setIsMoving,
       isBasePoint
@@ -423,7 +423,7 @@ const Board: Component = () => {
           const worldY = y - offsetY;
           const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
           const isBP = isBasePoint(worldX, worldY);
-          const isSelected = restrictedSquares().includes(squareIndex);
+          const isSelected = getRestrictedSquares().includes(squareIndex);
           const isPlayerPosition = worldX === 0 && worldY === 0;
           const isHovered = hoveredSquare() === index;
           const validation = validateSquarePlacement(index);
@@ -523,7 +523,7 @@ const Board: Component = () => {
               return;
             }
             
-            if (restrictedSquares().includes(squareIndex)) {
+            if (getRestrictedSquares().includes(squareIndex)) {
               return;
             }
             
