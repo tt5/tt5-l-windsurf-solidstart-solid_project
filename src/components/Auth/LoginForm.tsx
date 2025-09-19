@@ -18,6 +18,12 @@ export default function LoginForm() {
   // Check for registration success message
   const registered = (location.state as LocationState)?.registered;
 
+  // Get return URL from query parameters or default to '/game'
+  const getReturnUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('returnUrl') || '/game';
+  };
+
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     setError('');
@@ -27,8 +33,9 @@ export default function LoginForm() {
       // Use the auth context's login function which handles the API call
       await auth.login(username(), password());
       
-      // Redirect to game page after successful login
-      navigate('/game', { replace: true });
+      // Redirect to the return URL or game page after successful login
+      const returnUrl = getReturnUrl();
+      navigate(returnUrl, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

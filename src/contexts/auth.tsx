@@ -115,12 +115,32 @@ const createAuthStore = (): AuthStore => {
 
 // Function to verify the current session
   const verifySession = async (savedUser: NullableUser) => {
-    try {
-      
-      // Skip verification in development to prevent hanging
+    if (!savedUser) {
       setIsInitialized(true);
       return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/verify', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error('Session verification failed');
+      }
+
+      const data = await response.json();
+      if (data.valid && data.user) {
+        updateUser(data.user);
+      } else {
+        updateUser(null);
+      }
     } catch (error) {
+      console.error('Session verification error:', error);
+      updateUser(null);
+    } finally {
       setIsInitialized(true);
     }
   };

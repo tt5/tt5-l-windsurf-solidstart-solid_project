@@ -59,7 +59,9 @@ export function GameStatus() {
     updateState({ isLoading: true });
     
     try {
-      const response = await fetch('/api/game/status');
+      const response = await fetch('/api/game/status', {
+        credentials: 'include'  // This ensures cookies are sent with the request
+      });
       const data: GameStatusResponse = await response.json();
       
       if (!response.ok) {
@@ -87,7 +89,10 @@ export function GameStatus() {
   // Handle joining the game
   const handleJoinGame = async () => {
     if (!user()) {
-      navigate('/login');
+      console.log("User is not logged in")
+      // Save the current URL to return to after login
+      const returnUrl = window.location.pathname + window.location.search;
+      navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
       return;
     }
 
@@ -96,6 +101,7 @@ export function GameStatus() {
     try {
       const response = await fetch('/api/game/join', { 
         method: 'POST',
+        credentials: 'include',  // This ensures cookies are sent with the request
         headers: {
           'Content-Type': 'application/json'
         }
