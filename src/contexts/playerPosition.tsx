@@ -1,18 +1,25 @@
 import { createContext, createSignal, useContext, type ParentProps } from 'solid-js';
 import type { Point } from '~/types/board';
 
-const PlayerPositionContext = createContext<{
+interface PlayerPositionContextType {
   position: () => Point | null;
   setPosition: (pos: Point) => void;
-}>();
+  restrictedSquares: () => number[];
+  setRestrictedSquares: (squares: number[]) => void;
+}
+
+const PlayerPositionContext = createContext<PlayerPositionContextType>();
 
 export function PlayerPositionProvider(props: ParentProps) {
   const [position, setPosition] = createSignal<Point | null>(null);
+  const [restrictedSquares, setRestrictedSquares] = createSignal<number[]>([]);
   
   return (
     <PlayerPositionContext.Provider value={{
       position,
       setPosition,
+      restrictedSquares,
+      setRestrictedSquares,
     }}>
       {props.children}
     </PlayerPositionContext.Provider>

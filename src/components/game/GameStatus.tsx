@@ -1,6 +1,8 @@
 import { createSignal, createEffect, onMount, Show } from 'solid-js';
 import { useUser } from '../../contexts/UserContext';
 import { useAuth } from '../../contexts/auth';
+import { usePlayerPosition } from '../../contexts/playerPosition';
+import { useNavigation } from '../../lib/utils/navigation';
 import Button from '../ui/Button';
 import { useNavigate } from '@solidjs/router';
 
@@ -37,6 +39,8 @@ export function GameStatus() {
   const userContext = useUser();
   const auth = useAuth();
   const navigate = useNavigate();
+  const { jumpToPosition } = useNavigation();
+  const { setRestrictedSquares } = usePlayerPosition();
   
   // Update state helper
   const updateState = (updates: Partial<GameStatusState>) => {
@@ -115,7 +119,7 @@ export function GameStatus() {
         throw new Error(data.error || 'Failed to join game');
       }
       
-      // Show success message before reloading
+      // Update state with new game status
       updateState({
         isLoading: false,
         gameJoined: data.gameJoined,
@@ -124,10 +128,28 @@ export function GameStatus() {
         message: data.message || 'Successfully joined the game!'
       });
       
-      // Refresh the page after a short delay to show the success message
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Jump to home base coordinates if we have valid coordinates
+      if (typeof data.homeX === 'number' && typeof data.homeY === 'number') {
+        try {
+          // Use requestAnimationFrame to ensure the state update is processed
+          // before we try to jump
+          requestAnimationFrame(async () => {
+            const result = await jumpToPosition(data.homeX, data.homeY);
+            if (result) {
+              console.log(`Jumped to home base at (${data.homeX}, ${data.homeY})`);
+              console.log('Restricted squares:', result.restrictedSquares);
+              
+              // Update the restricted squares in the context
+              setRestrictedSquares(result.restrictedSquares);
+            }
+          });
+        } catch (error) {
+          console.error('Failed to jump to home base:', error);
+        }
+      }
+      
+      // Note: We're not reloading the page here anymore to prevent losing the jump state
+      // The page will update automatically through the position change
       
     } catch (error) {
       console.error('Error joining game:', error);

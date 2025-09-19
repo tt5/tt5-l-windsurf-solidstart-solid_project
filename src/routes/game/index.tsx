@@ -1,6 +1,7 @@
 import { Title } from "@solidjs/meta";
 import { Show, createSignal } from 'solid-js';
 import { useAuth } from '~/contexts/auth';
+import { PlayerPositionProvider } from '~/contexts/playerPosition';
 import Board from '~/components/Game/Board';
 import SidePanel from '~/components/Game/SidePanel';
 import MapView from '~/components/Map/MapView';
@@ -15,10 +16,10 @@ export default function GamePage() {
       <Title>Game</Title>
       
       <Show when={isInitialized()} fallback={
-          <div class={styles.loadingContainer}>
-            <h1>Loading Game...</h1>
-            <div>Initializing authentication...</div>
-          </div>
+        <div class={styles.loadingContainer}>
+          <h1>Loading Game...</h1>
+          <div>Initializing authentication...</div>
+        </div>
       }>
         <Show when={user()} fallback={
           <div class={styles.loginContainer}>
@@ -26,24 +27,26 @@ export default function GamePage() {
             <p>Please log in to access the game.</p>
           </div>
         }>
-          <div class={styles.gameContainer}>
-            <SidePanel 
-              activeTab={activeTab() as 'info' | 'settings'}
-              onTabChange={(tab) => setActiveTab(tab)}
-              username={user()!.username}
-              userId={user()!.id}
-              onLogout={logout}
-            />
-            
-            <div class={styles.gameBoard}>
-              <Show when={activeTab() === 'info'}>
-                <Board />
-              </Show>
-              <Show when={activeTab() === 'settings'}>
-                <MapView />
-              </Show>
+          <PlayerPositionProvider>
+            <div class={styles.gameContainer}>
+              <SidePanel 
+                activeTab={activeTab() as 'info' | 'settings'}
+                onTabChange={(tab) => setActiveTab(tab)}
+                username={user()!.username}
+                userId={user()!.id}
+                onLogout={logout}
+              />
+              
+              <div class={styles.gameBoard}>
+                <Show when={activeTab() === 'info'}>
+                  <Board />
+                </Show>
+                <Show when={activeTab() === 'settings'}>
+                  <MapView />
+                </Show>
+              </div>
             </div>
-          </div>
+          </PlayerPositionProvider>
         </Show>
       </Show>
     </div>
