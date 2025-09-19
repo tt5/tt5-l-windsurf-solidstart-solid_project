@@ -7,6 +7,7 @@ export interface User {
   gameJoined: boolean;
   homeX: number;
   homeY: number;
+  role?: string;
 }
 
 const UserContext = createContext<{
@@ -22,10 +23,20 @@ export function UserProvider(props: { children: JSX.Element }) {
   // Load user from session on mount
   onMount(async () => {
     try {
-      const response = await fetch('/api/auth/me');
+      const response = await fetch('/api/auth/verify');
       if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
+        const data = await response.json();
+        if (data.valid && data.user) {
+          // Map the verify endpoint response to our User type
+          setUser({
+            id: data.user.id,
+            username: data.user.username,
+            gameJoined: false, // This should be updated from game status
+            homeX: 0,         // These should be updated from game status
+            homeY: 0,         // These should be updated from game status
+            role: data.user.role
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to load user:', error);
