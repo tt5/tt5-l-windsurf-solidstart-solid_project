@@ -1,4 +1,4 @@
-import { APIEvent } from 'solid-start';
+import type { APIEvent } from '@solidjs/start/server';
 import * as jwt from 'jsonwebtoken';
 import type { User } from '~/types/user';
 

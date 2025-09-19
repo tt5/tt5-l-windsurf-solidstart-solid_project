@@ -1,4 +1,5 @@
-import { APIEvent, json } from 'solid-start';
+import type { APIEvent } from '@solidjs/start/server';
+import { json } from '@solidjs/start/server';
 import { getDb } from '~/lib/server/db';
 import { GameService } from '~/lib/server/services/game.service';
 import { requireUser } from '~/lib/server/session';
