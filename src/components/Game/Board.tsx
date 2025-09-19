@@ -49,14 +49,25 @@ const Board: Component = () => {
     setRestrictedSquares
   } = usePlayerPosition();
   
-  // Initialize position from context if available
-  onMount(() => {
+  // Initialize position from context if available and sync with context changes
+  createEffect(() => {
     const pos = contextPosition();
     if (pos) {
-      setCurrentPosition(createPoint(pos[0], pos[1]));
+      // Only update if the position has actually changed
+      const [x, y] = pos;
+      const current = currentPosition();
+      if (current[0] !== x || current[1] !== y) {
+        setCurrentPosition(createPoint(x, y));
+      }
     } else {
-      // If no position in context, set the default position to context
-      setContextPosition(createPoint(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]));
+      const current = currentPosition();
+      if (current[0] !== BOARD_CONFIG.DEFAULT_POSITION[0] || 
+          current[1] !== BOARD_CONFIG.DEFAULT_POSITION[1]) {
+        // If no position in context, set the default position to context
+        const defaultPos = createPoint(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]);
+        setContextPosition(defaultPos);
+        setCurrentPosition(defaultPos);
+      }
     }
   });
 
@@ -364,13 +375,13 @@ setRestrictedSquares,
 
   // Handle direction movement
   const handleDirection = async (dir: Direction): Promise<void> => {
-    console.log("[Board] handleDirection")
+    console.log("[Board] handleDirection");
     setReachedBoundary(false); // Reset boundary flag on new movement
     
-    const [x, y] = currentPosition();
+    const currentPos = currentPosition();
     const [dx, dy] = getMovementDeltas(dir);
-    const newX = x + dx;
-    const newY = y + dy;
+    const newX = currentPos[0] + dx;
+    const newY = currentPos[1] + dy;
     
     // Check world boundaries
     if (newX < BOARD_CONFIG.WORLD_BOUNDS.MIN_X || 
@@ -381,10 +392,28 @@ setRestrictedSquares,
       return;
     }
     
+    // Create a new position object
+    const newPosition = createPoint(newX, newY);
+    
+    // Update both local state and context
+    updatePosition(newPosition);
+    
+    // Create a wrapper function that handles both direct values and updater functions
+    const setPositionWrapper = (value: Point | ((prev: Point) => Point)) => {
+      if (typeof value === 'function') {
+        // If it's an updater function, get the current position and apply the update
+        const updatedPosition = value(newPosition);
+        updatePosition(updatedPosition);
+      } else {
+        // If it's a direct value, use it as is
+        updatePosition(value);
+      }
+    };
+    
     return handleDirectionUtil(dir, {
       isMoving,
-      currentPosition,
-      setCurrentPosition,
+      currentPosition: () => newPosition,
+      setCurrentPosition: setPositionWrapper,
       restrictedSquares: getRestrictedSquares,
       setRestrictedSquares,
       setIsMoving,
