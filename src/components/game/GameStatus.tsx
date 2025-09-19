@@ -1,5 +1,6 @@
 import { createSignal, createEffect, onMount, Show } from 'solid-js';
 import { useUser } from '../../contexts/UserContext';
+import { useAuth } from '../../contexts/auth';
 import Button from '../ui/Button';
 import { useNavigate } from '@solidjs/router';
 
@@ -33,7 +34,8 @@ export function GameStatus() {
     message: null
   });
   
-  const { user } = useUser();
+  const userContext = useUser();
+  const auth = useAuth();
   const navigate = useNavigate();
   
   // Update state helper
@@ -48,7 +50,7 @@ export function GameStatus() {
 
   // Fetch the current game status
   const fetchGameStatus = async () => {
-    if (!user()) {
+    if (!userContext.user()) {
       updateState({ 
         isLoading: false,
         error: 'You must be logged in to view game status' 
@@ -88,7 +90,7 @@ export function GameStatus() {
 
   // Handle joining the game
   const handleJoinGame = async () => {
-    if (!user()) {
+    if (!auth.user()) {
       console.log("User is not logged in")
       // Save the current URL to return to after login
       const returnUrl = window.location.pathname + window.location.search;
@@ -139,7 +141,7 @@ export function GameStatus() {
 
   // Handle leaving the game
   const handleLeaveGame = async () => {
-    if (!user()) return;
+    if (!userContext.user()) return;
     
     if (!confirm('Are you sure you want to leave the game? Your base will remain but you won\'t be able to add new base points.')) {
       return;
@@ -190,7 +192,7 @@ export function GameStatus() {
   
   // Auto-refresh status when user changes
   createEffect(() => {
-    if (user()) {
+    if (userContext.user()) {
       fetchGameStatus();
     }
   });

@@ -6,7 +6,10 @@ export const GET = async ({ request }: { request: Request }) => {
     const user = await getAuthUser(request);
     
     if (!user) {
-      return jsonResponse({ valid: false }, 200);
+      return jsonResponse({ 
+        valid: false,
+        message: 'No valid session found' 
+      }, 200);
     }
 
     return jsonResponse({
@@ -14,11 +17,15 @@ export const GET = async ({ request }: { request: Request }) => {
       user: {
         id: user.userId,
         username: user.username,
-        role: user.role
+        role: user.role || 'user'
       }
     });
   } catch (error) {
     console.error('Error verifying session:', error);
-    return jsonResponse({ valid: false }, 200);
+    return jsonResponse({ 
+      valid: false, 
+      message: 'Error verifying session',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
   }
 };
