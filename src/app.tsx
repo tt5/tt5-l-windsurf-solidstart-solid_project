@@ -3,16 +3,19 @@ import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { Suspense } from "solid-js";
 import { AuthProvider } from "./contexts/auth";
+import { UserProvider } from "./contexts/UserContext";
 import { DevTools } from "./components/DevTools/DevTools";
 
 export default () => (
   <Router root={props => (
     <MetaProvider>
       <AuthProvider>
-        <Suspense>
-          {props.children}
-          <DevTools />
-        </Suspense>
+        <UserProvider>
+          <Suspense>
+            {props.children}
+            <DevTools />
+          </Suspense>
+        </UserProvider>
       </AuthProvider>
     </MetaProvider>
   )}>
