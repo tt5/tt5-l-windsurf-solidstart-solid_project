@@ -392,23 +392,26 @@ setRestrictedSquares,
       return;
     }
     
-    // Create a new position object
+    // Create a new position object but don't update it yet
     const newPosition = createPoint(newX, newY);
     
-    // Update position immediately to prevent race conditions
-    updatePosition(newPosition);
-    
     // Create a wrapper function that handles both direct values and updater functions
+    let positionUpdated = false;
     const setPositionWrapper = (value: Point | ((prev: Point) => Point)) => {
-      const updatedPosition = typeof value === 'function' ? value(newPosition) : value;
+      if (positionUpdated) {
+        console.warn('Position already updated, ignoring duplicate update');
+        return newPosition;
+      }
+      const updatedPosition = typeof value === 'function' ? value(currentPosition()) : value;
       updatePosition(updatedPosition);
-      return updatedPosition; // Return the new position for chaining
+      positionUpdated = true;
+      return updatedPosition;
     };
     
     try {
       await handleDirectionUtil(dir, {
         isMoving,
-        currentPosition: () => newPosition,
+        currentPosition: () => currentPosition(), // Always get the current position from the signal
         setCurrentPosition: setPositionWrapper,
         restrictedSquares: getRestrictedSquares,
         setRestrictedSquares: (value) => {
