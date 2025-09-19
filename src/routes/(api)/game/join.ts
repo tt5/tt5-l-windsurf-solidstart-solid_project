@@ -2,7 +2,6 @@ import type { APIEvent } from '@solidjs/start/server';
 import { getDb } from '~/lib/server/db';
 import { GameService } from '~/lib/server/services/game.service';
 import { requireUser } from '~/lib/server/session';
-
 // Response types
 interface JoinGameResponse {
   success: boolean;
@@ -13,9 +12,10 @@ interface JoinGameResponse {
   error?: string;
 }
 
-export async function POST({ request }: APIEvent) {
+export async function POST(event: APIEvent) {
+  const { request } = event;
   // Check authentication
-  const user = await requireUser(request);
+  const user = await requireUser(event);
   if (!user) {
     return new Response(JSON.stringify({
       success: false,
