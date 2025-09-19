@@ -133,7 +133,7 @@ export function GameStatus() {
       if (typeof data.homeX === 'number' && typeof data.homeY === 'number') {
         try {
           // First update the position in the context
-          const newPosition = createPoint(data.homeX, data.homeY);
+          const newPosition = createPoint(-data.homeX, -data.homeY);
           setPosition(newPosition);
           
           // Then fetch and update restricted squares
