@@ -13,9 +13,9 @@ interface GameStatusResponse {
   error?: string;
 }
 
-export async function GET({ request }: APIEvent) {
+export async function GET(event: APIEvent) {
   // Check authentication
-  const user = await requireUser(request);
+  const user = await requireUser(event);
   if (!user) {
     return new Response(JSON.stringify({
       success: false,
