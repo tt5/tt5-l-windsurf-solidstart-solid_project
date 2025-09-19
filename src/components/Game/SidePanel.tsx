@@ -1,5 +1,6 @@
 import { Component, Show, createSignal, onMount, onCleanup, For, createEffect } from 'solid-js';
 import styles from './SidePanel.module.css';
+import { GameStatus } from '../game/GameStatus';
 
 type Tab = 'info' | 'settings';
 
@@ -484,6 +485,18 @@ const SidePanel: Component<SidePanelProps> = (props) => {
                 <div class={styles.counter}>
                   <span class={`${styles.counterNumber} ${styles.deleted}`}>{deletedCount()}</span>
                   <span class={styles.counterLabel}>Removed</span>
+                </div>
+                <div class={styles.tabContent}>
+                  <h3>Game Information</h3>
+                  <div class={styles.gameStatusContainer}>
+                    <GameStatus />
+                  </div>
+                  <Show when={totalBasePoints() !== null}>
+                    <p>Total base points: {totalBasePoints()}</p>
+                  </Show>
+                  <Show when={oldestPrimeTimestamp() !== null}>
+                    <p>Oldest prime timestamp: {oldestPrimeTimestamp()}</p>
+                  </Show>
                 </div>
                 <div class={styles.counter}>
                   <span class={`${styles.counterNumber} ${styles.total}`}>{totalBasePoints()}</span>

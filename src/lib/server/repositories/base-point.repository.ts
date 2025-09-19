@@ -1,6 +1,13 @@
 import { Database } from 'sqlite';
 import { BasePoint } from '../../../types/board';
 
+export interface CreateBasePointInput {
+  userId: string;
+  x: number;
+  y: number;
+  gameCreatedAtMs: number;
+}
+
 export class BasePointRepository {
   constructor(private db: Database) {}
 
@@ -178,6 +185,45 @@ export class BasePointRepository {
    * @param id - The ID of the base point to delete
    * @returns The deleted base point or null if not found
    */
+  /**
+   * Creates a new base point with a specific timestamp
+   */
+  async create(input: CreateBasePointInput): Promise<BasePoint> {
+    const { userId, x, y, gameCreatedAtMs } = input;
+    
+    const result = await this.db.run(
+      'INSERT INTO base_points (user_id, x, y, game_created_at_ms) VALUES (?, ?, ?, ?)',
+      [userId, x, y, gameCreatedAtMs]
+    );
+
+    return {
+      id: result.lastID!,
+      userId,
+      x,
+      y,
+      createdAtMs: gameCreatedAtMs
+    };
+  }
+
+  /**
+   * Gets the oldest base point by game_created_at_ms
+   */
+  async getOldest(): Promise<BasePoint | null> {
+    const result = await this.db.get<BasePoint>(
+      'SELECT id, user_id as userId, x, y, game_created_at_ms as createdAtMs ' +
+      'FROM base_points ORDER BY game_created_at_ms ASC LIMIT 1'
+    );
+    return result || null;
+  }
+
+  /**
+   * Deletes a base point by ID
+   */
+  async delete(id: number): Promise<boolean> {
+    const result = await this.db.run('DELETE FROM base_points WHERE id = ?', [id]);
+    return (result.changes || 0) > 0;
+  }
+
   async deleteBasePoint(id: number): Promise<BasePoint | null> {
     // First get the point to return it after deletion
     const point = await this.db.get<BasePoint>(
