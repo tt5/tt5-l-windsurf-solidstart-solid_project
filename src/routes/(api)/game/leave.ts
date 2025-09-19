@@ -10,9 +10,10 @@ interface LeaveGameResponse {
   error?: string;
 }
 
-export async function POST({ request }: APIEvent) {
+export async function POST(event: APIEvent) {
+  const { request } = event;
   // Check authentication
-  const user = await requireUser(request);
+  const user = await requireUser(event);
   if (!user) {
     return new Response(JSON.stringify({
       success: false,
