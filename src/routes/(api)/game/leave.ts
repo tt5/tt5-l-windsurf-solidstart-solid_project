@@ -1,7 +1,6 @@
-import type { APIEvent } from '@solidjs/start/server';
 import { getDb } from '~/lib/server/db';
 import { GameService } from '~/lib/server/services/game.service';
-import { requireUser } from '~/lib/server/session';
+import { withAuth } from '~/middleware/auth';
 
 // Response types
 interface LeaveGameResponse {
@@ -10,28 +9,15 @@ interface LeaveGameResponse {
   error?: string;
 }
 
-export async function POST(event: APIEvent) {
-  const { request } = event;
-  // Check authentication
-  const user = await requireUser(event);
-  if (!user) {
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Unauthorized: You must be logged in to leave the game'
-    } as LeaveGameResponse), { 
-      status: 401,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-  }
+export const POST = withAuth(async (event) => {
+  const { user } = event;
 
   try {
     const db = await getDb();
     const gameService = new GameService(db);
     
     // Attempt to leave the game
-    const result = await gameService.leaveGame(user.id);
+    const result = await gameService.leaveGame(user.userId);
     
     // Handle the result
     if (!result.success) {
@@ -48,15 +34,11 @@ export async function POST(event: APIEvent) {
     }
     
     // Return success response
-    return new Response(JSON.stringify({
+    const response = {
       success: true,
       message: 'Successfully left the game. Your base remains on the map.'
-    } as LeaveGameResponse), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+    } as LeaveGameResponse;
+    return new Response(JSON.stringify(response), { status: 200, headers: { 'Content-Type': 'application/json' } });
     
   } catch (error) {
     console.error('Error in leave game endpoint:', error);
@@ -72,4 +54,4 @@ export async function POST(event: APIEvent) {
       }
     });
   }
-}
+});

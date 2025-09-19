@@ -1,7 +1,6 @@
-import type { APIEvent } from '@solidjs/start/server';
 import { getDb } from '~/lib/server/db';
 import { GameService } from '~/lib/server/services/game.service';
-import { requireUser } from '~/lib/server/session';
+import { withAuth } from '~/middleware/auth';
 
 // Response types
 interface GameStatusResponse {
@@ -13,30 +12,15 @@ interface GameStatusResponse {
   error?: string;
 }
 
-export async function GET(event: APIEvent) {
-  // Check authentication
-  const user = await requireUser(event);
-  if (!user) {
-    return new Response(JSON.stringify({
-      success: false,
-      gameJoined: false,
-      homeX: 0,
-      homeY: 0,
-      error: 'Unauthorized: You must be logged in to view game status'
-    } as GameStatusResponse), { 
-      status: 401,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-  }
+export const GET = withAuth(async (event) => {
+  const { user } = event;
 
   try {
     const db = await getDb();
     const gameService = new GameService(db);
     
     // Get the current game status
-    const status = await gameService.getGameStatus(user.id);
+    const status = await gameService.getGameStatus(user.userId);
     
     // If no status is found, return default values
     if (!status) {
@@ -55,7 +39,7 @@ export async function GET(event: APIEvent) {
     }
     
     // Return the current status
-    return new Response(JSON.stringify({
+    const response: GameStatusResponse = {
       success: true,
       gameJoined: status.gameJoined,
       homeX: status.homeX,
@@ -63,11 +47,13 @@ export async function GET(event: APIEvent) {
       message: status.gameJoined 
         ? `Your home base is at (${status.homeX}, ${status.homeY})`
         : 'You have not joined the game yet'
-    } as GameStatusResponse), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json'
-      }
+    };
+    
+    return new Response(JSON.stringify(response), { 
+      status: 200, 
+      headers: { 
+        'Content-Type': 'application/json' 
+      } 
     });
     
   } catch (error) {
@@ -87,4 +73,4 @@ export async function GET(event: APIEvent) {
       }
     });
   }
-}
+});
