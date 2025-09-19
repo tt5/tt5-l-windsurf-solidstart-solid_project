@@ -1,5 +1,4 @@
 import type { APIEvent } from '@solidjs/start/server';
-import { json } from '@solidjs/start/server';
 import { getDb } from '~/lib/server/db';
 import { GameService } from '~/lib/server/services/game.service';
 import { requireUser } from '~/lib/server/session';
@@ -18,13 +17,18 @@ export async function POST({ request }: APIEvent) {
   // Check authentication
   const user = await requireUser(request);
   if (!user) {
-    return json<JoinGameResponse>({
+    return new Response(JSON.stringify({
       success: false,
       gameJoined: false,
       homeX: 0,
       homeY: 0,
       error: 'Unauthorized: You must be logged in to join the game'
-    }, { status: 401 });
+    } as JoinGameResponse), { 
+      status: 401,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
   }
 
   try {
@@ -36,35 +40,50 @@ export async function POST({ request }: APIEvent) {
     
     // Handle the result
     if (!result.success) {
-      return json<JoinGameResponse>({
+      return new Response(JSON.stringify({
         success: false,
         gameJoined: result.gameJoined || false,
         homeX: result.homeX || 0,
         homeY: result.homeY || 0,
         message: result.message || 'Failed to join the game',
         error: result.message || 'Failed to join the game'
-      }, { status: 400 });
+      } as JoinGameResponse), { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
     }
     
     // Return success response
-    return json<JoinGameResponse>({
+    return new Response(JSON.stringify({
       success: true,
       gameJoined: result.gameJoined,
       homeX: result.homeX,
       homeY: result.homeY,
       message: 'Successfully joined the game!'
+    } as JoinGameResponse), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     
   } catch (error) {
     console.error('Error in join game endpoint:', error);
     
-    return json<JoinGameResponse>({
+    return new Response(JSON.stringify({
       success: false,
       gameJoined: false,
       homeX: 0,
       homeY: 0,
       error: 'An unexpected error occurred while joining the game',
       message: 'An unexpected error occurred. Please try again.'
-    }, { status: 500 });
+    } as JoinGameResponse), { 
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
   }
 }

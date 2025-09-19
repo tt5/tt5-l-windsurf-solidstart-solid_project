@@ -1,5 +1,4 @@
 import type { APIEvent } from '@solidjs/start/server';
-import { json } from '@solidjs/start/server';
 import { getDb } from '~/lib/server/db';
 import { GameService } from '~/lib/server/services/game.service';
 import { requireUser } from '~/lib/server/session';
@@ -18,13 +17,18 @@ export async function GET({ request }: APIEvent) {
   // Check authentication
   const user = await requireUser(request);
   if (!user) {
-    return json<GameStatusResponse>({
+    return new Response(JSON.stringify({
       success: false,
       gameJoined: false,
       homeX: 0,
       homeY: 0,
       error: 'Unauthorized: You must be logged in to view game status'
-    }, { status: 401 });
+    } as GameStatusResponse), { 
+      status: 401,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
   }
 
   try {
@@ -36,17 +40,22 @@ export async function GET({ request }: APIEvent) {
     
     // If no status is found, return default values
     if (!status) {
-      return json<GameStatusResponse>({ 
+      return new Response(JSON.stringify({ 
         success: true,
         gameJoined: false,
         homeX: 0,
         homeY: 0,
         message: 'User has not joined the game yet'
+      } as GameStatusResponse), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
     }
     
     // Return the current status
-    return json<GameStatusResponse>({
+    return new Response(JSON.stringify({
       success: true,
       gameJoined: status.gameJoined,
       homeX: status.homeX,
@@ -54,18 +63,28 @@ export async function GET({ request }: APIEvent) {
       message: status.gameJoined 
         ? `Your home base is at (${status.homeX}, ${status.homeY})`
         : 'You have not joined the game yet'
+    } as GameStatusResponse), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     
   } catch (error) {
     console.error('Error in game status endpoint:', error);
     
-    return json<GameStatusResponse>({ 
+    return new Response(JSON.stringify({ 
       success: false,
       gameJoined: false,
       homeX: 0,
       homeY: 0,
       error: 'An unexpected error occurred while fetching game status',
       message: 'Failed to load game status. Please try again.'
-    }, { status: 500 });
+    } as GameStatusResponse), { 
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
   }
 }
