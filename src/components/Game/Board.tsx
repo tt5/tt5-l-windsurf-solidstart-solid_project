@@ -395,30 +395,44 @@ setRestrictedSquares,
     // Create a new position object
     const newPosition = createPoint(newX, newY);
     
-    // Update both local state and context
+    // Update position immediately to prevent race conditions
     updatePosition(newPosition);
     
     // Create a wrapper function that handles both direct values and updater functions
     const setPositionWrapper = (value: Point | ((prev: Point) => Point)) => {
-      if (typeof value === 'function') {
-        // If it's an updater function, get the current position and apply the update
-        const updatedPosition = value(newPosition);
-        updatePosition(updatedPosition);
-      } else {
-        // If it's a direct value, use it as is
-        updatePosition(value);
-      }
+      const updatedPosition = typeof value === 'function' ? value(newPosition) : value;
+      updatePosition(updatedPosition);
+      return updatedPosition; // Return the new position for chaining
     };
     
-    return handleDirectionUtil(dir, {
-      isMoving,
-      currentPosition: () => newPosition,
-      setCurrentPosition: setPositionWrapper,
-      restrictedSquares: getRestrictedSquares,
-      setRestrictedSquares,
-      setIsMoving,
-      isBasePoint
-    });
+    try {
+      await handleDirectionUtil(dir, {
+        isMoving,
+        currentPosition: () => newPosition,
+        setCurrentPosition: setPositionWrapper,
+        restrictedSquares: getRestrictedSquares,
+        setRestrictedSquares: (value) => {
+          // Ensure we're using the latest position when updating restricted squares
+          const currentPos = currentPosition();
+          setRestrictedSquares(prev => {
+            const newValue = typeof value === 'function' ? value(prev) : value;
+            console.log('Updating restricted squares:', { 
+              prevLength: prev.length, 
+              newLength: newValue.length,
+              currentPosition: currentPos
+            });
+            return newValue;
+          });
+        },
+        setIsMoving,
+        isBasePoint
+      });
+    } catch (error) {
+      console.error('Error in handleDirectionUtil:', error);
+      // Revert position if there was an error
+      updatePosition(currentPos);
+      throw error;
+    }
   };
 
   const handleGridClick = (e: MouseEvent) => {
