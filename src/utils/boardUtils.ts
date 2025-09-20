@@ -11,7 +11,7 @@ type AddBasePointOptions = {
   isSaving: () => boolean;
   setIsSaving: (value: boolean | ((prev: boolean) => boolean)) => void;
   setBasePoints: (value: BasePoint[] | ((prev: BasePoint[]) => BasePoint[])) => void;
-  isDuplicateBasePoint: (x: number, y: number) => boolean;
+  isBasePoint: (x: number, y: number) => boolean;
   isValidCoordinate: (value: number) => boolean;
 };
 
@@ -22,7 +22,7 @@ export const handleAddBasePoint = async ({
   isSaving,
   setIsSaving,
   setBasePoints,
-  isDuplicateBasePoint,
+  isBasePoint,
   isValidCoordinate
 }: AddBasePointOptions): Promise<ApiResponse<BasePoint>> => {
   if (!currentUser) return { success: false, error: 'User not authenticated', timestamp: Date.now() };
@@ -39,7 +39,7 @@ export const handleAddBasePoint = async ({
   }
   
   // Check for duplicate base point
-  if (isDuplicateBasePoint(x, y)) {
+  if (isBasePoint(x, y)) {
     return {
       success: false,
       error: 'Base point already exists at these coordinates',
@@ -396,13 +396,7 @@ export const fetchBasePoints = async ({
   const timeSinceLastFetch = now - lastFetchTime();
   
   console.log("[Board:fetchBasePoints] setIsFetching(true)")
-  // Before the if statement, add:
-console.log('fetchBasePoints conditions:', {
-  isFetching: isFetching(),
-  isMoving: isMoving(),
-  timeSinceLastFetch,
-  shouldFetch: !(isFetching() || isMoving() || (timeSinceLastFetch < 100))
-});
+
   // Skip if we already have recent data or a request is in progress
   if (isFetching() || (timeSinceLastFetch < 1000)) {
     return;
@@ -426,25 +420,28 @@ console.log('fetchBasePoints conditions:', {
     }
 
     const { data } = await response.json();
-    const newBasePoints = data?.basePoints || [];
-
-    if (Array.isArray(newBasePoints)) {
-      console.log("[Board:fetchBasePoints] newBasePoints", JSON.stringify(newBasePoints));
-      setBasePoints(newBasePoints);
-      
-      newBasePoints.forEach(pB => {
-        const p = {
-          x: pB.x + currentPosition()[0], 
-          y: pB.y + currentPosition()[1]
-        };
-        
-        if (p.x < BOARD_CONFIG.GRID_SIZE && p.x >= 0 && p.y < BOARD_CONFIG.GRID_SIZE && p.y >= 0) {
-          setRestrictedSquares(calculateRestrictedSquares(createPoint(p.x, p.y), restrictedSquares()));
-        }
-      });
-      
-      setLastFetchTime(now);
+    
+    if (!data || !Array.isArray(data.basePoints)) {
+      throw new Error('Invalid response: expected data.basePoints to be an array');
     }
+    
+    const newBasePoints = data.basePoints;
+    setBasePoints(newBasePoints);
+      
+    /*
+    newBasePoints.forEach(pB => {
+      const p = {
+        x: pB.x + currentPosition()[0], 
+        y: pB.y + currentPosition()[1]
+      };
+      
+      if (p.x < BOARD_CONFIG.GRID_SIZE && p.x >= 0 && p.y < BOARD_CONFIG.GRID_SIZE && p.y >= 0) {
+        setRestrictedSquares(calculateRestrictedSquares(createPoint(p.x, p.y), restrictedSquares()));
+      }
+    });
+    */
+      
+    setLastFetchTime(now);
   } catch (error) {
     console.error('Error fetching base points:', error);
   } finally {

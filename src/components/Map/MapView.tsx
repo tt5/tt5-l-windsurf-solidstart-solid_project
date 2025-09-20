@@ -22,19 +22,19 @@ const TILE_SIZE = 64; // pixels
 
 // Tile loading configuration
 const TILE_LOAD_CONFIG = {
-  BATCH_SIZE: 2,                  // Reduced to load fewer tiles at once
-  SCREEN_BUFFER: 1,               // Number of screens to preload around the viewport
-  MAX_TILES_TO_LOAD: 50,          // Reduced maximum queue size
-  BATCH_DELAY: 50,                // Delay between batch processing in ms
+  BATCH_SIZE: 4,                  // Reduced to load fewer tiles at once
+  SCREEN_BUFFER: 0,               // Number of screens to preload around the viewport
+  MAX_TILES_TO_LOAD: 20,          // Reduced maximum queue size
+  BATCH_DELAY: 100,                // Delay between batch processing in ms
   BATCH_TIMEOUT: 5000             // Timeout for batch tile loading in ms
 };
 
-const VIEWPORT_WIDTH = 800; // pixels
-const VIEWPORT_HEIGHT = 600; // pixels
+const VIEWPORT_WIDTH = 0; // 800 pixels
+const VIEWPORT_HEIGHT = 0; // 600 pixels
 const TILES_X = Math.ceil(VIEWPORT_WIDTH / TILE_SIZE) + 2; // +2 for buffer tiles
 const TILES_Y = Math.ceil(VIEWPORT_HEIGHT / TILE_SIZE) + 2; // +2 for buffer tiles
-const MIN_ZOOM = 0.5; // 50% zoom
-const MAX_ZOOM = 4.0;  // 400% zoom
+const MIN_ZOOM = 1.0; // 50% zoom
+const MAX_ZOOM = 2.0;
 const ZOOM_STEP = 0.1; // 10% zoom step
 
 // Types
@@ -185,10 +185,10 @@ const MapView: Component = () => {
       }));
       
       // Add center tile to ensure something loads immediately
-      const centerX = Math.floor((width / 2) / TILE_SIZE);
-      const centerY = Math.floor((height / 2) / TILE_SIZE);
+      //const centerX = Math.floor((width / 2) / TILE_SIZE);
+      //const centerY = Math.floor((height / 2) / TILE_SIZE);
       
-      scheduleTilesForLoading([{x: centerX, y: centerY}]);
+      //scheduleTilesForLoading([{x: centerX, y: centerY}]);
     };
     
     // Schedule initial load after a short delay to ensure DOM is ready
@@ -917,8 +917,8 @@ const MapView: Component = () => {
     
     // Calculate tile position in world coordinates (1 unit = 1 pixel)
     // tile.x+t tile.y+t also change TAG-t
-    const tileWorldX = (tile.x+5) * TILE_SIZE;
-    const tileWorldY = (tile.y+5) * TILE_SIZE;
+    const tileWorldX = (tile.x+6) * TILE_SIZE;
+    const tileWorldY = (tile.y+6) * TILE_SIZE;
     
     // Calculate position relative to the viewport
     // Since the viewport is centered, we need to adjust the position
@@ -1156,7 +1156,7 @@ const MapView: Component = () => {
             '--translate-y': '0px',
             '--scale': viewport().zoom,
             // t*64 (also change TAG-t
-            'transform': `scale(${viewport().zoom}) translate(${-viewport().x - (5*64) - 100}px, ${-viewport().y - (2*64) - 350}px)`
+            'transform': `scale(${viewport().zoom}) translate(${-viewport().x - (6*64) - 100}px, ${-viewport().y - (6*64) - 350}px)`
           }}
         >
           <div style={{

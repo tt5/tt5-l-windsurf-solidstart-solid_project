@@ -264,16 +264,6 @@ setRestrictedSquares,
            value <= BOARD_CONFIG.WORLD_BOUNDS.MAX_X;
   };
 
-  // Check if a base point already exists at the given coordinates
-  const isDuplicateBasePoint = (x: number, y: number): boolean => {
-    const points = basePoints();
-    return Array.isArray(points) && 
-           points.some(point => point.x === x && point.y === y);
-  };
-
-  // Handle adding a new base point with proper typing and error handling
-  // handleAddBasePoint has been moved to boardUtils.ts
-
   const handleSquareClick = async (index: number) => {
     // Calculate grid position from index
     const gridX = index % BOARD_CONFIG.GRID_SIZE;
@@ -292,7 +282,7 @@ setRestrictedSquares,
         isSaving,
         setIsSaving,
         setBasePoints,
-        isDuplicateBasePoint,
+        isBasePoint,
         isValidCoordinate
       });
       

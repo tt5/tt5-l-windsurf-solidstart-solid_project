@@ -1,2 +1,0 @@
-sound depends on base points
-

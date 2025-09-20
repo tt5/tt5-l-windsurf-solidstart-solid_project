@@ -1,14 +1,8 @@
 # TODO
 
-- jump to position, how exactly (oldest point, oldest prime update)
-  - update both points with oldest prime - 1 millisec.
-    New player has impact.
-    Next new player gets different starting point.
-
-
 - when a base point in the viewport is removed the restricted squares are not updated (deleted). Solution: update from the events. Also update added base point in the viewport from the events?
+- Adding a base point does not update the viewport (bug)
 - keep position when changing tabs
-- join and leave game, multiple players
 - delete account and clean up base points
 - auto add basepoint with space bar
 
@@ -48,15 +42,3 @@
 - styles
 - performance testing, metrics, logging
 - enhance error handling in cleanup process (in progress)
-
-## drawing
-
-1. fetch base points (100ms cooldown)
-2. draw viewport (restricted squares)
-3. move squares
-4. add base points
-5. is there a next border base point in the direction of movement?
-6. if yes skip calculate-squares (all border squares are restricted except the next border base point).
-7. if no calculate-squares
-8. join moved squares and new border squares
-

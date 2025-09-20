@@ -121,6 +121,7 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
         y,
         GROUP_CONCAT(id) as point_ids,
         GROUP_CONCAT(x) as x_coords,
+        GROUP_CONCAT(game_created_at_ms) as timestamps,
         COUNT(*) as point_count
       FROM base_points
       WHERE (x, y) != (0, 0)  -- Exclude (0,0) from cleanup
