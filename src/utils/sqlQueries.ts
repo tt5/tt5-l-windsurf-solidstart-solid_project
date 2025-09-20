@@ -5,6 +5,7 @@ interface BasePoint {
   id: number;
   x: number;
   y: number;
+  game_created_at_ms: number;
 }
 
 export async function getPointsInLines(db: any, slopes: number[] = []): Promise<{points: BasePoint[], duration: number}> {
@@ -59,32 +60,55 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
   
     // 1. Find vertical lines (same x-coordinate)
     const verticalLines = await db.all(`
+      WITH points_with_ts AS (
+        SELECT 
+          id,
+          x,
+          y,
+          game_created_at_ms,
+          ROW_NUMBER() OVER (PARTITION BY x ORDER BY game_created_at_ms) as rn
+        FROM base_points
+        WHERE (x, y) != (0, 0)  -- Exclude (0,0) from cleanup
+      )
       SELECT 
         x,
         GROUP_CONCAT(id) as point_ids,
         GROUP_CONCAT(y) as y_coords,
+        GROUP_CONCAT(game_created_at_ms) as timestamps,
         COUNT(*) as point_count
-      FROM base_points
-      WHERE (x, y) != (0, 0)  -- Exclude (0,0) from cleanup
+      FROM points_with_ts
       GROUP BY x
       HAVING point_count > 1
       ORDER BY point_count DESC
     `);
     
-    // For each vertical line, keep the oldest point (smallest ID)
+    // For each vertical line, keep the oldest point (smallest game_created_at_ms)
     for (const line of verticalLines) {
       const pointIds = line.point_ids.split(',').map(Number);
       const yCoords = line.y_coords.split(',').map(Number);
+      const timestamps = line.timestamps.split(',').map(Number);
       
-      // Find the oldest point (smallest ID)
-      const oldestPointId = Math.min(...pointIds);
+      // Create points with their timestamps
+      const points = pointIds.map((id: number, index: number): BasePoint => ({
+        id,
+        x: line.x,
+        y: yCoords[index],
+        game_created_at_ms: timestamps[index]
+      }));
+      
+      // Find the oldest point (smallest game_created_at_ms)
+      const oldestPoint = points.reduce((oldest: BasePoint, current: BasePoint) => 
+        current.game_created_at_ms < oldest.game_created_at_ms ? current : oldest
+      );
       
       // Add all other points to the delete list, except (0,0)
-      for (let i = 0; i < pointIds.length; i++) {
-        const currentPoint = { id: pointIds[i], x: line.x, y: yCoords[i] };
+      for (const point of points) {
         // Skip if this is the oldest point or if it's (0,0)
-        if (pointIds[i] !== oldestPointId && !(currentPoint.x === 0 && currentPoint.y === 0)) {
-          pointsToDelete.push(currentPoint);
+        if (point.id !== oldestPoint.id && !(point.x === 0 && point.y === 0)) {
+          // Only add if not already in delete list
+          if (!pointsToDelete.some(p => p.id === point.id)) {
+            pointsToDelete.push(point);
+          }
         }
       }
     }
@@ -105,22 +129,32 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
       ORDER BY point_count DESC
     `);
     
-    // For each horizontal line, keep the oldest point (smallest ID)
+    // For each horizontal line, keep the oldest point (smallest game_created_at_ms)
     for (const line of horizontalLines) {
       const pointIds = line.point_ids.split(',').map(Number);
       const xCoords = line.x_coords.split(',').map(Number);
+      const timestamps = line.timestamps.split(',').map(Number);
       
-      // Find the oldest point (smallest ID)
-      const oldestPointId = Math.min(...pointIds);
+      // Create points with their timestamps
+      const points = pointIds.map((id: number, index: number): BasePoint => ({
+        id,
+        x: xCoords[index],
+        y: line.y,
+        game_created_at_ms: timestamps[index]
+      }));
+      
+      // Find the oldest point (smallest game_created_at_ms)
+      const oldestPoint = points.reduce((oldest: BasePoint, current: BasePoint) => 
+        current.game_created_at_ms < oldest.game_created_at_ms ? current : oldest
+      );
       
       // Add all other points to the delete list, except (0,0)
-      for (let i = 0; i < pointIds.length; i++) {
-        const currentPoint = { id: pointIds[i], x: xCoords[i], y: line.y };
+      for (const point of points) {
         // Skip if this is the oldest point or if it's (0,0)
-        if (pointIds[i] !== oldestPointId && !(currentPoint.x === 0 && currentPoint.y === 0)) {
+        if (point.id !== oldestPoint.id && !(point.x === 0 && point.y === 0)) {
           // Only add if not already in delete list
-          if (!pointsToDelete.some(p => p.id === currentPoint.id)) {
-            pointsToDelete.push(currentPoint);
+          if (!pointsToDelete.some(p => p.id === point.id)) {
+            pointsToDelete.push(point);
           }
         }
       }
@@ -157,7 +191,7 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
     }
     
     // Process diagonal lines
-    const diagonalGroups = new Map<string, Array<{id: number, x: number, y: number}>>();
+    const diagonalGroups = new Map<string, BasePoint[]>();
     
     for (const line of diagonalLines) {
       // Calculate line equation: a*x + b*y + c = 0
@@ -199,7 +233,7 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
       if (points.length < 2) continue;
       
       // Find oldest point (smallest game_created_at_ms)
-      const oldestPoint = points.reduce((oldest, current) => 
+      const oldestPoint = points.reduce((oldest: BasePoint, current: BasePoint) => 
         current.game_created_at_ms < oldest.game_created_at_ms ? current : oldest
       );
       
@@ -236,10 +270,13 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
 }
 
 export async function deletePoints(db: any, points: BasePoint[]): Promise<void> {
-  if (points.length === 0) return;
+  if (!points.length) return;
+  
+  const placeholders = points.map(() => '(?)').join(',');
+  const ids = points.map(p => p.id);
   
   await db.run(`
-    DELETE FROM base_points
-    WHERE id IN (${points.map(p => p.id).join(',')})
-  `);
+    DELETE FROM base_points 
+    WHERE id IN (${placeholders})
+  `, ids);
 }
