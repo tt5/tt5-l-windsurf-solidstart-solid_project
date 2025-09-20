@@ -2,6 +2,7 @@ import { Database } from 'sqlite';
 import { BasePointRepository, CreateBasePointInput } from '../repositories/base-point.repository';
 import { UserRepository } from '../repositories/user.repository';
 import { getDb, SqliteDatabase } from '../db';
+import { getOldestPrimeTimestamp } from '../../../utils/randomSlopes';
 
 // Types for the game service responses
 export interface JoinGameResult {
@@ -85,14 +86,24 @@ export class GameService {
         // Find the oldest base point to determine the next position
         const oldestBase = await this.basePointRepository.getOldest();
         
-        // Calculate new position (spiral pattern)
+        // Calculate new position
         let x = 0, y = 0;
         if (oldestBase) {
-          console.log(`--- oldestBase: ${JSON.stringify(oldestBase)}`)
-          // Simple spiral pattern - in a real game, you'd want a more sophisticated algorithm
-          // TODO: check if in world coordinates
-          x = oldestBase.x - 3;
-          y = oldestBase.y - 2;
+          console.log(`[joinGame] oldestBase: ${JSON.stringify(oldestBase)}`);
+          if (oldestBase.x < 0) {
+            x = oldestBase.x + 3;
+          } else {
+            x = oldestBase.x - 3;
+          }
+          if (oldestBase.y < 0) {
+            y = oldestBase.y + 2;
+          } else {
+            y = oldestBase.y - 2;
+          }
+          
+          // Delete the oldest base point after using it
+          await this.basePointRepository.delete(oldestBase.id);
+          console.log(`[joinGame] Deleted oldest base point ${oldestBase.id} at (${oldestBase.x}, ${oldestBase.y})`);
         }
 
         // Set user's home position and mark as joined
@@ -104,8 +115,8 @@ export class GameService {
           userId,
           x,
           y,
-          // TODO: get oldest prime value -1 millisecond
-          gameCreatedAtMs: Date.now()
+          // Use the oldest prime timestamp minus 1 millisecond, or current time if no primes found
+          gameCreatedAtMs: (getOldestPrimeTimestamp() ?? Date.now()) - 1
         });
 
         return { 

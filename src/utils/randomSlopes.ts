@@ -42,10 +42,13 @@ export function getOldestPrimeTimestamp(): number | null {
   return oldest;
 }
 
-// Initialize timestamps for all primes to 0 (never used)
+// Server start time for initializing prime timestamps
+const SERVER_START_TIME = Date.now();
+
+// Initialize timestamps for all primes to server start time
 PRIMES.forEach(prime => {
   if (!primeTimestamps.has(prime)) {
-    primeTimestamps.set(prime, 0);
+    primeTimestamps.set(prime, SERVER_START_TIME);
   }
 });
 

@@ -1,6 +1,11 @@
 # TODO
 
-- jump to position
+- jump to position, how exactly (oldest point, oldest prime update)
+  - update both points with oldest prime - 1 millisec.
+    New player has impact.
+    Next new player gets different starting point.
+
+
 - when a base point in the viewport is removed the restricted squares are not updated (deleted). Solution: update from the events. Also update added base point in the viewport from the events?
 - keep position when changing tabs
 - join and leave game, multiple players
