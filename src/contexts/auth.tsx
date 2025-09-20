@@ -184,6 +184,26 @@ const createAuthStore = (): AuthStore => {
 
   const logout = async () => {
     try {
+      // First, leave the game if the user is in a game
+      try {
+        const gameResponse = await fetch('/api/game/leave', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+        
+        if (!gameResponse.ok) {
+          console.warn('Failed to leave game before logout:', await gameResponse.text());
+          // Continue with logout even if leaving game fails
+        } else {
+          console.log('Successfully left game before logout');
+        }
+      } catch (gameError) {
+        console.warn('Error leaving game before logout:', gameError);
+        // Continue with logout even if leaving game fails
+      }
+      
+      // Then proceed with normal logout
       const response = await fetch('/api/auth/logout', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
