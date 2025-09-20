@@ -61,6 +61,8 @@ export class GameService {
       return await this.executeTransaction<JoinGameResult>(async () => {
         // Check if user exists and has already joined
         const currentStatus = await this.userRepository.getGameStatus(userId);
+
+        console.log(`[joinGame] currentStatus: ${JSON.stringify(currentStatus)}`);
         
         if (!currentStatus) {
           return { 
@@ -118,6 +120,7 @@ export class GameService {
           // Use the oldest prime timestamp minus 1 millisecond, or current time if no primes found
           gameCreatedAtMs: (getOldestPrimeTimestamp() ?? Date.now()) - 1
         });
+        console.log(`[joinGame] Created new base point for ${userId} at (${x}, ${y})`)
 
         return { 
           success: true, 

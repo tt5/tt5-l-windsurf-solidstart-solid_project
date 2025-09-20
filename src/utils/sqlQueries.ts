@@ -140,8 +140,8 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
       try {
         const batchResults = await db.all(`
           SELECT 
-            p1.id as p1_id, p1.x as p1_x, p1.y as p1_y,
-            p2.id as p2_id, p2.x as p2_x, p2.y as p2_y
+            p1.id as p1_id, p1.x as p1_x, p1.y as p1_y, p1.game_created_at_ms as p1_created_at,
+            p2.id as p2_id, p2.x as p2_x, p2.y as p2_y, p2.game_created_at_ms as p2_created_at
           FROM base_points p1
           JOIN base_points p2 ON p1.id < p2.id
           WHERE ${batchSlopeConditions}
@@ -173,8 +173,18 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
       }
       
       // Add both points to the line group if not already present
-      const p1 = { id: line.p1_id, x: line.p1_x, y: line.p1_y };
-      const p2 = { id: line.p2_id, x: line.p2_x, y: line.p2_y };
+      const p1 = { 
+        id: line.p1_id, 
+        x: line.p1_x, 
+        y: line.p1_y, 
+        game_created_at_ms: line.p1_created_at 
+      };
+      const p2 = { 
+        id: line.p2_id, 
+        x: line.p2_x, 
+        y: line.p2_y, 
+        game_created_at_ms: line.p2_created_at 
+      };
       
       if (!diagonalGroups.get(lineId)!.some(p => p.id === p1.id)) {
         diagonalGroups.get(lineId)!.push(p1);
@@ -188,9 +198,9 @@ export async function getPointsInLines(db: any, slopes: number[] = []): Promise<
     for (const [_, points] of diagonalGroups.entries()) {
       if (points.length < 2) continue;
       
-      // Find oldest point (smallest ID)
+      // Find oldest point (smallest game_created_at_ms)
       const oldestPoint = points.reduce((oldest, current) => 
-        current.id < oldest.id ? current : oldest
+        current.game_created_at_ms < oldest.game_created_at_ms ? current : oldest
       );
       
       // Add other points to delete list

@@ -194,6 +194,10 @@ export type HandleDirectionOptions = {
   isBasePoint: (x: number, y: number) => boolean;
 };
 
+// Track the last movement time to prevent rapid successive movements
+let lastMoveTime = 0;
+const MOVE_COOLDOWN_MS = 50; // Minimum time between movements in milliseconds
+
 export const handleDirection = async (
   dir: Direction,
   options: HandleDirectionOptions
@@ -208,10 +212,14 @@ export const handleDirection = async (
     isBasePoint
   } = options;
 
-  if (isMoving()) {
-    return; // Prevent multiple movements at once
+  const now = Date.now();
+  
+  // Prevent multiple movements at once and enforce cooldown
+  if (isMoving() || now - lastMoveTime < MOVE_COOLDOWN_MS) {
+    return;
   }
   
+  lastMoveTime = now;
   setIsMoving(true);
   
   try {
@@ -339,9 +347,10 @@ export const handleDirection = async (
     throw error;
   } finally {
     // Small delay to prevent rapid successive movements
+    const remainingCooldown = MOVE_COOLDOWN_MS - (Date.now() - lastMoveTime);
     setTimeout(() => {
       setIsMoving(false);
-    }, 20);
+    }, Math.max(0, remainingCooldown));
   }
 };
 
