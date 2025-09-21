@@ -1,6 +1,7 @@
 const DB_NAME = 'mapTilesDB';
 const STORE_NAME = 'tiles';
 const VERSION = 1;
+const MAX_TILES = 100; // Maximum number of tiles to keep in memory
 
 interface TileCacheEntry {
   x: number;
@@ -20,6 +21,7 @@ export class TileCache {
   private refreshThreshold = 20 * 1000; // Start refreshing 20s after last update
   private lastUpdateTime = 0;
   private refreshInterval: number | null = null;
+  private accessTimes = new Map<string, number>(); // Track when tiles were last accessed
 
   constructor() {
     this.init();
@@ -167,7 +169,6 @@ export class TileCache {
   }
 
   async getTile(x: number, y: number, forceRefresh = false): Promise<TileCacheEntry | null> {
-    
     if (!this.isInitialized) {
       try {
         await this.init();
@@ -186,6 +187,10 @@ export class TileCache {
     if (forceRefresh) {
       return null;
     }
+    
+    // Update access time for this tile
+    const tileKey = `${x},${y}`;
+    this.accessTimes.set(tileKey, Date.now());
 
     return new Promise((resolve) => {
       try {
@@ -239,7 +244,6 @@ export class TileCache {
   }
 
   async setTile(x: number, y: number, data: Uint8Array, etag?: string): Promise<void> {
-    
     if (!this.isInitialized) {
       try {
         await this.init();
@@ -251,6 +255,16 @@ export class TileCache {
     
     // Update last update time
     this.lastUpdateTime = Date.now();
+    
+    // Update access time for this tile
+    const tileKey = `${x},${y}`;
+    this.accessTimes.set(tileKey, Date.now());
+    
+    // Check if we need to evict tiles due to MAX_TILES limit
+    const currentSize = await this.getCacheSize();
+    if (currentSize >= MAX_TILES) {
+      await this.evictLRUTiles(currentSize - MAX_TILES + 1);
+    }
     
     // If we don't have a refresh interval set up, schedule one
     if (!this.refreshInterval) {
@@ -320,6 +334,10 @@ export class TileCache {
     if (typeof window === 'undefined') {
       return;
     }
+    
+    // Remove from access times
+    const tileKey = `${x},${y}`;
+    this.accessTimes.delete(tileKey);
 
     return new Promise((resolve, reject) => {
       try {
@@ -353,6 +371,9 @@ export class TileCache {
     if (typeof window === 'undefined') {
       return;
     }
+    
+    // Clear access times
+    this.accessTimes.clear();
 
     return new Promise((resolve, reject) => {
       try {
@@ -432,16 +453,34 @@ export class TileCache {
     });
   }
 
+  private async evictLRUTiles(count: number): Promise<void> {
+    if (count <= 0) return;
+    
+    // Get all tiles with their last access times
+    const tiles = Array.from(this.accessTimes.entries())
+      .map(([key, lastAccess]) => ({
+        key,
+        lastAccess,
+        coords: key.split(',').map(Number) as [number, number]
+      }))
+      .sort((a, b) => a.lastAccess - b.lastAccess);
+    
+    // Remove the least recently used tiles
+    const tilesToRemove = tiles.slice(0, count);
+    for (const { coords: [x, y], key } of tilesToRemove) {
+      await this.deleteTile(x, y);
+      this.accessTimes.delete(key);
+    }
+  }
+
   private scheduleNextCleanup() {
     if (this.refreshInterval) {
       clearTimeout(this.refreshInterval);
     }
     
     // Schedule next cleanup in 10 seconds
-    const cleanupTime = Date.now() + 10000;
-    
     this.refreshInterval = window.setTimeout(() => {
-      this.cleanupOldTiles()
+      this.cleanupOldTiles().catch(console.error);
     }, 10000);
   }
 
