@@ -1,3 +1,4 @@
+
 import { Component, createEffect, createSignal, onCleanup, onMount, batch, JSX } from 'solid-js';
 import { inflate } from 'pako';
 import { useAuth } from '../../contexts/auth';
@@ -16,6 +17,7 @@ tileCache.init().then(() => {
 });
 
 import styles from './MapView.module.css';
+import { $ } from '@faker-js/faker/dist/airline-D6ksJFwG';
 
 // Constants
 const TILE_SIZE = 64; // pixels
@@ -29,8 +31,8 @@ const TILE_LOAD_CONFIG = {
   BATCH_TIMEOUT: 5000             // Timeout for batch tile loading in ms
 };
 
-const VIEWPORT_WIDTH = 0; // 800 pixels
-const VIEWPORT_HEIGHT = 0; // 600 pixels
+const VIEWPORT_WIDTH = 800; // 800 pixels
+const VIEWPORT_HEIGHT = 600; // 600 pixels
 const TILES_X = Math.ceil(VIEWPORT_WIDTH / TILE_SIZE) + 2; // +2 for buffer tiles
 const TILES_Y = Math.ceil(VIEWPORT_HEIGHT / TILE_SIZE) + 2; // +2 for buffer tiles
 const MIN_ZOOM = 1.0; // 50% zoom
@@ -65,6 +67,7 @@ const MapView: Component = () => {
   const getInitialViewport = (): Viewport => {
     const width = containerRef?.clientWidth || VIEWPORT_WIDTH;
     const height = containerRef?.clientHeight || VIEWPORT_HEIGHT;
+    console.log(`width, height: ${width}, ${height}`)
     return {
       x: 0,  // Start exactly at (0,0)
       y: 0,
@@ -171,12 +174,12 @@ const MapView: Component = () => {
     // Initial tile loading function
     const initialLoad = () => {
       if (!isMounted()) return;
-      
+      console.log(`[MapView] Effect initialLoad`)
       
       // Update viewport with actual dimensions
       const width = containerRef?.clientWidth || VIEWPORT_WIDTH;
       const height = containerRef?.clientHeight || VIEWPORT_HEIGHT;
-      
+      console.log(`[MapView] Effect initialLoad width: ${width}, height: ${height}`)
       
       setViewport(prev => ({
         ...prev,
@@ -225,10 +228,8 @@ const MapView: Component = () => {
   const generateSpiralCoords = (centerX: number, centerY: number, radius: number) => {
     const result: Array<{x: number, y: number, distance: number}> = [];
     
-    // Start from (0,0)
-    result.push({ x: 0, y: 0, distance: 0 });
+    result.push({ x: centerX, y: centerY, distance: 0 });
     
-    // Generate spiral coordinates starting from (0,0)
     for (let r = 1; r <= radius; r++) {
       // Start at the top-right corner of the square
       let x = r;
@@ -236,28 +237,28 @@ const MapView: Component = () => {
       
       // Top edge (right to left)
       for (; x >= -r; x--) {
-        result.push({ x, y, distance: r });
+        result.push({ x: centerX + x, y: centerY + y, distance: r });
       }
       x++;
       y++;
       
       // Left edge (top to bottom)
       for (; y <= r; y++) {
-        result.push({ x, y, distance: r });
+        result.push({ x: centerX + x, y: centerY + y, distance: r });
       }
       y--;
       x++;
       
       // Bottom edge (left to right)
       for (; x <= r; x++) {
-        result.push({ x, y, distance: r });
+        result.push({ x: centerX + x, y: centerY + y, distance: r });
       }
       x--;
       y--;
       
       // Right edge (bottom to top)
       for (; y > -r; y--) {
-        result.push({ x, y, distance: r });
+        result.push({ x: centerX + x, y: centerY + y, distance: r });
       }
     }
     
@@ -310,19 +311,19 @@ const MapView: Component = () => {
     const centerY = vp.y + (vp.height / zoom) / 2;
     
     // Calculate how many tiles we need to cover the viewport
-    const tilesX = Math.ceil((vp.width / zoom) / TILE_SIZE) + 2; // +2 for buffer tiles
-    const tilesY = Math.ceil((vp.height / zoom) / TILE_SIZE) + 2; // +2 for buffer tiles
+    const tilesX = Math.ceil((vp.width / zoom) / TILE_SIZE) + 1; // +1 for buffer tiles
+    const tilesY = Math.ceil((vp.height / zoom) / TILE_SIZE) + 1; // +1 for buffer tiles
     const spiralRadius = Math.max(tilesX, tilesY);
     
-    
     // Generate spiral coordinates starting from (0,0)
-    const spiralCoords = generateSpiralCoords(0, 0, spiralRadius);
+    const tileCoords = worldToTileCoords(vp.x,vp.y);
+    const spiralCoords = generateSpiralCoords(tileCoords.tileX, tileCoords.tileY, spiralRadius);
     
     // Filter and prioritize tiles
     const visibleTiles: Array<{x: number, y: number, priority: number}> = [];
     const queueSet = new Set(currentQueue.map(t => `${t.x},${t.y}`));
     
-    for (const {x, y} of spiralCoords) {
+    for (const {x, y, distance} of spiralCoords) {
       const key = `${x},${y}`;
       const existingTile = tiles()[key];
       
@@ -333,10 +334,10 @@ const MapView: Component = () => {
       if (queueSet.has(key)) continue;
       
       // Calculate distance from (0,0) for priority
-      const distance = Math.sqrt(x * x + y * y);
+      //const distance = Math.sqrt(x * x + y * y);
       
       // Only add tiles that are within the visible area plus a small buffer
-      if (distance <= spiralRadius * 1.5) {
+      if (distance <= spiralRadius * 1.2) {
         visibleTiles.push({
           x, y,
           priority: distance // Closer tiles have higher priority (lower number)
@@ -812,6 +813,7 @@ const MapView: Component = () => {
       const newX = vp.x - (dx / vp.zoom);
       const newY = vp.y - (dy / vp.zoom);
       
+      console.log(`[MapView] handleMouseMove newX: ${newX}, newY: ${newY}`)
       // Update viewport with new position
       updateViewport({
         x: newX,
@@ -855,6 +857,7 @@ const MapView: Component = () => {
     // Get mouse position relative to the container
     const rect = containerRef?.getBoundingClientRect();
     if (!rect) return;
+    console.log(`rect: ${rect.left}, ${rect.top}`)
     
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
@@ -873,6 +876,7 @@ const MapView: Component = () => {
     const newX = worldX - (mouseX / newZoom);
     const newY = worldY - (mouseY / newZoom);
     
+    console.log(`[MapView] handleWheel newX: ${newX}, newY: ${newY}, newZoom: ${newZoom}`)
     // Update viewport with new zoom and position in a single update
     updateViewport({
       x: newX,
@@ -1156,7 +1160,7 @@ const MapView: Component = () => {
             '--translate-y': '0px',
             '--scale': viewport().zoom,
             // t*64 (also change TAG-t
-            'transform': `scale(${viewport().zoom}) translate(${-viewport().x - (6*64) - 100}px, ${-viewport().y - (6*64) - 350}px)`
+            'transform': `scale(${viewport().zoom}) translate(${-viewport().x - (6 * 64)}px, ${-viewport().y - (6 * 64)}px)`
           }}
         >
           <div style={{
@@ -1193,6 +1197,7 @@ const MapView: Component = () => {
               // Calculate the new position to keep (0,0) fixed
               const dx = (vp.width / 2) * (1 - newZoom / vp.zoom);
               const dy = (vp.height / 2) * (1 - newZoom / vp.zoom);
+              console.log(`[MapView] handleZoomIn newX: ${vp.x - dx}, newY: ${vp.y - dy}, newZoom: ${newZoom}`)
               updateViewport({
                 zoom: newZoom,
                 x: vp.x - dx,
@@ -1210,6 +1215,7 @@ const MapView: Component = () => {
               // Calculate the new position to keep (0,0) fixed
               const dx = (vp.width / 2) * (1 - newZoom / vp.zoom);
               const dy = (vp.height / 2) * (1 - newZoom / vp.zoom);
+              console.log(`[MapView] handleZoomOut newX: ${vp.x - dx}, newY: ${vp.y - dy}, newZoom: ${newZoom}`)
               updateViewport({
                 zoom: newZoom,
                 x: vp.x - dx,
