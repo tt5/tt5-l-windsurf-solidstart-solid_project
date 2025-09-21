@@ -1,57 +1,27 @@
-# Tile Cleanup Implementation Plan
+# Tile Cache Management
 
-## Phase 1: Core Cleanup System
+## Core Requirements
 
-### 1.1 Memory Management
-- [ ] Add `MAX_TILES` constant to limit in-memory tiles
+### Memory Management
 - [ ] Implement LRU (Least Recently Used) eviction policy
-- [ ] Add memory pressure event listeners
+- [ ] Set `MAX_TILES` limit (default: 100)
 - [ ] Track tile access timestamps
 
-### 1.2 Viewport Integration
-- [ ] Add viewport tracking in MapView
-- [ ] Implement `isTileInViewport` utility function
-- [ ] Add viewport change debouncing
-- [ ] Create viewport buffer zones (1-2 screens)
+### Viewport Awareness
+- [ ] Track viewport position in MapView
+- [ ] Add buffer zone (1 screen by default)
+- [ ] Debounce viewport updates (100ms)
 
-## Phase 2: Performance Optimizations
+## Implementation
 
-### 2.1 Batch Processing
-- [ ] Implement batched cleanup operations
-- [ ] Add configurable batch size (default: 10)
-- [ ] Add delay between batches (default: 50ms)
-- [ ] Add cleanup prioritization (furthest from viewport first)
-
-### 2.2 Progressive Loading
-- [ ] Add loading priorities (visible > buffer > background)
-- [ ] Implement progressive quality loading
-- [ ] Add placeholder system for offscreen tiles
-- [ ] Add cancellation for offscreen tile loading
-
-## Phase 3: Monitoring and Metrics
-
-### 3.1 Performance Metrics
-- [ ] Track tile cache hit/miss ratio
-- [ ] Monitor memory usage
-- [ ] Track cleanup operation duration
-- [ ] Log performance metrics
-
-### 3.2 Debug Tools
-- [ ] Add debug overlay for tile states
-- [ ] Visualize viewport and buffer zones
-- [ ] Add tile age visualization
-- [ ] Add memory usage display
-
-## Implementation Details
-
-### TileCache Class Extensions
+### TileCache Interface
 ```typescript
 interface TileCacheOptions {
-  maxTiles?: number;          // Maximum tiles in memory
-  viewportBuffer?: number;    // Screens to keep around viewport
-  cleanupInterval?: number;   // Cleanup interval in ms
-  batchSize?: number;         // Tiles to process per batch
-  batchDelay?: number;        // Delay between batches in ms
+  maxTiles?: number;         // Max tiles in memory (default: 100)
+  viewportBuffer?: number;   // Screens to keep (default: 1)
+  cleanupInterval?: number;  // Cleanup interval in ms (default: 10s)
+  batchSize?: number;        // Tiles per batch (default: 10)
+  batchDelay?: number;       // Delay between batches (default: 50ms)
 }
 
 class TileCache {
@@ -61,12 +31,9 @@ class TileCache {
   private batchSize: number;
   private batchDelay: number;
   
-  // Track viewport state
   private viewport: Viewport | null = null;
   private lastCleanupTime = 0;
   private cleanupInProgress = false;
-  
-  // Track tile access
   private tileAccessTimes = new Map<string, number>();
   
   constructor(options: TileCacheOptions = {}) {
@@ -77,26 +44,20 @@ class TileCache {
     this.batchDelay = options.batchDelay || 50;
   }
   
-  // Update viewport for cleanup decisions
   updateViewport(viewport: Viewport) {
     this.viewport = viewport;
     this.scheduleCleanup();
   }
   
-  // Cleanup implementation
   private async cleanupTiles() {
     if (this.cleanupInProgress) return;
     this.cleanupInProgress = true;
     
     try {
       const now = Date.now();
-      if (now - this.lastCleanupTime < this.cleanupInterval) {
-        return;
-      }
+      if (now - this.lastCleanupTime < this.cleanupInterval) return;
       
       this.lastCleanupTime = now;
-      
-      // Get all tiles and sort by distance from viewport
       const tiles = await this.getAllTiles();
       const viewportTiles = this.viewport 
         ? this.getTilesInViewport(tiles, this.viewport, this.viewportBuffer)
