@@ -242,7 +242,7 @@ const MapView: Component = () => {
       x++;
       y++;
       
-      // Left edge (top to bottom)
+    // Left edge (top to bottom)
       for (; y <= r; y++) {
         result.push({ x: centerX + x, y: centerY + y, distance: r });
       }
@@ -268,6 +268,11 @@ const MapView: Component = () => {
   // Schedule tiles for loading based on current viewport
   const scheduleTilesForLoading = (specificTiles?: Array<{x: number, y: number}>) => {
     // If specific tiles are provided, just process those
+    const vp = viewport();
+    const vpx = Math.floor(Math.abs(vp.x)/64);
+    const vpy = Math.floor(Math.abs(vp.y)/64);
+    console.log(`[scheduleTilesForLoading] vpx: ${vpx}, vpy: ${vpy}`)
+    if(vpx > 16 || vpy > 16) return;
     if (specificTiles && specificTiles.length > 0) {
       setTileQueue(prev => {
         const newQueue = [...prev];
@@ -297,7 +302,6 @@ const MapView: Component = () => {
       console.log(`[scheduleTilesForLoading] Queue is almost full (${queueLength}/${TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD}), only adding high priority tiles`);
     }
     
-    const vp = viewport();
     const zoom = vp.zoom;
     
     // If queue is full, skip scheduling more tiles
@@ -310,19 +314,18 @@ const MapView: Component = () => {
     const centerX = vp.x + (vp.width / zoom) / 2;
     const centerY = vp.y + (vp.height / zoom) / 2;
     
-    // Calculate how many tiles we need to cover the viewport
-    const tilesX = Math.ceil((vp.width / zoom) / TILE_SIZE) + 1; // +1 for buffer tiles
-    const tilesY = Math.ceil((vp.height / zoom) / TILE_SIZE) + 1; // +1 for buffer tiles
-    const spiralRadius = Math.max(tilesX, tilesY);
+    const spiralRadius = 2;
     
     // Generate spiral coordinates starting from (0,0)
     const tileCoords = worldToTileCoords(vp.x,vp.y);
+    console.log(`tileCoords: ${JSON.stringify(tileCoords)}`)
     const spiralCoords = generateSpiralCoords(tileCoords.tileX, tileCoords.tileY, spiralRadius);
+    console.log(`spiralCoords: ${JSON.stringify(spiralCoords)}`)
     
     // Filter and prioritize tiles
     const visibleTiles: Array<{x: number, y: number, priority: number}> = [];
     const queueSet = new Set(currentQueue.map(t => `${t.x},${t.y}`));
-    
+
     for (const {x, y, distance} of spiralCoords) {
       const key = `${x},${y}`;
       const existingTile = tiles()[key];
@@ -337,14 +340,16 @@ const MapView: Component = () => {
       //const distance = Math.sqrt(x * x + y * y);
       
       // Only add tiles that are within the visible area plus a small buffer
-      if (distance <= spiralRadius * 1.2) {
+      if (distance <= spiralRadius * 1.0) {
         visibleTiles.push({
           x, y,
           priority: distance // Closer tiles have higher priority (lower number)
         });
       }
+
     }
     
+    console.log(`visibleTiles: ${visibleTiles}`)
     // Sort by priority (closest first)
     visibleTiles.sort((a, b) => a.priority - b.priority);
     
