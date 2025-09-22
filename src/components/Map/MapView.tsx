@@ -941,26 +941,38 @@ width,
       );
     } else {
       try {
-        // Try to render the tile image
-        const tileImage = renderBitmap(tile.data);
+        // Get the black pixels array
+        const blackPixels = renderBitmap(tile.data);
+        //const tileImage = renderBitmap(tile.data);
+        console.log(blackPixels)
         
-        if (tileImage) {
-          // Successfully rendered tile
+        if (blackPixels.length > 0) {
+          // Create an SVG with circles for each black pixel
           content = (
             <div class={styles.tileContent}>
-              <img
-                src={tileImage}
-                alt={`Tile ${tile.x},${tile.y}`}
-                class={styles.tileImage}
-                loading="lazy"
-              />
+              <svg 
+                width={TILE_SIZE} 
+                height={TILE_SIZE} 
+                viewBox={`0 0 ${TILE_SIZE} ${TILE_SIZE}`}
+                class={styles.tileSvg}
+              >
+                {blackPixels.map(({x, y}, index) => (
+                  <circle 
+                    key={index} 
+                    cx={x + 0.5} 
+                    cy={y + 0.5} 
+                    r={0.7} 
+                    fill="black" 
+                  />
+                ))}
+              </svg>
               <div class={styles.tileLabel}>
                 {tile.x},{tile.y}
               </div>
             </div>
           );
         } else {
-          // Fallback to colored tile if image couldn't be generated
+          // Fallback to colored tile if no black pixels
           content = (
             <div 
               class={styles.fallbackTile}
@@ -1007,15 +1019,33 @@ width,
     );
   };
 
-  // Convert tile data to an image data URL
-  const renderBitmap = (tileData: Uint8Array | string): string => {
-    // Skip in SSR
-    if (typeof document === 'undefined') return '';
+  // Helper function to extract coordinates of black pixels from 1-bit bitmap
+const extractBlackPixels = (bitmap: Uint8Array): {x: number, y: number}[] => {
+  const blackPixels: {x: number, y: number}[] = [];
+  let pixelIndex = 0;
+  
+  for (let i = 0; i < bitmap.length && pixelIndex < TILE_SIZE * TILE_SIZE; i++) {
+    const byte = bitmap[i];
     
-    // If tileData is already a data URL, return it directly
-    if (typeof tileData === 'string' && tileData.startsWith('data:image/')) {
-      return tileData;
+    // Process each bit in the byte (MSB first)
+    for (let bit = 7; bit >= 0 && pixelIndex < TILE_SIZE * TILE_SIZE; bit--, pixelIndex++) {
+      if ((byte >> bit) & 1) {
+        // Calculate x, y coordinates from pixel index
+        const x = pixelIndex % TILE_SIZE;
+        const y = Math.floor(pixelIndex / TILE_SIZE);
+        blackPixels.push({x, y});
+      }
     }
+  }
+  
+  return blackPixels;
+};
+
+  // Convert tile data to an image data URL
+  const renderBitmap = (tileData: Uint8Array | string): Array<{x: number, y: number}> => {
+
+    // Skip in SSR
+    if (typeof document === 'undefined') return [];
     
     try {
       // The tile data should already be a Uint8Array at this point
@@ -1024,7 +1054,7 @@ width,
       // Check for empty data
       if (!data || data.length === 0) {
         console.log('Empty tile data');
-        return '';
+        return [];
       }
 
       // The first byte is a version byte (0x01 for our format)
@@ -1039,6 +1069,8 @@ width,
           if (decompressed.length !== expectedSize) {
             console.warn(`Unexpected decompressed size: ${decompressed.length}, expected ${expectedSize}`);
           }
+
+          const blackPixels = extractBlackPixels(decompressed);
           
           // Convert 1-bit bitmap to RGBA
           const imageData = new Uint8ClampedArray(TILE_SIZE * TILE_SIZE * 4);
@@ -1069,20 +1101,21 @@ width,
             }
           }
           
-          return renderImageData(imageData);
+          //return renderImageData(imageData);
+          return blackPixels;
           
         } catch (error) {
           console.error('Failed to process compressed tile data:', error);
-          return '';
+          return [];
         }
       } else {
         console.log('Unsupported data format or missing version byte');
-        return '';
+        return [];
       }
 
     } catch (error) {
       console.error('Error rendering bitmap:', error);
-      return '';
+      return [];
     }
   };
   
