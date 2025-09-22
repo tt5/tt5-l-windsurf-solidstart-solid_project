@@ -956,15 +956,21 @@ width,
                 viewBox={`0 0 ${TILE_SIZE} ${TILE_SIZE}`}
                 class={styles.tileSvg}
               >
-                {blackPixels.map(({x, y}, index) => (
-                  <circle 
-                    key={index} 
-                    cx={x + 0.5} 
-                    cy={y + 0.5} 
-                    r={0.7} 
-                    fill="black" 
-                  />
-                ))}
+                {blackPixels.map(({x, y}, index) => {
+                  const circleAttrs = {
+                    cx: x + 0.5,
+                    cy: y + 0.5,
+                    r: 2,
+                    fill: 'black'
+                  };
+                  return (
+                    <circle 
+                      {...circleAttrs}
+                      // @ts-ignore - key is a valid prop for list rendering
+                      key={index}
+                    />
+                  );
+                })}
               </svg>
               <div class={styles.tileLabel}>
                 {tile.x},{tile.y}
