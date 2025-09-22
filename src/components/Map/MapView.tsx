@@ -27,8 +27,9 @@ const TILE_LOAD_CONFIG = {
   BATCH_SIZE: 4,                  // Reduced to load fewer tiles at once
   SCREEN_BUFFER: 0,               // Number of screens to preload around the viewport
   MAX_TILES_TO_LOAD: 20,          // Reduced maximum queue size
-  BATCH_DELAY: 100,                // Delay between batch processing in ms
-  BATCH_TIMEOUT: 5000             // Timeout for batch tile loading in ms
+  BATCH_DELAY: 100,               // Delay between batch processing in ms
+  BATCH_TIMEOUT: 5000,            // Timeout for batch tile loading in ms
+  MAX_TILES_IN_MEMORY: 200        // Maximum number of tiles to keep in memory
 };
 
 const VIEWPORT_WIDTH = 800; // 800 pixels
@@ -543,6 +544,25 @@ const MapView: Component = () => {
 
   // Load a single tile
   const loadTile = async (tileX: number, tileY: number, forceRefresh = false): Promise<void> => {
+    // Enforce maximum number of tiles in memory
+    const currentTiles = tiles();
+    if (Object.keys(currentTiles).length >= TILE_LOAD_CONFIG.MAX_TILES_IN_MEMORY) {
+      // Find the oldest accessed tile that's not currently loading
+      const tilesArray = Object.entries(currentTiles)
+        .filter(([_, tile]) => !tile.loading)
+        .sort((a, b) => a[1].timestamp - b[1].timestamp);
+          
+      if (tilesArray.length > 0) {
+        // Remove the oldest tile
+        const [oldestKey] = tilesArray[0];
+        setTiles(prev => {
+          const newTiles = { ...prev };
+          delete newTiles[oldestKey];
+          return newTiles;
+        });
+      }
+    }
+    
     // Wait for tile cache to be ready
     if (!tileCacheReady) {
       try {
@@ -585,7 +605,7 @@ const MapView: Component = () => {
               data: cachedTile.data,
               loading: false,
               error: false,
-              timestamp: cachedTile.timestamp,
+              timestamp: Date.now(), // Update timestamp on access
               mountId: currentMountId,
               fromCache: true
             }
@@ -850,6 +870,12 @@ const MapView: Component = () => {
   // Handle cursor cleanup on unmount
   onCleanup(() => {
     document.body.style.cursor = '';
+    // Clear any pending queue and timeouts
+    setTileQueue([]);
+    if (processQueueTimeout) {
+      clearTimeout(processQueueTimeout);
+      processQueueTimeout = null;
+    }
   });
 
   // Handle zooming with mouse wheel
