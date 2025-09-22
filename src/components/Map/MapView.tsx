@@ -574,15 +574,12 @@ const MapView: Component = () => {
     }
     
     const key = getTileKey(tileX, tileY);
-    const currentTiles = tiles();
     const currentTile = currentTiles[key];
     
     // Skip if already loading the same tile, unless we're forcing a refresh
     if (currentTile?.loading) {
       if (!forceRefresh) {
         return;
-      } else {
-        console.log(`[loadTile] Forcing refresh of already loading tile (${tileX}, ${tileY})`);
       }
     }
     
