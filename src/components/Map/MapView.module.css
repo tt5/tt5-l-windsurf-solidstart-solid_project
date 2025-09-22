@@ -473,15 +473,12 @@
 }
 
 .mapContent {
-  transform-origin: 10 10;
   width: 200vw;
   height: 200vh;
-  transform: translate3d(
-    var(--translate-x, 0),
-    var(--translate-y, 0),
-    0
-  ) scale(var(--scale, 1));
   will-change: transform;
+  position: relative;
+  left: -0px;
+  top: -0px;
 }
 
 .tileContainer {

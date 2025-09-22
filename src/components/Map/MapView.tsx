@@ -534,6 +534,8 @@ const MapView: Component = () => {
 
   // Load a single tile
   const loadTile = async (tileX: number, tileY: number, forceRefresh = false): Promise<void> => {
+    console.log(`Loading tile: (${tileX}, ${tileY})`);  // Add this for debugging
+    
     // Enforce maximum number of tiles in memory
     const currentTiles = tiles();
     if (Object.keys(currentTiles).length >= TILE_LOAD_CONFIG.MAX_TILES_IN_MEMORY) {
@@ -939,8 +941,8 @@ const MapView: Component = () => {
     
     // Calculate tile position in world coordinates (1 unit = 1 pixel)
     // tile.x+t tile.y+t also change TAG-t
-    const tileWorldX = (tile.x+6) * TILE_SIZE;
-    const tileWorldY = (tile.y+6) * TILE_SIZE;
+    const tileWorldX = (tile.x) * TILE_SIZE;
+    const tileWorldY = (tile.y) * TILE_SIZE;
     
     // Calculate position relative to the viewport
     // Since the viewport is centered, we need to adjust the position
@@ -1178,7 +1180,7 @@ const MapView: Component = () => {
             '--translate-y': '0px',
             '--scale': viewport().zoom,
             // t*64 (also change TAG-t
-            'transform': `scale(${viewport().zoom}) translate(${-viewport().x - (6 * 64)}px, ${-viewport().y - (6 * 64)}px)`
+            'transform': `scale(${viewport().zoom}) translate(${-viewport().x}px, ${-viewport().y}px)`
           }}
         >
           <div style={{
