@@ -25,11 +25,11 @@ const TILE_SIZE = 64; // pixels
 // Tile loading configuration
 const TILE_LOAD_CONFIG = {
   BATCH_SIZE: 4,                  // Reduced to load fewer tiles at once
-  SCREEN_BUFFER: 0,               // Number of screens to preload around the viewport
-  MAX_TILES_TO_LOAD: 20,          // Reduced maximum queue size
+  SCREEN_BUFFER: 1,               // Number of screens to preload around the viewport
+  MAX_TILES_TO_LOAD: 40,          // Reduced maximum queue size
   BATCH_DELAY: 100,               // Delay between batch processing in ms
   BATCH_TIMEOUT: 5000,            // Timeout for batch tile loading in ms
-  MAX_TILES_IN_MEMORY: 200        // Maximum number of tiles to keep in memory
+  MAX_TILES_IN_MEMORY: 40        // Maximum number of tiles to keep in memory
 };
 
 const VIEWPORT_WIDTH = 800; // 800 pixels
@@ -303,21 +303,14 @@ const MapView: Component = () => {
       console.log(`[scheduleTilesForLoading] Queue is almost full (${queueLength}/${TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD}), only adding high priority tiles`);
     }
     
-    const zoom = vp.zoom;
-    
     // If queue is full, skip scheduling more tiles
     if (queueLength >= TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD) {
       processTileQueue();
       return;
     }
     
-    // Calculate visible area in world coordinates
-    const centerX = vp.x + (vp.width / zoom) / 2;
-    const centerY = vp.y + (vp.height / zoom) / 2;
+    const spiralRadius = 1;
     
-    const spiralRadius = 2;
-    
-    // Generate spiral coordinates starting from (0,0)
     const tileCoords = worldToTileCoords(vp.x,vp.y);
     console.log(`tileCoords: ${JSON.stringify(tileCoords)}`)
     const spiralCoords = generateSpiralCoords(tileCoords.tileX, tileCoords.tileY, spiralRadius);
@@ -337,11 +330,8 @@ const MapView: Component = () => {
       // Skip if already in queue
       if (queueSet.has(key)) continue;
       
-      // Calculate distance from (0,0) for priority
-      //const distance = Math.sqrt(x * x + y * y);
-      
       // Only add tiles that are within the visible area plus a small buffer
-      if (distance <= spiralRadius * 1.0) {
+      if (distance <= spiralRadius) {
         visibleTiles.push({
           x, y,
           priority: distance // Closer tiles have higher priority (lower number)
