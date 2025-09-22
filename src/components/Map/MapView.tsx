@@ -9,7 +9,7 @@ const TILE_SIZE = 64; // pixels
 
 const TILE_LOAD_CONFIG = {
   BATCH_SIZE: 4,                  // Reduced to load fewer tiles at once
-  MAX_TILES_TO_LOAD: 20,          // Reduced maximum queue size
+  MAX_TILES_TO_LOAD: 30,          // Reduced maximum queue size
   BATCH_DELAY: 100,               // Delay between batch processing in ms
   BATCH_TIMEOUT: 5000,            // Timeout for batch tile loading in ms
   MAX_TILES_IN_MEMORY: 50       // Maximum number of tiles to keep in memory
@@ -47,7 +47,7 @@ const MapView: Component = () => {
     return {
       x: 0,  // Start exactly at (0,0)
       y: 0,
-width,
+      width,
       height
     };
   };
@@ -507,7 +507,6 @@ width,
       // Find the oldest accessed tile that's not currently loading
       const tilesArray = Object.entries(currentTiles)
         .filter(([_, tile]) => !tile.loading)
-        //.sort((a, b) => a[1].timestamp - b[1].timestamp);
         .sort((a, b) => {
           const distA = Math.abs(a[1].x - vpx) + Math.abs(a[1].y - vpy);
           const distB = Math.abs(b[1].x - vpx) + Math.abs(b[1].y - vpy);
@@ -1134,6 +1133,7 @@ const extractBlackPixels = (bitmap: Uint8Array): {x: number, y: number}[] => {
           style={{
             '--translate-x': '0px',
             '--translate-y': '0px',
+            // TAG-t
             'transform': `translate(${-viewport().x - 16*64}px, ${-viewport().y - 16*64}px)`
           }}
         >

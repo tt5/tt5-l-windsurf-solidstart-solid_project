@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/auth';
 import { usePlayerPosition } from '../../contexts/playerPosition';
 import { useNavigation } from '../../lib/utils/navigation';
 import { createPoint } from '../../types/board';
-import Button from '../ui/Button';
 import { useNavigate } from '@solidjs/router';
 
 // API response types
@@ -348,24 +347,22 @@ export function GameStatus() {
         <Show
           when={state().gameJoined}
           fallback={
-            <Button 
+            <button 
               onClick={handleJoinGame} 
               disabled={state().isLoading}
               class="join-button"
-              variant="primary"
             >
               {state().isLoading ? 'Joining...' : 'Join Game'}
-            </Button>
+            </button>
           }
         >
-          <Button 
+          <button 
             onClick={handleLeaveGame} 
             disabled={state().isLoading}
-            variant="danger"
             class="leave-button"
           >
             {state().isLoading ? 'Leaving...' : 'Leave Game'}
-          </Button>
+          </button>
         </Show>
       </div>
     </div>

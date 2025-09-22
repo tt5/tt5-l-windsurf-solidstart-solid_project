@@ -2,7 +2,7 @@
 
 - when a base point in the viewport is removed the restricted squares are not updated (deleted). Solution: update from the events. Also update added base point in the viewport from the events?
 - Adding a base point does not update the viewport (bug)
-- keep position when changing tabs
+- keep position when changing tabs, getInitialViewport, TAG-t
 - delete account and clean up base points
 - auto add basepoint with space bar
 
