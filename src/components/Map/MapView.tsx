@@ -34,11 +34,6 @@ const TILE_LOAD_CONFIG = {
 
 const VIEWPORT_WIDTH = 800; // 800 pixels
 const VIEWPORT_HEIGHT = 600; // 600 pixels
-const TILES_X = Math.ceil(VIEWPORT_WIDTH / TILE_SIZE) + 2; // +2 for buffer tiles
-const TILES_Y = Math.ceil(VIEWPORT_HEIGHT / TILE_SIZE) + 2; // +2 for buffer tiles
-const MIN_ZOOM = 1.0; // 50% zoom
-const MAX_ZOOM = 2.0;
-const ZOOM_STEP = 0.1; // 10% zoom step
 
 // Types
 interface Tile {
@@ -55,8 +50,7 @@ interface Tile {
 interface Viewport {
   x: number;
   y: number;
-  zoom: number;
-  width: number;
+width: number;
   height: number;
 }
 
@@ -72,8 +66,7 @@ const MapView: Component = () => {
     return {
       x: 0,  // Start exactly at (0,0)
       y: 0,
-      zoom: 1.0,  // 100% zoom
-      width,
+width,
       height
     };
   };
@@ -754,8 +747,8 @@ const MapView: Component = () => {
     const tileEndWorldX = tileWorldX + TILE_SIZE;
     const tileEndWorldY = tileWorldY + TILE_SIZE;
     
-    const viewEndX = vp.x + (vp.width / vp.zoom);
-    const viewEndY = vp.y + (vp.height / vp.zoom);
+    const viewEndX = vp.x + vp.width;
+    const viewEndY = vp.y + vp.height;
     
     return !(
       tileEndWorldX < vp.x || 
@@ -823,9 +816,9 @@ const MapView: Component = () => {
       const vp = viewport();
       
       // Calculate new position in world space
-      // Convert screen movement to world movement based on zoom
-      const newX = vp.x - (dx / vp.zoom);
-      const newY = vp.y - (dy / vp.zoom);
+      // Convert screen movement to world movement
+      const newX = vp.x - dx;
+      const newY = vp.y - dy;
       
       console.log(`[MapView] handleMouseMove newX: ${newX}, newY: ${newY}`)
       // Update viewport with new position
@@ -867,47 +860,6 @@ const MapView: Component = () => {
     }
   });
 
-  // Handle zooming with mouse wheel
-  const handleWheel = (e: WheelEvent) => {
-    e.preventDefault();
-    
-    // Calculate zoom factor (zoom in on scroll up, zoom out on scroll down)
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    
-    // Get mouse position relative to the container
-    const rect = containerRef?.getBoundingClientRect();
-    if (!rect) return;
-    console.log(`rect: ${rect.left}, ${rect.top}`)
-    
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    // Get current viewport values
-    const currentVp = viewport();
-    
-    // Calculate the mouse position in world coordinates before zoom
-    const worldX = currentVp.x + (mouseX / currentVp.zoom);
-    const worldY = currentVp.y + (mouseY / currentVp.zoom);
-    
-    // Calculate new zoom level with constraints
-    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentVp.zoom * zoomFactor));
-    
-    // Calculate new position to keep the mouse point fixed during zoom
-    const newX = worldX - (mouseX / newZoom);
-    const newY = worldY - (mouseY / newZoom);
-    
-    console.log(`[MapView] handleWheel newX: ${newX}, newY: ${newY}, newZoom: ${newZoom}`)
-    // Update viewport with new zoom and position in a single update
-    updateViewport({
-      x: newX,
-      y: newY,
-      zoom: newZoom,
-      width: currentVp.width,
-      height: currentVp.height
-    });
-  };
-  
-  
   // Update tiles when viewport changes with debounce
   createEffect(() => {
     const vp = viewport();
@@ -920,8 +872,6 @@ const MapView: Component = () => {
     return () => clearTimeout(debounceTimer);
   });
 
-  // Debug: Track last zoom to detect changes
-  let lastZoom = viewport().zoom;
   
   // Generate a consistent color based on tile coordinates
   const getTileColor = (x: number, y: number): string => {
@@ -932,12 +882,6 @@ const MapView: Component = () => {
   // Render a single tile
   const renderTile = (tile: Tile) => {
     const vp = viewport();
-    const zoom = vp.zoom;
-    
-    // Log zoom changes
-    if (zoom !== lastZoom) {
-      lastZoom = zoom;
-    }
     
     // Calculate tile position in world coordinates (1 unit = 1 pixel)
     // tile.x+t tile.y+t also change TAG-t
@@ -1048,8 +992,7 @@ const MapView: Component = () => {
         style={{
           '--tile-pos-x': `${pixelAlignedX}px`,
           '--tile-pos-y': `${pixelAlignedY}px`,
-          '--tile-scale': zoom.toString(),
-          '--tile-size': `${TILE_SIZE / zoom}px`,
+          '--tile-size': `${TILE_SIZE}px`,
           '--tile-base-size': `${TILE_SIZE}px`
         }}
         data-tile-x={tile.x}
@@ -1058,7 +1001,6 @@ const MapView: Component = () => {
         data-world-y={tileWorldY}
         data-pos-x={pixelAlignedX}
         data-pos-y={pixelAlignedY}
-        data-zoom={zoom}
       >
         {content}
       </div>
@@ -1170,7 +1112,6 @@ const MapView: Component = () => {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
-      onWheel={handleWheel}
     >
       <div class={isDragging() ? styles.mapViewportDragging : styles.mapViewport}>
         <div 
@@ -1178,9 +1119,7 @@ const MapView: Component = () => {
           style={{
             '--translate-x': '0px',
             '--translate-y': '0px',
-            '--scale': viewport().zoom,
-            // t*64 (also change TAG-t
-            'transform': `scale(${viewport().zoom}) translate(${-viewport().x - 16*64}px, ${-viewport().y - 16*64}px)`
+            'transform': `translate(${-viewport().x - 16*64}px, ${-viewport().y - 16*64}px)`
           }}
         >
           <div style={{
@@ -1209,48 +1148,8 @@ const MapView: Component = () => {
       )}
       
       <div class={styles.controls}>
-        <div class={styles.zoomControls}>
-          <button 
-            onClick={() => {
-              const vp = viewport();
-              const newZoom = Math.min(MAX_ZOOM, vp.zoom * 1.2);
-              // Calculate the new position to keep (0,0) fixed
-              const dx = (vp.width / 2) * (1 - newZoom / vp.zoom);
-              const dy = (vp.height / 2) * (1 - newZoom / vp.zoom);
-              console.log(`[MapView] handleZoomIn newX: ${vp.x - dx}, newY: ${vp.y - dy}, newZoom: ${newZoom}`)
-              updateViewport({
-                zoom: newZoom,
-                x: vp.x - dx,
-                y: vp.y - dy
-              });
-            }}
-            disabled={viewport().zoom >= MAX_ZOOM}
-          >
-            +
-          </button>
-          <button 
-            onClick={() => {
-              const vp = viewport();
-              const newZoom = Math.max(MIN_ZOOM, vp.zoom / 1.2);
-              // Calculate the new position to keep (0,0) fixed
-              const dx = (vp.width / 2) * (1 - newZoom / vp.zoom);
-              const dy = (vp.height / 2) * (1 - newZoom / vp.zoom);
-              console.log(`[MapView] handleZoomOut newX: ${vp.x - dx}, newY: ${vp.y - dy}, newZoom: ${newZoom}`)
-              updateViewport({
-                zoom: newZoom,
-                x: vp.x - dx,
-                y: vp.y - dy
-              });
-            }}
-            disabled={viewport().zoom <= MIN_ZOOM}
-          >
-            -
-          </button>
-        </div>
         <div class={styles.coordinates}>
           Position: {Math.round(viewport().x)}, {Math.round(viewport().y)}
-          <br />
-          Zoom: {Math.round(viewport().zoom * 100)}%
           <br />
           Tiles: {Object.keys(tiles()).length}
         </div>
