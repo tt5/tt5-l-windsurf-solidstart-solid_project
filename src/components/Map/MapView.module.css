@@ -477,8 +477,8 @@
   height: 200vh;
   will-change: transform;
   position: relative;
-  left: -0px;
-  top: -0px;
+  left: calc(7*64px);
+  top: calc(5*64px);
 }
 
 .tileContainer {
