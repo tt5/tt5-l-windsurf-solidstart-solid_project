@@ -1,41 +1,23 @@
 
 import { Component, createEffect, createSignal, onCleanup, onMount, batch, JSX } from 'solid-js';
 import { inflate } from 'pako';
-import { useAuth } from '../../contexts/auth';
 import { TileCache } from '../../lib/client/services/tile-cache';
-import { getAffectedTiles } from '../../lib/server/utils/coordinate-utils';
-
-// Initialize the tile cache
-const tileCache = new TileCache();
-
-// Wait for tile cache to be ready before any operations
-let tileCacheReady = false;
-tileCache.init().then(() => {
-  tileCacheReady = true;
-}).catch(error => {
-  console.error('[MapView] Failed to initialize tile cache:', error);
-});
 
 import styles from './MapView.module.css';
-import { $ } from '@faker-js/faker/dist/airline-D6ksJFwG';
 
-// Constants
 const TILE_SIZE = 64; // pixels
 
-// Tile loading configuration
 const TILE_LOAD_CONFIG = {
   BATCH_SIZE: 4,                  // Reduced to load fewer tiles at once
-  SCREEN_BUFFER: 1,               // Number of screens to preload around the viewport
-  MAX_TILES_TO_LOAD: 40,          // Reduced maximum queue size
+  MAX_TILES_TO_LOAD: 20,          // Reduced maximum queue size
   BATCH_DELAY: 100,               // Delay between batch processing in ms
   BATCH_TIMEOUT: 5000,            // Timeout for batch tile loading in ms
-  MAX_TILES_IN_MEMORY: 40        // Maximum number of tiles to keep in memory
+  MAX_TILES_IN_MEMORY: 50       // Maximum number of tiles to keep in memory
 };
 
 const VIEWPORT_WIDTH = 800; // 800 pixels
 const VIEWPORT_HEIGHT = 600; // 600 pixels
 
-// Types
 interface Tile {
   x: number;
   y: number;
@@ -55,7 +37,6 @@ width: number;
 }
 
 const MapView: Component = () => {
-  const { user } = useAuth();
   const [tiles, setTiles] = createSignal<Record<string, Tile>>({});
   let containerRef: HTMLDivElement | undefined;
   // Initialize viewport with (0,0) at top-left
@@ -84,9 +65,15 @@ width,
     startY: 0 
   });
   const [isLoading, setIsLoading] = createSignal(false);
-  const [error, setError] = createSignal<string | null>(null);
-  const [tileCacheState, setTileCache] = createSignal<Record<string, boolean>>({});
+  
   const tileCache = new TileCache(); // Initialize tile cache at component level
+  let tileCacheReady = false;
+  tileCache.init().then(() => {
+    tileCacheReady = true;
+  }).catch(error => {
+    console.error('[MapView] Failed to initialize tile cache:', error);
+  });
+
   const [tileQueue, setTileQueue] = createSignal<Array<{x: number, y: number}>>([]);
   const [isProcessingQueue, setIsProcessingQueue] = createSignal(false);
   // Track active operations and state
@@ -128,7 +115,6 @@ width,
       return;
     }
     
-    
     // Check for stale tiles that need refresh
     const currentTiles = tiles();
     let staleCount = 0;
@@ -141,7 +127,6 @@ width,
         });
       }
     });
-    
   };
 
   // Set mount state when component mounts
@@ -180,12 +165,6 @@ width,
         width,
         height
       }));
-      
-      // Add center tile to ensure something loads immediately
-      //const centerX = Math.floor((width / 2) / TILE_SIZE);
-      //const centerY = Math.floor((height / 2) / TILE_SIZE);
-      
-      //scheduleTilesForLoading([{x: centerX, y: centerY}]);
     };
     
     // Schedule initial load after a short delay to ensure DOM is ready
@@ -218,7 +197,7 @@ width,
     });
   };
   
-  // Generate coordinates in a spiral pattern starting from (0,0)
+  // Generate coordinates in a spiral pattern
   const generateSpiralCoords = (centerX: number, centerY: number, radius: number) => {
     const result: Array<{x: number, y: number, distance: number}> = [];
     
@@ -236,7 +215,7 @@ width,
       x++;
       y++;
       
-    // Left edge (top to bottom)
+      // Left edge (top to bottom)
       for (; y <= r; y++) {
         result.push({ x: centerX + x, y: centerY + y, distance: r });
       }
@@ -261,12 +240,13 @@ width,
   
   // Schedule tiles for loading based on current viewport
   const scheduleTilesForLoading = (specificTiles?: Array<{x: number, y: number}>) => {
+
     // If specific tiles are provided, just process those
     const vp = viewport();
     const vpx = Math.floor(Math.abs(vp.x)/64);
     const vpy = Math.floor(Math.abs(vp.y)/64);
-    console.log(`[scheduleTilesForLoading] vpx: ${vpx}, vpy: ${vpy}`)
     if(vpx > 16 || vpy > 16) return;
+    /*
     if (specificTiles && specificTiles.length > 0) {
       setTileQueue(prev => {
         const newQueue = [...prev];
@@ -284,17 +264,11 @@ width,
       processTileQueue();
       return;
     }
+    */
     if (shouldStopProcessing) return;
     
     const currentQueue = tileQueue();
     const queueLength = currentQueue.length;
-    
-    // If queue is getting full, only add high priority tiles
-    const isQueueAlmostFull = queueLength > TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD * 0.8;
-    
-    if (isQueueAlmostFull) {
-      console.log(`[scheduleTilesForLoading] Queue is almost full (${queueLength}/${TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD}), only adding high priority tiles`);
-    }
     
     // If queue is full, skip scheduling more tiles
     if (queueLength >= TILE_LOAD_CONFIG.MAX_TILES_TO_LOAD) {
@@ -302,12 +276,10 @@ width,
       return;
     }
     
-    const spiralRadius = 1;
+    const spiralRadius = 2;
     
     const tileCoords = worldToTileCoords(vp.x,vp.y);
-    console.log(`tileCoords: ${JSON.stringify(tileCoords)}`)
     const spiralCoords = generateSpiralCoords(tileCoords.tileX, tileCoords.tileY, spiralRadius);
-    console.log(`spiralCoords: ${JSON.stringify(spiralCoords)}`)
     
     // Filter and prioritize tiles
     const visibleTiles: Array<{x: number, y: number, priority: number}> = [];
@@ -323,14 +295,10 @@ width,
       // Skip if already in queue
       if (queueSet.has(key)) continue;
       
-      // Only add tiles that are within the visible area plus a small buffer
-      if (distance <= spiralRadius) {
-        visibleTiles.push({
-          x, y,
-          priority: distance // Closer tiles have higher priority (lower number)
-        });
-      }
-
+      visibleTiles.push({
+        x, y,
+        priority: distance // Closer tiles have higher priority (lower number)
+      });
     }
     
     console.log(`visibleTiles: ${visibleTiles}`)
@@ -527,15 +495,24 @@ width,
 
   // Load a single tile
   const loadTile = async (tileX: number, tileY: number, forceRefresh = false): Promise<void> => {
-    console.log(`Loading tile: (${tileX}, ${tileY})`);  // Add this for debugging
     
     // Enforce maximum number of tiles in memory
     const currentTiles = tiles();
     if (Object.keys(currentTiles).length >= TILE_LOAD_CONFIG.MAX_TILES_IN_MEMORY) {
+
+      const vp = viewport();
+      const vpx = Math.floor((vp.x)/64);
+      const vpy = Math.floor((vp.y)/64);
+    
       // Find the oldest accessed tile that's not currently loading
       const tilesArray = Object.entries(currentTiles)
         .filter(([_, tile]) => !tile.loading)
-        .sort((a, b) => a[1].timestamp - b[1].timestamp);
+        //.sort((a, b) => a[1].timestamp - b[1].timestamp);
+        .sort((a, b) => {
+          const distA = Math.abs(a[1].x - vpx) + Math.abs(a[1].y - vpy);
+          const distB = Math.abs(b[1].x - vpx) + Math.abs(b[1].y - vpy);
+          return -(distA - distB);
+        });
           
       if (tilesArray.length > 0) {
         // Remove the oldest tile
@@ -944,7 +921,6 @@ width,
         // Get the black pixels array
         const blackPixels = renderBitmap(tile.data);
         //const tileImage = renderBitmap(tile.data);
-        console.log(blackPixels)
         
         if (blackPixels.length > 0) {
           // Create an SVG with circles for each black pixel
@@ -1177,12 +1153,6 @@ const extractBlackPixels = (bitmap: Uint8Array): {x: number, y: number}[] => {
       {isLoading() && (
         <div class={styles.loadingOverlay}>
           Loading map...
-        </div>
-      )}
-      
-      {error() && (
-        <div class={styles.errorOverlay}>
-          {error()}
         </div>
       )}
       
