@@ -22,6 +22,11 @@
 }
 
 .mapContent {
+  --translate-x: 0;
+  --translate-y: 0;
+  --transform-x: 0;
+  --transform-y: 0;
+  
   background-color: var(--tile-bg-color, rgba(245, 245, 245, 0.5));
   position: absolute;
   min-height: 600px;
@@ -32,9 +37,8 @@
   contain: layout style paint;
   overflow: visible;
   transform: 
-    translate(-50%, -50%) 
-    scale(var(--scale, 1)) 
-    translate(var(--translate-x, 0), var(--translate-y, 0));
+    translate(-50%, -50%)
+    translate(calc(var(--transform-x) * 1px), calc(var(--transform-y) * 1px));
   width: 100vw;
   height: 100vh;
 }
@@ -55,17 +59,23 @@
 
 /* Tile container */
 .tileContainer {
-  height: 100%;
-  pointer-events: none;
-  transform: 
-    translateX(var(--translate-x, 0))
-    translateY(var(--translate-y, 0))
-    scale(var(--scale, 1));
-  transform-origin: 0 0;
+  --tile-pos-x: 0;
+  --tile-pos-y: 0;
+  --tile-size: 64;
+  --tile-base-size: 64;
+  
+  position: absolute;
+  left: calc(var(--tile-pos-x, 0) * 1px);
+  top: calc(var(--tile-pos-y, 0) * 1px);
+  width: calc(var(--tile-size, 64) * 1px);
+  height: calc(var(--tile-size, 64) * 1px);
+  transform: translateZ(0);
   will-change: transform;
+  contain: layout style paint;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   overflow: visible;
+  pointer-events: none;
 }
 
 /* Tile styles */
