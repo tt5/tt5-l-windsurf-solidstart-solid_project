@@ -25,6 +25,15 @@
   font-size: var(--font-size-xxl);
 }
 
+.loginForm label {
+  display: block;
+  text-align: left;
+  margin-bottom: var(--spacing-xs);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
 .loginForm input {
   width: 100%;
   padding: var(--spacing-md);
@@ -54,6 +63,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: var(--transition-default);
+  margin-top: var(--spacing-md);
 }
 
 .loginForm button:hover {
@@ -67,4 +77,47 @@
 .loginForm button:focus {
   outline: none;
   box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.loginForm button:disabled,
+.buttonLoading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.successMessage {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--color-success-light);
+  color: var(--color-success-dark);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.errorMessage {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--color-error-light);
+  color: var(--color-error-dark);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.footer {
+  margin-top: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color var(--transition-default);
+}
+
+.link:hover {
+  color: var(--color-primary-dark);
+  text-decoration: underline;
 }
