@@ -1022,80 +1022,37 @@ const extractBlackPixels = (bitmap: Uint8Array): {x: number, y: number}[] => {
   return blackPixels;
 };
 
-  // Convert tile data to an image data URL
+  // Convert tile data to an array of black pixel coordinates
   const renderBitmap = (tileData: Uint8Array | string): Array<{x: number, y: number}> => {
-
     // Skip in SSR
     if (typeof document === 'undefined') return [];
     
+    // Early return for invalid input
+    if (!(tileData instanceof Uint8Array) || tileData.length === 0) {
+      console.log('Invalid or empty tile data');
+      return [];
+    }
+
+    // Check version byte (0x01 for our format)
+    if (tileData[0] !== 0x01) {
+      console.log('Unsupported data format or missing version byte');
+      return [];
+    }
+
     try {
-      // The tile data should already be a Uint8Array at this point
-      const data = tileData as Uint8Array;
+      // Skip the first byte (version) and decompress the rest
+      const compressedData = tileData.subarray(1);
+      const decompressed = inflate(compressedData);
       
-      // Check for empty data
-      if (!data || data.length === 0) {
-        console.log('Empty tile data');
-        return [];
+      // Validate decompressed size (1-bit per pixel)
+      const expectedSize = Math.ceil((TILE_SIZE * TILE_SIZE) / 8);
+      if (decompressed.length !== expectedSize) {
+        console.warn(`Unexpected decompressed size: ${decompressed.length}, expected ${expectedSize}`);
       }
 
-      // The first byte is a version byte (0x01 for our format)
-      if (data[0] === 0x01) {
-        try {
-          // Skip the first byte (version) and decompress the rest
-          const compressedData = (data as Uint8Array).subarray(1);
-          const decompressed = inflate(compressedData);
-          
-          // The decompressed data should be a 1-bit bitmap (1 bit per pixel)
-          const expectedSize = Math.ceil((TILE_SIZE * TILE_SIZE) / 8);
-          if (decompressed.length !== expectedSize) {
-            console.warn(`Unexpected decompressed size: ${decompressed.length}, expected ${expectedSize}`);
-          }
-
-          const blackPixels = extractBlackPixels(decompressed);
-          
-          // Convert 1-bit bitmap to RGBA
-          const imageData = new Uint8ClampedArray(TILE_SIZE * TILE_SIZE * 4);
-          let pixelIndex = 0;
-          
-          for (let i = 0; i < decompressed.length && pixelIndex < TILE_SIZE * TILE_SIZE; i++) {
-            const byte = decompressed[i];
-            
-            // Process each bit in the byte (MSB first)
-            for (let bit = 7; bit >= 0 && pixelIndex < TILE_SIZE * TILE_SIZE; bit--, pixelIndex++) {
-              const bitValue = (byte >> bit) & 1;
-              const pixelOffset = pixelIndex * 4;
-              
-              // Set RGBA values based on the bit value
-              if (bitValue) {
-                // Black pixel
-                imageData[pixelOffset] = 0;     // R
-                imageData[pixelOffset + 1] = 0; // G
-                imageData[pixelOffset + 2] = 0; // B
-                imageData[pixelOffset + 3] = 255; // A (fully opaque)
-              } else {
-                // White pixel (transparent)
-                imageData[pixelOffset] = 255;     // R
-                imageData[pixelOffset + 1] = 255; // G
-                imageData[pixelOffset + 2] = 255; // B
-                imageData[pixelOffset + 3] = 0;   // A (fully transparent)
-              }
-            }
-          }
-          
-          //return renderImageData(imageData);
-          return blackPixels;
-          
-        } catch (error) {
-          console.error('Failed to process compressed tile data:', error);
-          return [];
-        }
-      } else {
-        console.log('Unsupported data format or missing version byte');
-        return [];
-      }
-
+      return extractBlackPixels(decompressed);
     } catch (error) {
-      console.error('Error rendering bitmap:', error);
+      console.error('Failed to process tile data:', error);
       return [];
     }
   };
