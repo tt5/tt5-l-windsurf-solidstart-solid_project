@@ -716,24 +716,6 @@ const MapView: Component = () => {
     }
   };
 
-  // Helper to check if a tile is visible in the viewport
-  const isTileVisible = (tileX: number, tileY: number, vp: Viewport): boolean => {
-    const tileWorldX = tileX * TILE_SIZE;
-    const tileWorldY = tileY * TILE_SIZE;
-    const tileEndWorldX = tileWorldX + TILE_SIZE;
-    const tileEndWorldY = tileWorldY + TILE_SIZE;
-    
-    const viewEndX = vp.x + vp.width;
-    const viewEndY = vp.y + vp.height;
-    
-    return !(
-      tileEndWorldX < vp.x || 
-      tileWorldX > viewEndX ||
-      tileEndWorldY < vp.y ||
-      tileWorldY > viewEndY
-    );
-  };
-
   // Handle mouse down for dragging
   const handleMouseDown = (e: MouseEvent) => {
     if (e.button !== 0) return; // Only left mouse button
@@ -873,10 +855,6 @@ const MapView: Component = () => {
     const pixelAlignedX = posX;
     const pixelAlignedY = posY;
     
-    // Calculate tile bounds with exact size (no overlap)
-    const tileEndWorldX = tileWorldX + TILE_SIZE;
-    const tileEndWorldY = tileWorldY + TILE_SIZE;
-    
     // Initialize content with a default empty div
     let content: JSX.Element = <div></div>;
     
@@ -1001,26 +979,26 @@ const MapView: Component = () => {
   };
 
   // Helper function to extract coordinates of black pixels from 1-bit bitmap
-const extractBlackPixels = (bitmap: Uint8Array): {x: number, y: number}[] => {
-  const blackPixels: {x: number, y: number}[] = [];
-  let pixelIndex = 0;
-  
-  for (let i = 0; i < bitmap.length && pixelIndex < TILE_SIZE * TILE_SIZE; i++) {
-    const byte = bitmap[i];
+  const extractBlackPixels = (bitmap: Uint8Array): {x: number, y: number}[] => {
+    const blackPixels: {x: number, y: number}[] = [];
+    let pixelIndex = 0;
     
-    // Process each bit in the byte (MSB first)
-    for (let bit = 7; bit >= 0 && pixelIndex < TILE_SIZE * TILE_SIZE; bit--, pixelIndex++) {
-      if ((byte >> bit) & 1) {
-        // Calculate x, y coordinates from pixel index
-        const x = pixelIndex % TILE_SIZE;
-        const y = Math.floor(pixelIndex / TILE_SIZE);
-        blackPixels.push({x, y});
+    for (let i = 0; i < bitmap.length && pixelIndex < TILE_SIZE * TILE_SIZE; i++) {
+      const byte = bitmap[i];
+      
+      // Process each bit in the byte (MSB first)
+      for (let bit = 7; bit >= 0 && pixelIndex < TILE_SIZE * TILE_SIZE; bit--, pixelIndex++) {
+        if ((byte >> bit) & 1) {
+          // Calculate x, y coordinates from pixel index
+          const x = pixelIndex % TILE_SIZE;
+          const y = Math.floor(pixelIndex / TILE_SIZE);
+          blackPixels.push({x, y});
+        }
       }
     }
-  }
-  
-  return blackPixels;
-};
+    
+    return blackPixels;
+  };
 
   // Convert tile data to an array of black pixel coordinates
   const renderBitmap = (tileData: Uint8Array | string): Array<{x: number, y: number}> => {
@@ -1057,24 +1035,6 @@ const extractBlackPixels = (bitmap: Uint8Array): {x: number, y: number}[] => {
     }
   };
   
-  // Helper function to convert ImageData to a data URL
-  const renderImageData = (imageData: Uint8ClampedArray): string => {
-    const canvas = document.createElement('canvas');
-    canvas.width = TILE_SIZE;
-    canvas.height = TILE_SIZE;
-    const ctx = canvas.getContext('2d');
-    
-    if (!ctx) return '';
-    
-    // Create ImageData and draw it
-    const imgData = new ImageData(imageData, TILE_SIZE, TILE_SIZE);
-    ctx.putImageData(imgData, 0, 0);
-    
-    // Convert to data URL
-    const dataUrl = canvas.toDataURL('image/png');
-    return dataUrl;
-  };
-
   return (
     <div
       class={styles.mapContainer}

@@ -1,0 +1,75 @@
+.gameStatus {
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+}
+
+.loading {
+  padding: 0.5rem;
+  color: #666;
+  font-style: italic;
+}
+
+.error {
+  color: #dc3545;
+  padding: 0.5rem;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.statusItem {
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.statusLabel {
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+
+.statusValue {
+  color: #333;
+}
+
+.statusValue.completed {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.statusValue.inProgress {
+  color: #ffc107;
+  font-weight: bold;
+}
+
+.statusValue.notStarted {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.progressContainer {
+  margin-top: 0.5rem;
+  width: 100%;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  height: 1rem;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  background-color: #28a745;
+  transition: width 0.3s ease-in-out;
+}
+
+.progressText {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+  text-align: right;
+}

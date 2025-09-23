@@ -1,6 +1,7 @@
-import { Component, Show, createSignal, onMount, onCleanup, For, createEffect } from 'solid-js';
+import { Component, createSignal, onMount, onCleanup, createEffect } from 'solid-js';
 import styles from './SidePanel.module.css';
-import { GameStatus } from '../game/GameStatus';
+import InfoTab from './InfoTab';
+import SettingsTab from './SettingsTab';
 
 type Tab = 'info' | 'settings';
 
@@ -444,26 +445,15 @@ const SidePanel: Component<SidePanelProps> = (props) => {
   });
 
   return (
-    <>
-      <button 
-        class={styles.menuToggle} 
-        onClick={() => setIsOpen(!isOpen())}
-        aria-label="Toggle menu"
-      >
-        ☰
-      </button>
-      <div 
-        class={`${styles.sidePanel} ${isOpen() ? styles.open : ''}`} 
-        ref={panelRef}
-      >
+    <div class={`${styles.sidePanel} ${isOpen() ? styles.open : ''}`} ref={panelRef}>
       <div class={styles.tabs}>
-        <button 
+        <button
           class={`${styles.tab} ${props.activeTab === 'info' ? styles.active : ''}`}
           onClick={() => props.onTabChange('info')}
         >
           Info
         </button>
-        <button 
+        <button
           class={`${styles.tab} ${props.activeTab === 'settings' ? styles.active : ''}`}
           onClick={() => props.onTabChange('settings')}
         >
@@ -472,63 +462,30 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       </div>
       
       <div class={styles.content}>
-        <Show when={props.activeTab === 'info'}>
-          <div class={styles.infoTab}>
-            <h3>Player: {props.username}</h3>
-            <div class={styles.notifications}>
-              <h4>Activity Counters</h4>
-              <div class={styles.counters}>
-                <div class={styles.counter}>
-                  <span class={`${styles.counterNumber} ${styles.added}`}>{addedCount()}</span>
-                  <span class={styles.counterLabel}>Added</span>
-                </div>
-                <div class={styles.counter}>
-                  <span class={`${styles.counterNumber} ${styles.deleted}`}>{deletedCount()}</span>
-                  <span class={styles.counterLabel}>Removed</span>
-                </div>
-                <div class={styles.tabContent}>
-                  <h3>Game Information</h3>
-                  <div class={styles.gameStatusContainer}>
-                    <GameStatus />
-                  </div>
-                  <Show when={totalBasePoints() !== null}>
-                    <p>Total base points: {totalBasePoints()}</p>
-                  </Show>
-                  <Show when={oldestPrimeTimestamp() !== null}>
-                    <p>Oldest prime timestamp: {oldestPrimeTimestamp()}</p>
-                  </Show>
-                </div>
-                <div class={styles.counter}>
-                  <span class={`${styles.counterNumber} ${styles.total}`}>{totalBasePoints()}</span>
-                  <span class={styles.counterLabel}>Total</span>
-                </div>
-                <Show when={oldestPrimeTimestamp() !== null}>
-                  <div class={styles.counter}>
-                    <span class={`${styles.counterNumber} ${styles.timestamp}`}>
-                      {new Date(oldestPrimeTimestamp()!).toLocaleTimeString()}
-                    </span>
-                    <span class={styles.counterLabel}>Oldest Prime</span>
-                  </div>
-                </Show>
-              </div>
-            </div>
-          </div>
-        </Show>
-        
-        <Show when={props.activeTab === 'settings'}>
-          <div class={styles.settingsTab}>
-            <button onClick={props.onLogout} class={styles.logoutButton}>
-              Logout
-            </button>
-          </div>
-        </Show>
+        {props.activeTab === 'info' ? (
+          <InfoTab 
+            username={props.username}
+            addedCount={addedCount()}
+            deletedCount={deletedCount()}
+            totalBasePoints={totalBasePoints}
+          />
+        ) : (
+          <SettingsTab onLogout={props.onLogout} />
+        )}
       </div>
-      </div>
+      
+      <button 
+        class={styles.menuToggle} 
+        onClick={() => setIsOpen(!isOpen())}
+      >
+        {isOpen() ? '×' : '☰'}
+      </button>
+      
       <div 
         class={`${styles.overlay} ${isOpen() ? styles.open : ''}`} 
         onClick={() => setIsOpen(false)}
       />
-    </>
+    </div>
   );
 };
 
