@@ -1,5 +1,5 @@
 import { createSignal, Show } from 'solid-js';
-import { useAuth } from '~/contexts/auth';
+import { useAuth } from '~/contexts/AuthContext';
 import styles from './DevTools.module.css';
 
 export function DevTools() {

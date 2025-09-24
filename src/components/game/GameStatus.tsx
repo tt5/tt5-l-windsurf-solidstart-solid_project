@@ -1,8 +1,8 @@
 import { createSignal, createEffect, onMount, Show } from 'solid-js';
 import styles from './GameStatus.module.css';
 import { useUser } from '../../contexts/UserContext';
-import { useAuth } from '../../contexts/auth';
-import { usePlayerPosition } from '../../contexts/playerPosition';
+import { useAuth } from '../../contexts/AuthContext';
+import { usePlayerPosition } from '../../contexts/PlayerPositionContext';
 import { useNavigation } from '../../lib/utils/navigation';
 import { createPoint } from '../../types/board';
 import { useNavigate } from '@solidjs/router';
