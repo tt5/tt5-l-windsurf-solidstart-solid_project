@@ -1,6 +1,6 @@
 import { Component, Show } from 'solid-js';
 import { Navigate } from '@solidjs/router';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ProtectedRoute: Component<{ children: any }> = (props) => {
   const { user } = useAuth();
