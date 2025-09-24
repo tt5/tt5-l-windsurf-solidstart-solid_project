@@ -1,5 +1,6 @@
 .sidePanel {
   --side-panel-width: 250px;
+
   width: var(--side-panel-width);
   background-color: #f5f5f5;
   border-right: 1px solid #ddd;
@@ -24,18 +25,18 @@
   border-radius: 4px;
   padding: 8px 12px;
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 20%);
 }
 
 /* Responsive styles */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .sidePanel {
     position: fixed;
     top: 0;
     left: 0;
     bottom: 0;
     transform: translateX(calc(-1 * var(--side-panel-width)));
-    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    box-shadow: 2px 0 10px rgb(0 0 0 / 10%);
   }
 
   .sidePanel.open {
@@ -49,11 +50,8 @@
   .overlay {
     display: none;
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.5);
+    inset: 0;
+    background: rgb(0 0 0 / 50%);
     z-index: 5;
   }
 
@@ -125,7 +123,7 @@
   padding: 16px;
   border-radius: 8px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
 .playerInfo button {
@@ -146,7 +144,7 @@
   background: white;
   border-radius: 8px;
   padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
 .notificationsSection h3 {
@@ -171,14 +169,14 @@
   padding: 8px 4px; /* Reduced padding */
   border-radius: 6px;
   background-color: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   box-sizing: border-box;
 }
 
 .counter:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgb(0 0 0 / 10%);
 }
 
 .counterNumber {
@@ -267,13 +265,14 @@
 }
 
 /* Scrollbar styles */
+
 /* Game Status */
 .gameStatusContainer {
   padding: 1rem;
   margin: 1rem 0;
   background: white;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
 }
 
 .gameStatusContainer button {
@@ -293,7 +292,7 @@
 }
 
 .gameStatusContainer button:disabled {
-  background-color: #cccccc;
+  background-color: #ccc;
   cursor: not-allowed;
 }
 

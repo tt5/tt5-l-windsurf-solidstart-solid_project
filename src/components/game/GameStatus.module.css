@@ -1,50 +1,57 @@
+@import url('../../styles/variables.css');
+
 .gameStatus {
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1rem;
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-md);
 }
 
 .loading {
-  padding: 0.5rem;
-  color: #666;
+  padding: var(--spacing-sm);
+  color: var(--color-text-muted);
   font-style: italic;
+  font-size: var(--font-size-sm);
 }
 
 .error {
-  color: #dc3545;
-  padding: 0.5rem;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
+  color: var(--color-error-dark);
+  padding: var(--spacing-sm);
+  background-color: var(--color-error-light);
+  border: 1px solid var(--color-error);
+  border-radius: var(--border-radius-sm);
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-sm);
 }
 
 .statusItem {
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--spacing-sm);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: var(--font-size-sm);
 }
 
 .statusLabel {
-  font-weight: bold;
-  margin-right: 0.5rem;
+  font-weight: var(--font-weight-medium);
+  margin-right: var(--spacing-sm);
+  color: var(--color-text);
 }
 
 .statusValue {
-  color: #333;
+  color: var(--color-text);
+  font-weight: var(--font-weight-normal);
 }
 
 .statusValue.completed {
-  color: #28a745;
-  font-weight: bold;
+  color: var(--color-success);
+  font-weight: var(--font-weight-medium);
 }
 
 .statusValue.inProgress {
-  color: #ffc107;
-  font-weight: bold;
+  color: var(--color-warning);
+  font-weight: var(--font-weight-medium);
 }
 
 .statusValue.notStarted {

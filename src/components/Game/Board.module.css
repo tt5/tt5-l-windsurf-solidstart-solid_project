@@ -1,4 +1,4 @@
-@import '../../styles/variables.css';
+@import url('../../styles/variables.css');
 
 /* Layout */
 .board {
@@ -24,6 +24,7 @@
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
 .loadingSpinner {
   width: 40px;
   height: 40px;
@@ -38,14 +39,14 @@
   position: absolute;
   top: 10px;
   right: 10px;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgb(255 255 255 / 90%);
   color: #333;
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 0.8rem;
   font-family: monospace;
   z-index: 5;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
 }
 
 /* Boundary Message */
@@ -74,6 +75,7 @@
 /* Game Elements */
 .grid {
   --grid-cell-size: 45px;
+
   display: grid;
   grid-template-columns: repeat(var(--grid-size), var(--grid-cell-size));
   grid-template-rows: repeat(var(--grid-size), var(--grid-cell-size));
@@ -83,7 +85,7 @@
   padding: var(--spacing-md);
   background: #2e7d32; /* Lighter green background */
   border-radius: var(--border-radius-md);
-  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 15px rgb(0 0 0 / 20%);
 }
 
 .square {
@@ -97,19 +99,19 @@
   cursor: pointer;
   transition: all var(--transition-normal);
   will-change: transform, box-shadow;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 10%);
   color: #333; /* Ensure text is dark on light squares */
 }
 
 /* Empty squares with pattern - larger size */
-.square:not(.basePoint):not(.selected):not(.restricted) {
+.square:not(.basePoint, .selected, .restricted) {
   background-image: 
     linear-gradient(45deg, #f5f5f5 25%, transparent 25%),
     linear-gradient(-45deg, #f5f5f5 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
     linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
   background-size: 8px 8px;
-  background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
   transform: scale(1.1);
   z-index: 1;
   position: relative;
@@ -137,6 +139,7 @@
 }
 
 /* Loading State */
+
 /* Interactive states */
 .square.interactive {
   position: relative;
@@ -161,6 +164,7 @@
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
+
 .square.selected { 
   background-color: #e3f2fd;
   border: 1px solid #1265a8;
@@ -171,13 +175,15 @@
   background-color: #e8f5e9;
   background-image: none;
 }
+
 .square.basePoint:hover { 
   background-color: #d8edd9;
 }
+
 .square.selected.basePoint {
   background-color: #d0ebe7;
   border: 2px solid #00897b;
-  box-shadow: 0 0 0 1px rgba(0, 137, 123, 0.3);
+  box-shadow: 0 0 0 1px rgb(0 137 123 / 30%);
 }
 
 /* Base points on restricted squares */
@@ -201,7 +207,7 @@
 }
 
 .emptyMarker {
-  color: rgba(0, 0, 0, 0.3);
+  color: rgb(0 0 0 / 30%);
   font-size: 1.8rem;
   line-height: 1;
   user-select: none;
@@ -213,7 +219,7 @@
 
 .square:hover .emptyMarker {
   opacity: 0.8;
-  color: rgba(0, 0, 0, 0.4);
+  color: rgb(0 0 0 / 40%);
 }
 
 /* Error Message */
@@ -299,6 +305,7 @@
 
 .directionButton:hover { background: var(--color-primary-dark); }
 .directionButton:active { transform: scale(0.95); }
+
 .directionButton:focus-visible {
   outline: 3px solid #64B5F6;
   outline-offset: 2px;

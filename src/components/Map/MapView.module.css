@@ -1,3 +1,5 @@
+@import url('../../styles/variables.css');
+
 .mapContainer {
   position: relative;
   width: 100%;
@@ -10,6 +12,7 @@
   -khtml-user-drag: none;
   -moz-user-drag: none;
   -o-user-drag: none;
+  background-color: var(--color-bg);
 }
 
 .mapViewport {
@@ -27,7 +30,7 @@
   --transform-x: 0;
   --transform-y: 0;
   
-  background-color: var(--tile-bg-color, rgba(245, 245, 245, 0.5));
+  background-color: var(--tile-bg-color);
   position: absolute;
   min-height: 600px;
   will-change: transform;
@@ -41,6 +44,7 @@
     translate(calc(var(--transform-x) * 1px), calc(var(--transform-y) * 1px));
   width: 100vw;
   height: 100vh;
+  transition: var(--transition-slow);
 }
 
 .mapViewport {
@@ -73,7 +77,7 @@
   will-change: transform;
   contain: layout style paint;
   backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   overflow: visible;
   pointer-events: none;
 }
@@ -99,7 +103,7 @@
 .fallbackTile {
   width: 100%;
   height: 100%;
-  background-color: var(--tile-bg-color, rgba(240, 240, 250, 0.7));
+  background-color: var(--tile-bg-color, rgb(240 240 250 / 70%));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -124,7 +128,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(100, 100, 255, 0.6), transparent);
+  background: linear-gradient(90deg, transparent, rgb(100 100 255 / 60%), transparent);
   animation: loadingProgress 2s linear infinite;
 }
 
@@ -135,7 +139,7 @@
 
 .fallbackTile {
   box-sizing: border-box;
-  border: 1px dashed rgba(0, 0, 0, 0.2);
+  border: 1px dashed rgb(0 0 0 / 20%);
   position: relative;
 }
 
@@ -145,7 +149,7 @@
   position: absolute;
   bottom: 0;
   right: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgb(0 0 0 / 50%);
   color: white;
   padding: 2px 4px;
   font-size: 8px;
@@ -158,10 +162,10 @@
 .gridLabel {
   font-family: Arial, sans-serif;
   font-size: 9px;
-  fill: #666666;
+  fill: #666;
   font-weight: normal;
   paint-order: stroke;
-  stroke: #ffffff;
+  stroke: #fff;
   stroke-width: 2px;
   stroke-linecap: butt;
   stroke-linejoin: miter;
@@ -173,14 +177,15 @@
 .gridLabel.major {
   font-size: 11px;
   font-weight: bold;
-  fill: #000000;
+  fill: #000;
 }
 
 .gridLabel.zero {
-  fill: #ff0000;
+  fill: #f00;
 }
 
 /* Tile container */
+
 /* Tile container */
 .tile {
   position: absolute;
@@ -193,9 +198,10 @@
   height: var(--tile-base-size, 64px);
   transform-origin: 0 0;
   backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   contain: strict;
   box-sizing: border-box;
+
   /* Ensure pixel-perfect rendering */
   -webkit-font-smoothing: none;
 
@@ -212,7 +218,7 @@
     position: absolute;
     top: 4px;
     left: 4px;
-    background-color: rgba(255, 255, 255, 0);
+    background-color: rgb(255 255 255 / 0%);
     padding: 2px 4px;
     border-radius: 3px;
     font-size: 10px;
@@ -229,9 +235,10 @@
     width: 100%;
     height: 100%;
   }
+
   -moz-osx-font-smoothing: grayscale;
-  image-rendering: -moz-crisp-edges;
-  image-rendering: -o-crisp-edges;
+  image-rendering: crisp-edges;
+  image-rendering: crisp-edges;
   image-rendering: -webkit-optimize-contrast;
   image-rendering: pixelated;
   -ms-interpolation-mode: nearest-neighbor;
@@ -282,14 +289,14 @@
   overflow: hidden;
   pointer-events: none;
   backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   contain: strict;
   outline: none;
   box-sizing: border-box;
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: grayscale;
-  image-rendering: -moz-crisp-edges;
-  image-rendering: -o-crisp-edges;
+  image-rendering: crisp-edges;
+  image-rendering: crisp-edges;
   image-rendering: -webkit-optimize-contrast;
   image-rendering: pixelated;
   -ms-interpolation-mode: nearest-neighbor;
@@ -304,9 +311,10 @@
   image-rendering: pixelated;
   pointer-events: none;
   object-fit: contain;
+
   /* Enhanced visibility */
   filter: contrast(1.2) brightness(1.1) saturate(1.2);
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid rgb(0 0 0 / 20%);
   box-sizing: border-box;
 }
 
@@ -314,15 +322,17 @@
 .tileSvg {
   background: transparent;
   overflow: visible;
+
   /* Subtle grid pattern for transparent areas */
-  background-color: rgba(240, 240, 240, 0.5);
+  background-color: rgb(240 240 240 / 50%);
   background-image: 
     linear-gradient(45deg, #e0e0e0 25%, transparent 25%),
     linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
     linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
   background-size: 16px 16px;
-  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+
   /* Smooth transitions for hover effects */
   transition: filter 0.2s ease, transform 0.2s ease;
 }
@@ -332,18 +342,15 @@
   filter: contrast(1.3) brightness(1.2) saturate(1.3);
   transform: scale(1.02);
   z-index: 10;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 10px rgb(0 0 0 / 20%);
 }
 
 /* Visual indicator for tile boundaries */
 .tile::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  inset: 0;
+  border: 1px solid rgb(0 0 0 / 10%);
   pointer-events: none;
   z-index: 1;
 }
@@ -387,7 +394,7 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgb(0 0 0 / 5%);
   color: #666;
   font-size: 10px;
 }
@@ -411,7 +418,7 @@
 
 .tile:hover {
   z-index: 10;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 10px rgb(0 0 0 / 20%);
   transform: scale(calc(var(--tile-scale, 1) * 1.02));
 }
 
@@ -457,7 +464,7 @@
   height: 100%;
   object-fit: cover;
   image-rendering: -webkit-optimize-contrast;
-  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
   image-rendering: pixelated;
   transform-origin: 0 0;
 }
@@ -466,13 +473,11 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
   background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center;
   image-rendering: -webkit-optimize-contrast;
-  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
   image-rendering: pixelated;
   transform-origin: 0 0;
   transform: scale(calc(1 / var(--pixel-ratio, 1)));
@@ -485,11 +490,9 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
   object-fit: cover;
   image-rendering: -webkit-optimize-contrast;
-  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
   image-rendering: pixelated;
   transform-origin: 0 0;
   transform: scale(calc(1 / var(--pixel-ratio, 1)));
@@ -554,7 +557,7 @@
   height: var(--tile-size, 128px);
   object-fit: cover;
   image-rendering: -webkit-optimize-contrast;
-  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
   image-rendering: pixelated;
   transform-origin: 0 0;
   transform: scale(var(--scale, 0.5));
@@ -568,7 +571,7 @@
   height: var(--tile-size, 128px);
   object-fit: cover;
   image-rendering: -webkit-optimize-contrast;
-  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
   image-rendering: pixelated;
   transform-origin: 0 0;
   transform: scale(calc(1 / var(--pixel-ratio, 1)));
@@ -586,7 +589,7 @@
   top: 10px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgb(0 0 0 / 70%);
   color: white;
   padding: 8px 16px;
   border-radius: 4px;
@@ -605,10 +608,10 @@
   transform: translateX(-50%);
   display: flex;
   gap: 10px;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgb(255 255 255 / 90%);
   padding: 10px;
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 10%);
   z-index: 50;
 }
 

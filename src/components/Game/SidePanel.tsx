@@ -24,6 +24,7 @@ interface SidePanelProps {
 const SidePanel: Component<SidePanelProps> = (props) => {
   // Initialize state
   const [notifications, setNotifications] = createSignal<Notification[]>([]);
+  const [oldestPrimeNotification, setOldestPrimeNotification] = createSignal<Notification | null>(null);
   const [addedCount, setAddedCount] = createSignal(0);
   const [deletedCount, setDeletedCount] = createSignal(0);
   const [totalBasePoints, setTotalBasePoints] = createSignal<number | null>(null);
@@ -111,56 +112,68 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       // The server sends the event type as the event name and the data in the message
       const eventData = messageData;
       
-      // Handle base point changes
-      const eventToProcess = eventType === 'message' ? eventData : { 
-        ...eventData, 
-        type: eventType === 'created' && eventData?.type ? eventData.type : eventType 
-      };
-      
       // Handle base point changes and deletions
-      if (eventToProcess.type === 'basePointChanged' || eventToProcess.event === 'basePointChanged' ||
-          eventToProcess.type === 'basePointDeleted' || eventToProcess.event === 'basePointDeleted') {
-        const pointData = eventToProcess.point || eventToProcess;
+      if (eventData.type === 'basePointChanged' || eventData.event === 'basePointChanged' ||
+          eventData.type === 'basePointDeleted' || eventData.event === 'basePointDeleted') {
+        const pointData = eventData.point || eventData;
         if (pointData) {
-          const isDeletion = eventToProcess.type === 'basePointDeleted' || eventToProcess.event === 'basePointDeleted';
-          const count = eventToProcess.count || 1;
+          const isDeletion = eventData.type === 'basePointDeleted' || eventData.event === 'basePointDeleted';
+          const count = eventData.count || 1;
           
-          // Update counters
-          if (isDeletion) {
-            setDeletedCount(prev => prev + count);
-            // Update total points if available
-            if (totalBasePoints() !== null) {
-              setTotalBasePoints(prev => Math.max(0, (prev || 0) - count));
-            }
-          } else {
-            setAddedCount(prev => prev + count);
-            // Update total points if available
-            if (totalBasePoints() !== null) {
-              setTotalBasePoints(prev => (prev || 0) + count);
-            }
+          // Create a notification for the point change
+          const notification: Notification = {
+            id: pointData.id || Date.now(),
+            message: isDeletion 
+              ? `Removed ${count} base point${count > 1 ? 's' : ''} at (${pointData.x}, ${pointData.y})`
+              : `Added ${count} base point${count > 1 ? 's' : ''} at (${pointData.x}, ${pointData.y})`,
+            timestamp: pointData.timestamp || Date.now(),
+            userId: pointData.userId,
+            count: count
+          };
+          
+          // Check if this is a prime notification
+          if (pointData.isPrime || (pointData.message && (pointData.message as string).toLowerCase().includes('prime'))) {
+            setOldestPrimeNotification(prev => {
+              // If we don't have a previous prime notification or this one is older
+              if (!prev || notification.timestamp < prev.timestamp) {
+                return notification;
+              }
+              return prev;
+            });
           }
+          
+          setNotifications(prev => [notification, ...prev].slice(0, 50)); // Keep only the 50 most recent
         }
       }
       
       // Check both 'type' and 'event' for compatibility
-      if ((eventToProcess.type === 'cleanup' || eventToProcess.event === 'cleanup')) {
+      if ((eventData.type === 'cleanup' || eventData.event === 'cleanup')) {
         // Update total base points if available
-        if (eventToProcess.totalBasePoints !== undefined || eventToProcess.initialCount !== undefined) {
-          const count = eventToProcess.initialCount !== undefined 
-            ? eventToProcess.initialCount 
-            : eventToProcess.totalBasePoints;
+        if (eventData.totalBasePoints !== undefined || eventData.initialCount !== undefined) {
+          const count = eventData.initialCount !== undefined 
+            ? eventData.initialCount 
+            : eventData.totalBasePoints;
             
           setTotalBasePoints(prev => count);
         }
         
         // Update oldest prime timestamp if available
-        if (eventToProcess.oldestPrimeTimestamp !== undefined) {
-          setOldestPrimeTimestamp(eventToProcess.oldestPrimeTimestamp);
+        if (eventData.oldestPrimeTimestamp !== undefined) {
+          setOldestPrimeTimestamp(eventData.oldestPrimeTimestamp);
+          
+          // If we have an oldest prime timestamp but no notification, create one
+          if (!oldestPrimeNotification()) {
+            setOldestPrimeNotification({
+              id: 'system-prime',
+              message: 'Initial prime point detected',
+              timestamp: eventData.oldestPrimeTimestamp
+            });
+          }
         }
       } 
       // Handle world reset event
-      else if (eventToProcess.type === 'worldReset' || eventToProcess.event === 'worldReset') {
-        console.log('[World Reset] Received world reset event:', eventToProcess);
+      else if (eventData.type === 'worldReset' || eventData.event === 'worldReset') {
+        console.log('[World Reset] Received world reset event:', eventData);
         
         // Reset the total base points counter
         setTotalBasePoints(0);
@@ -169,10 +182,13 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         setAddedCount(0);
         setDeletedCount(0);
         
+        // Reset oldest prime notification
+        setOldestPrimeNotification(null);
+        
         // Show a notification to the user
         const notification: Notification = {
           id: Date.now(),
-          message: `World has been reset! ${eventToProcess.pointsBeforeReset} points were cleared.`,
+          message: `World has been reset! ${eventData.pointsBeforeReset} points were cleared.`,
           timestamp: Date.now()
         };
         
@@ -180,8 +196,8 @@ const SidePanel: Component<SidePanelProps> = (props) => {
         setNotifications(prev => [notification, ...prev]);
         
         // Update oldest prime timestamp if available
-        if (eventToProcess.oldestPrimeTimestamp !== undefined) {
-          setOldestPrimeTimestamp(eventToProcess.oldestPrimeTimestamp);
+        if (eventData.oldestPrimeTimestamp !== undefined) {
+          setOldestPrimeTimestamp(eventData.oldestPrimeTimestamp);
         }
       }
       
@@ -463,12 +479,15 @@ const SidePanel: Component<SidePanelProps> = (props) => {
       
       <div class={styles.content}>
         {props.activeTab === 'info' ? (
-          <InfoTab 
-            username={props.username}
-            addedCount={addedCount()}
-            deletedCount={deletedCount()}
-            totalBasePoints={totalBasePoints}
-          />
+          <div>
+            <InfoTab 
+              username={props.username}
+              addedCount={addedCount()}
+              deletedCount={deletedCount()}
+              totalBasePoints={totalBasePoints}
+              oldestPrimeNotification={oldestPrimeNotification()}
+            />
+          </div>
         ) : (
           <SettingsTab onLogout={props.onLogout} />
         )}

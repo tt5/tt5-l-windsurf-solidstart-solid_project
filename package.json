@@ -19,6 +19,10 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",
+    "lint:css": "stylelint 'src/**/*.css' --fix",
+    "lint:css:check": "stylelint 'src/**/*.css'",
+    "lint:stylelint": "stylelint 'src/**/*.css'",
+    "lint:stylelint:fix": "stylelint 'src/**/*.css' --fix",
     "db": "echo 'Use specific db commands: db:migrate, db:check, db:verify'"
   },
   "dependencies": {
@@ -44,6 +48,10 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/yargs": "^17.0.33",
     "jsdom": "^23.2.0",
+    "stylelint": "^16.5.0",
+    "stylelint-config-recommended": "^14.0.1",
+    "stylelint-config-standard": "^36.0.0",
+    "stylelint-declaration-strict-value": "^1.9.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
     "vitest": "^1.2.2"
