@@ -57,7 +57,10 @@ async function tryDevUserLogin(
       
       updateUser({
         id: userData.id,
-        username: userData.username || username
+        username: userData.username || username,
+        gameJoined: userData.gameJoined || false,
+        homeX: userData.homeX || 0,
+        homeY: userData.homeY || 0
       });
       
       return true;

@@ -1,5 +1,5 @@
 import { createPoint, type Point } from '~/types/board';
-import { usePlayerPosition } from '~/contexts/playerPosition';
+import { usePlayerPosition } from '../../contexts/PlayerPositionContext';
 import { BOARD_CONFIG } from '~/constants/game';
 
 /**

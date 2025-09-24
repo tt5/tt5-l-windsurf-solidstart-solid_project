@@ -1,7 +1,7 @@
 import { Title } from "@solidjs/meta";
 import { Show, createSignal } from 'solid-js';
-import { useAuth } from '~/contexts/auth';
-import { PlayerPositionProvider } from '~/contexts/playerPosition';
+import { useAuth } from '~/contexts/AuthContext';
+import { PlayerPositionProvider } from '~/contexts/PlayerPositionContext';
 import Board from '~/components/Game/Board';
 import SidePanel from '~/components/Game/SidePanel';
 import MapView from '~/components/Map/MapView';
