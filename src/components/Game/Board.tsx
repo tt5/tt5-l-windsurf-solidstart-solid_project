@@ -6,8 +6,8 @@ import {
   on 
 } from 'solid-js';
 import type { JSX } from 'solid-js/jsx-runtime';
-import { useAuth } from '../../contexts/auth';
-import { usePlayerPosition } from '../../contexts/playerPosition';
+import { useAuth } from '../../contexts/AuthContext';
+import { usePlayerPosition } from '../../contexts/PlayerPositionContext';
 import { jumpToPosition } from '../../lib/utils/navigation';
 import { 
   type Direction, 
