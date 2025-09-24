@@ -2,30 +2,30 @@
 
 .devToolsContainer {
   position: fixed;
-  bottom: var(--spacing-md);
   right: var(--spacing-md);
+  bottom: var(--spacing-md);
   z-index: var(--z-index-dev-tools);
-  font-family: var(--font-mono);
   font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
   transition: var(--transition-default);
 }
 
 .devToolsPanel {
-  background: var(--color-background-devtools);
-  color: var(--color-text-inverse);
-  padding: var(--spacing-md);
-  border-radius: var(--border-radius-sm);
-  margin-bottom: var(--spacing-sm);
   max-width: 320px;
-  box-shadow: var(--shadow-md);
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-md);
+  color: var(--color-text-inverse);
+  background: var(--color-background-devtools);
   border: 1px solid var(--color-border-dark);
+  border-radius: var(--border-radius-sm);
+  box-shadow: var(--shadow-md);
 }
 
 .userInfo {
   margin: 0 0 var(--spacing-sm) 0;
   padding: var(--spacing-xs) 0;
-  border-bottom: 1px solid var(--color-border-light);
   color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .userInfo strong {
@@ -40,18 +40,18 @@
 }
 
 .button {
-  border: none;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--border-radius-sm);
-  cursor: pointer;
-  flex: 1;
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-  transition: var(--transition-default);
   display: flex;
+  flex: 1;
+  gap: var(--spacing-xxs);
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-xxs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-weight: 500;
+  font-size: var(--font-size-xs);
+  border: none;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: var(--transition-default);
 }
 
 .button:focus {
@@ -61,8 +61,8 @@
 
 .logoutButton {
   composes: button;
-  background: var(--color-error);
   color: var(--color-text-inverse);
+  background: var(--color-error);
 }
 
 .logoutButton:hover {
@@ -71,8 +71,8 @@
 
 .resetButton {
   composes: button;
-  background: var(--color-warning);
   color: var(--color-text-inverse);
+  background: var(--color-warning);
 }
 
 .resetButton:hover {
@@ -80,19 +80,19 @@
 }
 
 .toggleButton {
-  background: var(--color-primary);
-  color: var(--color-text-inverse);
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-sm);
-  transition: var(--transition-default);
+  width: 40px;
+  height: 40px;
   margin-left: auto;
+  color: var(--color-text-inverse);
+  background: var(--color-primary);
+  border: none;
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: var(--transition-default);
 }
 
 .toggleButton:hover {

@@ -11,16 +11,16 @@
 .loadingContainer {
   display: flex;
   flex-direction: column;
+  gap: var(--spacing-md);
   align-items: center;
   justify-content: center;
   height: 300px;
-  gap: var(--spacing-md);
 }
 
 .loadingMessage {
   margin-top: var(--spacing-md);
-  font-size: 0.9rem;
   color: var(--color-text-light);
+  font-size: 0.9rem;
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -39,13 +39,13 @@
   position: absolute;
   top: 10px;
   right: 10px;
-  background-color: rgb(255 255 255 / 90%);
-  color: #333;
+  z-index: 5;
   padding: 4px 8px;
-  border-radius: 12px;
+  color: #333;
   font-size: 0.8rem;
   font-family: monospace;
-  z-index: 5;
+  background-color: rgb(255 255 255 / 90%);
+  border-radius: 12px;
   box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
 }
 
@@ -54,22 +54,37 @@
   position: absolute;
   top: 10px;
   left: 50%;
-  transform: translateX(-50%);
-  background-color: var(--color-error);
-  color: white;
-  padding: 8px 16px;
-  border-radius: var(--border-radius-md);
-  font-size: 0.9rem;
   z-index: 10;
-  animation: fadeInOut 2s ease-in-out forwards;
+  padding: 8px 16px;
+  color: white;
+  font-size: 0.9rem;
+  background-color: var(--color-error);
+  border-radius: var(--border-radius-md);
+  transform: translateX(-50%);
   opacity: 0;
+  animation: fade-in-out 2s ease-in-out forwards;
 }
 
-@keyframes fadeInOut {
-  0% { opacity: 0; transform: translate(-50%, -10px); }
-  10% { opacity: 1; transform: translate(-50%, 0); }
-  90% { opacity: 1; transform: translate(-50%, 0); }
-  100% { opacity: 0; transform: translate(-50%, -10px); }
+@keyframes fade-in-out {
+  0% { 
+    transform: translate(-50%, -10px);
+    opacity: 0; 
+  }
+
+  10% { 
+    transform: translate(-50%, 0);
+    opacity: 1; 
+  }
+
+  90% { 
+    transform: translate(-50%, 0);
+    opacity: 1; 
+  }
+
+  100% { 
+    transform: translate(-50%, -10px);
+    opacity: 0; 
+  }
 }
 
 /* Game Elements */
@@ -77,8 +92,8 @@
   --grid-cell-size: 45px;
 
   display: grid;
-  grid-template-columns: repeat(var(--grid-size), var(--grid-cell-size));
   grid-template-rows: repeat(var(--grid-size), var(--grid-cell-size));
+  grid-template-columns: repeat(var(--grid-size), var(--grid-cell-size));
   gap: var(--spacing-xs);
   width: fit-content;
   margin: var(--spacing-lg) auto;
@@ -89,36 +104,37 @@
 }
 
 .square {
-  aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #333; /* Ensure text is dark on light squares */
   background: #f8f9fa;
   border: 1px solid #e0e0e0;
   border-radius: var(--border-radius-sm);
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 10%);
   cursor: pointer;
   transition: all var(--transition-normal);
   will-change: transform, box-shadow;
-  box-shadow: inset 0 1px 3px rgb(0 0 0 / 10%);
-  color: #333; /* Ensure text is dark on light squares */
+  aspect-ratio: 1;
 }
 
 /* Empty squares with pattern - larger size */
 .square:not(.basePoint, .selected, .restricted) {
+  position: relative;
+  z-index: 1;
   background-image: 
     linear-gradient(45deg, #f5f5f5 25%, transparent 25%),
     linear-gradient(-45deg, #f5f5f5 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
     linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
-  background-size: 8px 8px;
   background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+  background-size: 8px 8px;
   transform: scale(1.1);
-  z-index: 1;
-  position: relative;
 }
 
 /* Hover States */
 .square:hover { background-color: color-mix(in srgb, var(--color-bg) 50%, white); }
+
 .square:active { transform: scale(0.98); }
 
 /* Valid Placement Hover */
@@ -155,7 +171,6 @@
 }
 
 .square.loading::after {
-  content: '';
   position: absolute;
   width: 16px;
   height: 16px;
@@ -163,6 +178,7 @@
   border-top-color: transparent;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  content: '';
 }
 
 .square.selected { 
@@ -207,32 +223,32 @@
 }
 
 .emptyMarker {
+  margin-top: -2px;
   color: rgb(0 0 0 / 30%);
   font-size: 1.8rem;
   line-height: 1;
-  user-select: none;
-  pointer-events: none;
   opacity: 0.6;
   transition: all 0.2s ease;
-  margin-top: -2px;
+  user-select: none;
+  pointer-events: none;
 }
 
 .square:hover .emptyMarker {
-  opacity: 0.8;
   color: rgb(0 0 0 / 40%);
+  opacity: 0.8;
 }
 
 /* Error Message */
 .errorMessage {
+  max-width: 100%;
   margin-top: var(--spacing-md);
   padding: var(--spacing-sm) var(--spacing-md);
+  color: #b71c1c;
+  font-size: 0.9rem;
+  text-align: center;
   background-color: #ffebee;
   border-left: 4px solid #f44336;
-  color: #b71c1c;
   border-radius: var(--border-radius-sm);
-  font-size: 0.9rem;
-  max-width: 100%;
-  text-align: center;
   transition: all var(--transition-normal);
 }
 
@@ -244,21 +260,21 @@
 }
 
 .playerPosition::after {
-  content: 'P';
   position: absolute;
-  inset: 0;
   display: grid;
-  place-content: center;
   color: white;
   font-weight: bold;
   font-size: 1.2em;
+  content: 'P';
+  inset: 0;
+  place-content: center;
 }
 
 /* Controls */
 .userBar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: var(--spacing-lg);
   padding: var(--spacing-md);
   background: var(--color-bg);
@@ -281,8 +297,8 @@
 
 .logoutButton {
   composes: button;
-  background: var(--color-error);
   color: white;
+  background: var(--color-error);
 }
 
 .logoutButton:hover { background: var(--color-error-dark); }
@@ -297,13 +313,14 @@
 .directionButton {
   composes: button;
   min-width: 80px;
-  background: var(--color-primary);
   color: white;
   font-weight: bold;
+  background: var(--color-primary);
   transition: all var(--transition-normal);
 }
 
 .directionButton:hover { background: var(--color-primary-dark); }
+
 .directionButton:active { transform: scale(0.95); }
 
 .directionButton:focus-visible {

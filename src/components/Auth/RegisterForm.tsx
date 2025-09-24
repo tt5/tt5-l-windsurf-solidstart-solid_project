@@ -1,6 +1,6 @@
 import { createSignal } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
-import styles from './RegisterForm.module.css';
+import styles from './Login.module.css';
 
 export default function RegisterForm() {
   const [username, setUsername] = createSignal('');
@@ -42,8 +42,8 @@ export default function RegisterForm() {
   };
 
   return (
-    <div class={styles.registerContainer}>
-      <div class={styles.registerForm}>
+    <div class={styles.loginContainer}>
+      <div class={styles.loginForm}>
         <h2>Create an Account</h2>
         
         {error() && (

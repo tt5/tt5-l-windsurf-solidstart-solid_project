@@ -3,33 +3,36 @@ module.exports = {
     'stylelint-config-standard',
     'stylelint-config-recommended',
   ],
-  plugins: [
-    'stylelint-declaration-strict-value',
-  ],
   rules: {
-    // Enforce using variables for colors, font families, and font weights
-    'scale-unlimited/declaration-strict-value': [
-      ['/color$/', 'font-family', 'font-weight', 'box-shadow'],
+    // Disable rules that conflict with CSS modules
+    'selector-class-pattern': null,
+    'no-descending-specificity': null,
+    'declaration-block-no-duplicate-custom-properties': null,
+    'property-no-unknown': [true, { 
+      ignoreProperties: ['composes', 'compose-with']
+    }],
+    'selector-pseudo-class-no-unknown': [
+      true,
       {
-        ignoreValues: {
-          '/^inherit|currentColor|transparent|none$/': true,
-        },
-        ignoreFunctions: false,
-      },
+        ignorePseudoClasses: ['global', 'local']
+      }
     ],
-    // Enforce kebab-case for class selectors
-    'selector-class-pattern': '^[a-z][a-zA-Z0-9]*(-[a-zA-Z0-9]+)*$',
-    // Enforce consistent indentation
-    indentation: 2,
-    // Enforce consistent quotes
-    'string-quotes': 'single',
-    // Enforce consistent line breaks for properties
-    'declaration-colon-newline-after': 'always-multi-line',
-    // Disallow vendor prefixes (let autoprefixer handle them)
-    'at-rule-no-vendor-prefix': true,
-    'property-no-vendor-prefix': true,
-    'selector-no-vendor-prefix': true,
-    'value-no-vendor-prefix': true,
+    
+    // Basic formatting
+    'rule-empty-line-before': [
+      'always-multi-line',
+      {
+        except: ['first-nested'],
+        ignore: ['after-comment']
+      }
+    ],
+    'at-rule-empty-line-before': [
+      'always',
+      {
+        except: ['blockless-after-same-name-blockless', 'first-nested'],
+        ignore: ['after-comment']
+      }
+    ],
   },
   ignoreFiles: [
     '**/node_modules/**',

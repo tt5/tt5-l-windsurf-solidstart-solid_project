@@ -1,31 +1,31 @@
 .sidePanel {
   --side-panel-width: 250px;
 
-  width: var(--side-panel-width);
-  background-color: #f5f5f5;
-  border-right: 1px solid #ddd;
+  position: relative;
+  z-index: 10;
   display: flex;
   flex-direction: column;
+  width: var(--side-panel-width);
   height: 100%;
-  position: relative;
+  background-color: #f5f5f5;
+  border-right: 1px solid #ddd;
   transition: transform 0.3s ease, width 0.3s ease;
-  z-index: 10;
 }
 
 /* Mobile menu toggle button */
 .menuToggle {
-  display: none;
   position: fixed;
   top: 10px;
   right: 10px;
   z-index: 20;
-  background: #1a73e8;
+  display: none;
+  padding: 8px 12px;
   color: white;
+  background: #1a73e8;
   border: none;
   border-radius: 4px;
-  padding: 8px 12px;
-  cursor: pointer;
   box-shadow: 0 2px 5px rgb(0 0 0 / 20%);
+  cursor: pointer;
 }
 
 /* Responsive styles */
@@ -33,10 +33,10 @@
   .sidePanel {
     position: fixed;
     top: 0;
-    left: 0;
     bottom: 0;
-    transform: translateX(calc(-1 * var(--side-panel-width)));
+    left: 0;
     box-shadow: 2px 0 10px rgb(0 0 0 / 10%);
+    transform: translateX(calc(-1 * var(--side-panel-width)));
   }
 
   .sidePanel.open {
@@ -48,11 +48,11 @@
   }
 
   .overlay {
-    display: none;
     position: fixed;
-    inset: 0;
-    background: rgb(0 0 0 / 50%);
     z-index: 5;
+    display: none;
+    background: rgb(0 0 0 / 50%);
+    inset: 0;
   }
 
   .sidePanel.open + .overlay {
@@ -68,12 +68,12 @@
 .tab {
   flex: 1;
   padding: 12px 16px;
+  color: #666;
+  font-weight: 500;
+  font-size: 14px;
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  color: #666;
   transition: all 0.2s ease;
 }
 
@@ -83,54 +83,54 @@
 
 .tab.active {
   color: #1a73e8;
-  border-bottom: 2px solid #1a73e8;
   font-weight: 600;
+  border-bottom: 2px solid #1a73e8;
 }
 
 .tabContent {
   flex: 1;
   padding: 16px;
+  padding-right: env(safe-area-inset-right, 16px);
   padding-bottom: env(safe-area-inset-bottom, 16px);
   padding-left: env(safe-area-inset-left, 16px);
-  padding-right: env(safe-area-inset-right, 16px);
   overflow-y: auto;
 }
 
 .infoHeader {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 16px;
 }
 
 .notificationBadge {
-  background-color: #f0f0f0;
-  color: #666;
-  border-radius: 12px;
   padding: 2px 8px;
-  font-size: 12px;
+  color: #666;
   font-weight: 500;
+  font-size: 12px;
+  background-color: #f0f0f0;
+  border-radius: 12px;
   transition: all 0.2s ease;
 }
 
 .notificationBadge.hasNotifications {
-  background-color: #1a73e8;
   color: white;
+  background-color: #1a73e8;
 }
 
 .playerInfo {
-  background: white;
-  padding: 16px;
-  border-radius: 8px;
   margin-bottom: 20px;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
   box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
 .playerInfo button {
   margin-top: 12px;
+  padding: 6px 12px;
   background: #f0f0f0;
   border: 1px solid #ddd;
-  padding: 6px 12px;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -141,54 +141,55 @@
 }
 
 .notificationsSection {
+  padding: 16px;
   background: white;
   border-radius: 8px;
-  padding: 16px;
   box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
 .notificationsSection h3 {
   margin-top: 0;
   margin-bottom: 12px;
-  font-size: 16px;
   color: #444;
+  font-size: 16px;
 }
 
 /* Counters */
 .counters {
   display: grid;
   gap: 8px; /* Reduced gap between counters */
+  box-sizing: border-box;
   margin-top: 12px;
   padding: 0 4px; /* Add some padding to prevent touching the edges */
-  box-sizing: border-box;
 }
 
 .counter {
-  min-width: 100px;
   display: flex;
+  box-sizing: border-box;
+  min-width: 100px;
   padding: 8px 4px; /* Reduced padding */
-  border-radius: 6px;
   background-color: #fff;
+  border-radius: 6px;
   box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-sizing: border-box;
 }
 
 .counter:hover {
-  transform: translateY(-2px);
   box-shadow: 0 4px 8px rgb(0 0 0 / 10%);
+  transform: translateY(-2px);
 }
 
 .counterNumber {
-  font-size: 18px; /* Slightly smaller font */
-  font-weight: 700;
-  margin-bottom: 2px; /* Reduced margin */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   width: 100%;
+  margin-bottom: 2px; /* Reduced margin */
+  overflow: hidden;
+  font-weight: 700;
+  font-size: 18px; /* Slightly smaller font */
+  white-space: nowrap;
   text-align: center;
+  text-overflow: ellipsis;
   transition: transform 0.3s ease;
+  animation: pop 0.3s ease;
 }
 
 .counterNumber.added {
@@ -205,16 +206,16 @@
 }
 
 .counterLabel {
-  font-size: 11px; /* Slightly smaller label */
-  color: #666;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   width: 100%;
+  overflow: hidden;
+  color: #666;
+  font-weight: 500;
+  font-size: 11px; /* Slightly smaller label */
+  letter-spacing: 0.5px;
+  white-space: nowrap;
   text-align: center;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 500;
+  text-overflow: ellipsis;
 }
 
 /* Animation for counter updates */
@@ -224,29 +225,25 @@
   100% { transform: scale(1); }
 }
 
-.counterNumber {
-  animation: pop 0.3s ease;
-}
-
 .noNotifications {
+  padding: 12px 0;
   color: #888;
   font-style: italic;
   text-align: center;
-  padding: 12px 0;
 }
 
 .notificationsList {
   max-height: 300px;
-  overflow-y: auto;
   padding-right: 4px;
+  overflow-y: auto;
 }
 
 .notificationItem {
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .notificationItem:last-child {
@@ -254,13 +251,13 @@
 }
 
 .notificationTime {
-  font-size: 11px;
   color: #888;
+  font-size: 11px;
 }
 
 .notificationText {
-  font-size: 13px;
   color: #333;
+  font-size: 13px;
   line-height: 1.4;
 }
 
@@ -268,8 +265,8 @@
 
 /* Game Status */
 .gameStatusContainer {
-  padding: 1rem;
   margin: 1rem 0;
+  padding: 1rem;
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
@@ -279,10 +276,10 @@
   width: 100%;
   margin: 0.5rem 0;
   padding: 0.5rem;
+  color: white;
+  background-color: #1a73e8;
   border: none;
   border-radius: 4px;
-  background-color: #1a73e8;
-  color: white;
   cursor: pointer;
   transition: background-color 0.2s;
 }

@@ -1,11 +1,11 @@
 @import url('../../styles/variables.css');
 
 .container {
-  height: 100vh;
-  padding: 0;
-  margin: 0;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
 }
 
 .gameContainer {
@@ -16,28 +16,28 @@
 }
 
 .sidePanel {
-  width: 250px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--color-border);
+  width: 250px;
   overflow: hidden;
+  border-right: 1px solid var(--color-border);
 }
 
 .tabs {
   display: flex;
-  border-bottom: 1px solid var(--color-border);
   padding: 0 0.5rem;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .tab {
   flex: 1;
   padding: 0.75rem 0.5rem;
+  color: var(--color-text-light);
+  font-size: 0.9rem;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
-  font-size: 0.9rem;
-  color: var(--color-text-light);
   transition: all 0.2s ease;
 }
 
@@ -47,8 +47,8 @@
 
 .tab.active {
   color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
   font-weight: 500;
+  border-bottom-color: var(--color-primary);
 }
 
 .tabContent {
@@ -71,6 +71,6 @@
   align-items: center;
   justify-content: center;
   height: 100vh;
-  text-align: center;
   padding: 2rem;
+  text-align: center;
 }
