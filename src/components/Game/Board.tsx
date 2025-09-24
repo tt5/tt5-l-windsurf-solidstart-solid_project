@@ -21,7 +21,9 @@ import {
   calculateRestrictedSquares, 
   fetchBasePoints as fetchBasePointsUtil, 
   handleDirection as handleDirectionUtil,
-  handleAddBasePoint 
+  handleAddBasePoint,
+  isBasePoint,
+  validateSquarePlacement
 } from '../../utils/boardUtils';
 import styles from './Board.module.css';
 
@@ -71,50 +73,20 @@ const Board: Component = () => {
     }
   });
 
-  // Update position in both local state and context
-  const updatePosition = (newPosition: Point) => {
-    setCurrentPosition(newPosition);
-    setContextPosition(newPosition);
-  };
-  
   // Use restricted squares from context
   const [hoveredSquare, setHoveredSquare] = createSignal<number | null>(null);
   const [error, setError] = createSignal<string | null>(null);
   const [reachedBoundary, setReachedBoundary] = createSignal<boolean>(false);
   
-  // Check if there's a base point at the given world coordinates
-  const isBasePoint = (x: number, y: number): boolean => {
-    return basePoints().some(point => point.x === x && point.y === y);
-  };
-
   // Validate if a square can have a base point
-  const validateSquarePlacement = (index: number): { isValid: boolean; reason?: string } => {
-    if (!currentUser) {
-      return { isValid: false, reason: 'Not logged in' };
-    }
-
-    const gridX = index % BOARD_CONFIG.GRID_SIZE;
-    const gridY = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-    const [offsetX, offsetY] = currentPosition();
-    const worldX = gridX - offsetX;
-    const worldY = gridY - offsetY;
-
-    // Check if it's the player's position
-    if (worldX === 0 && worldY === 0) {
-      return { isValid: false, reason: 'Cannot place on player position' };
-    }
-
-    // Check if already a base point
-    if (isBasePoint(worldX, worldY)) {
-      return { isValid: false, reason: 'Base point already exists here' };
-    }
-
-    // Check if it's a restricted square
-    if (getRestrictedSquares().includes(index)) {
-      return { isValid: false, reason: 'Cannot place in restricted area' };
-    }
-
-    return { isValid: true };
+  const validateSquarePlacementLocal = (index: number) => {
+    return validateSquarePlacement({
+      index,
+      currentUser,
+      currentPosition: currentPosition(),
+      basePoints: basePoints(),
+      restrictedSquares: getRestrictedSquares()
+    });
   };
 
   // Handle square hover
@@ -123,7 +95,7 @@ const Board: Component = () => {
     if (index === null) {
       setError(null);
     } else {
-      const validation = validateSquarePlacement(index);
+      const validation = validateSquarePlacementLocal(index);
       if (!validation.isValid) {
         setError(validation.reason || 'Invalid placement');
       } else {
@@ -161,7 +133,7 @@ const Board: Component = () => {
       setBasePoints,
       setLastFetchTime,
       setIsFetching,
-setRestrictedSquares,
+      setRestrictedSquares,
       restrictedSquares: getRestrictedSquares
     });
     
@@ -257,13 +229,6 @@ setRestrictedSquares,
     };
   });
   
-  // Validate grid coordinates
-  const isValidCoordinate = (value: number): boolean => {
-    return Number.isInteger(value) && 
-           value >= BOARD_CONFIG.WORLD_BOUNDS.MIN_X && 
-           value <= BOARD_CONFIG.WORLD_BOUNDS.MAX_X;
-  };
-
   const handleSquareClick = async (index: number) => {
     // Calculate grid position from index
     const gridX = index % BOARD_CONFIG.GRID_SIZE;
@@ -282,8 +247,7 @@ setRestrictedSquares,
         isSaving,
         setIsSaving,
         setBasePoints,
-        isBasePoint,
-        isValidCoordinate
+        isBasePoint: (x: number, y: number) => isBasePoint(x, y, basePoints())
       });
       
       if (response.success && response.data) {
@@ -294,6 +258,7 @@ setRestrictedSquares,
           getRestrictedSquares()
         );
         setRestrictedSquares(newRestrictedSquares);
+        console.log(`[Board] handleSquareClick - New restricted squares:`, newRestrictedSquares)
       } else if (response.error) {
         console.error('Error adding base point:', response.error);
         setError(response.error);
@@ -385,24 +350,23 @@ setRestrictedSquares,
     // Create a new position object but don't update it yet
     const newPosition = createPoint(newX, newY);
     
-    // Create a wrapper function that handles both direct values and updater functions
     let positionUpdated = false;
-    const setPositionWrapper = (value: Point | ((prev: Point) => Point)) => {
-      if (positionUpdated) {
-        console.warn('Position already updated, ignoring duplicate update');
-        return newPosition;
-      }
-      const updatedPosition = typeof value === 'function' ? value(currentPosition()) : value;
-      updatePosition(updatedPosition);
-      positionUpdated = true;
-      return updatedPosition;
-    };
     
     try {
       await handleDirectionUtil(dir, {
         isMoving,
         currentPosition: () => currentPosition(), // Always get the current position from the signal
-        setCurrentPosition: setPositionWrapper,
+        setCurrentPosition: (value: Point | ((prev: Point) => Point)) => {
+          if (positionUpdated) {
+            console.warn('Position already updated, ignoring duplicate update');
+            return newPosition;
+          }
+          const updatedPosition = typeof value === 'function' ? value(currentPosition()) : value;
+          setCurrentPosition(updatedPosition);
+          setContextPosition(updatedPosition);
+          positionUpdated = true;
+          return updatedPosition;
+        },
         restrictedSquares: getRestrictedSquares,
         setRestrictedSquares: (value) => {
           // Ensure we're using the latest position when updating restricted squares
@@ -418,25 +382,14 @@ setRestrictedSquares,
           });
         },
         setIsMoving,
-        isBasePoint
+        isBasePoint: (x: number, y: number) => isBasePoint(x, y, basePoints())
       });
     } catch (error) {
       console.error('Error in handleDirectionUtil:', error);
       // Revert position if there was an error
-      updatePosition(currentPos);
+      setCurrentPosition(currentPosition());
+      setContextPosition(currentPosition());
       throw error;
-    }
-  };
-
-  const handleGridClick = (e: MouseEvent) => {
-    if (!(e.target instanceof HTMLElement)) return;
-    
-    // If the click wasn't on a square button, log it
-    if (!e.target.closest('button')) {
-      console.log('Grid click (not on button):', {
-        target: e.target,
-        position: { x: e.clientX, y: e.clientY }
-      });
     }
   };
 
@@ -450,7 +403,7 @@ setRestrictedSquares,
       <div class={styles.positionIndicator}>
         Position: ({currentPosition()[0]}, {currentPosition()[1]})
       </div>
-      <div class={styles.grid} onClick={handleGridClick}>
+      <div class={styles.grid}>
         {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
           const x = index % BOARD_CONFIG.GRID_SIZE;
           const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
@@ -458,11 +411,11 @@ setRestrictedSquares,
           const worldX = x - offsetX;
           const worldY = y - offsetY;
           const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
-          const isBP = isBasePoint(worldX, worldY);
+          const isBP = isBasePoint(worldX, worldY, basePoints());
           const isSelected = getRestrictedSquares().includes(squareIndex);
           const isPlayerPosition = worldX === 0 && worldY === 0;
           const isHovered = hoveredSquare() === index;
-          const validation = validateSquarePlacement(index);
+          const validation = validateSquarePlacementLocal(index);
           const isValid = validation.isValid && !isSaving();
           
           // Check if two points are on the same restricted line
@@ -555,7 +508,7 @@ setRestrictedSquares,
               return;
             }
             
-            if (isBasePoint(worldX, worldY)) {
+      if (isBasePoint(worldX, worldY, basePoints())) {
               return;
             }
             

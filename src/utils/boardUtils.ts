@@ -1,5 +1,5 @@
 import { BOARD_CONFIG } from '../constants/game';
-import { createPoint, Point, BasePoint, Direction } from '../types/board';
+import { createPoint, Point, BasePoint, Direction, BasePoint as BasePointType } from '../types/board';
 import type { Accessor, Setter } from 'solid-js';
 import { moveSquares } from './directionUtils';
 import type { ApiResponse } from './api';
@@ -11,8 +11,7 @@ type AddBasePointOptions = {
   isSaving: () => boolean;
   setIsSaving: (value: boolean | ((prev: boolean) => boolean)) => void;
   setBasePoints: (value: BasePoint[] | ((prev: BasePoint[]) => BasePoint[])) => void;
-  isBasePoint: (x: number, y: number) => boolean;
-  isValidCoordinate: (value: number) => boolean;
+  isBasePoint: (x: number, y: number, basePoints: BasePoint[]) => boolean;
 };
 
 export const handleAddBasePoint = async ({
@@ -22,8 +21,7 @@ export const handleAddBasePoint = async ({
   isSaving,
   setIsSaving,
   setBasePoints,
-  isBasePoint,
-  isValidCoordinate
+  isBasePoint
 }: AddBasePointOptions): Promise<ApiResponse<BasePoint>> => {
   if (!currentUser) return { success: false, error: 'User not authenticated', timestamp: Date.now() };
   if (isSaving()) return { success: false, error: 'Operation already in progress', timestamp: Date.now() };
@@ -33,13 +31,21 @@ export const handleAddBasePoint = async ({
   if (!isValidCoordinate(x) || !isValidCoordinate(y)) {
     return {
       success: false, 
-      error: `Coordinates must be integers between 0 and ${BOARD_CONFIG.GRID_SIZE - 1} (inclusive)`,
+      error: `Coordinates must be integers between ${BOARD_CONFIG.WORLD_BOUNDS.MIN_X} and ${BOARD_CONFIG.WORLD_BOUNDS.MAX_X} (inclusive)`,
       timestamp: Date.now()
     };
   }
   
+  // Get current base points to check for duplicates
+  const currentBasePoints = await new Promise<BasePoint[]>((resolve) => {
+    setBasePoints(prev => {
+      resolve(prev);
+      return prev;
+    });
+  });
+  
   // Check for duplicate base point
-  if (isBasePoint(x, y)) {
+  if (isBasePoint(x, y, currentBasePoints)) {
     return {
       success: false,
       error: 'Base point already exists at these coordinates',
@@ -371,7 +377,73 @@ const indicesToPoints = (indices: number[]): Point[] =>
   ));
 
 const pointsToIndices = (points: Point[]): number[] => 
-  points.map(([x, y]) => y * BOARD_CONFIG.GRID_SIZE + x);;
+  points.map(([x, y]) => y * BOARD_CONFIG.GRID_SIZE + x);
+
+/**
+ * Validates if a coordinate is within the world bounds
+ * @param value The coordinate value to check
+ * @returns boolean indicating if the coordinate is valid
+ */
+export const isValidCoordinate = (value: number): boolean => {
+  return Number.isInteger(value) && 
+         value >= BOARD_CONFIG.WORLD_BOUNDS.MIN_X && 
+         value <= BOARD_CONFIG.WORLD_BOUNDS.MAX_X;
+};
+
+/**
+ * Checks if a base point exists at the given coordinates
+ */
+export const isBasePoint = (x: number, y: number, basePoints: BasePoint[]): boolean => {
+  return basePoints.some(point => point.x === x && point.y === y);
+};
+
+type ValidationResult = { isValid: boolean; reason?: string };
+
+type ValidateSquarePlacementOptions = {
+  index: number;
+  currentUser: any;
+  currentPosition: Point;
+  basePoints: BasePoint[];
+  restrictedSquares: number[];
+};
+
+/**
+ * Validates if a square can have a base point placed on it
+ */
+export const validateSquarePlacement = ({
+  index,
+  currentUser,
+  currentPosition,
+  basePoints,
+  restrictedSquares
+}: ValidateSquarePlacementOptions): ValidationResult => {
+  if (!currentUser) {
+    return { isValid: false, reason: 'Not logged in' };
+  }
+
+  const gridX = index % BOARD_CONFIG.GRID_SIZE;
+  const gridY = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
+  const [offsetX, offsetY] = currentPosition;
+  const worldX = gridX - offsetX;
+  const worldY = gridY - offsetY;
+
+  // Check if it's the player's position
+  if (worldX === 0 && worldY === 0) {
+    return { isValid: false, reason: 'Cannot place on player position' };
+  }
+
+  // Check if already a base point
+  if (isBasePoint(worldX, worldY, basePoints)) {
+    return { isValid: false, reason: 'Base point already exists here' };
+  }
+
+  // Check if it's a restricted square
+  if (restrictedSquares.includes(index)) {
+    return { isValid: false, reason: 'Cannot place in restricted area' };
+  }
+
+  return { isValid: true };
+};
 
 export const fetchBasePoints = async ({
   user,
