@@ -222,121 +222,39 @@ export function GameStatus() {
   });
 
   return (
-    <div class="game-status">
-      <style>
-        {`
-        .game-status {
-          padding: 1rem;
-          background: #f8f9fa;
-          border-radius: 8px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          margin-bottom: 1rem;
-        }
-        
-        .loading {
-          padding: 0.5rem;
-          color: #666;
-          font-style: italic;
-          text-align: center;
-        }
-        
-        .error-message {
-          padding: 0.75rem;
-          margin: 0.5rem 0;
-          background-color: #f8d7da;
-          color: #721c24;
-          border: 1px solid #f5c6cb;
-          border-radius: 4px;
-          font-size: 0.9rem;
-        }
-        
-        .success-message {
-          padding: 0.75rem;
-          margin: 0.5rem 0;
-          background-color: #d4edda;
-          color: #155724;
-          border: 1px solid #c3e6cb;
-          border-radius: 4px;
-          font-size: 0.9rem;
-        }
-        
-        .status-info {
-          margin: 1rem 0;
-          padding: 1rem;
-          background: white;
-          border-radius: 6px;
-          border: 1px solid #dee2e6;
-          opacity: 1;
-          transition: opacity 0.3s ease;
-        }
-        
-        .status-info.is-loading {
-          opacity: 0.7;
-          pointer-events: none;
-        }
-        
-        .status-row {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 0.5rem;
-          padding: 0.5rem 0;
-          border-bottom: 1px solid #f1f1f1;
-        }
-        
-        .status-row:last-child {
-          margin-bottom: 0;
-          border-bottom: none;
-        }
-        
-        .status-label {
-          font-weight: 500;
-          color: #495057;
-        }
-        
-        .status-value {
-          color: #212529;
-          font-weight: 500;
-        }
-        
-        .actions {
-          margin-top: 1rem;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }`}
-      </style>
+    <div class={styles.gameStatus}>
       {/* Loading state */}
       <Show when={state().isLoading}>
-        <div class="loading">Loading game status...</div>
+        <div class={styles.loading}>Loading game status...</div>
       </Show>
 
       {/* Error message */}
       <Show when={state().error}>
-        <div class="error-message">
+        <div class={styles.errorMessage}>
           {state().error}
         </div>
       </Show>
 
       {/* Success message */}
       <Show when={state().message && !state().isLoading}>
-        <div class="success-message">
+        <div class={styles.successMessage}>
           {state().message}
         </div>
       </Show>
 
       {/* Game status info */}
-      <div class="status-info" classList={{ 'is-loading': state().isLoading }}>
-        <div class="status-row">
-          <span class="status-label">Game Status:</span>
-          <span class="status-value">
+      <div class={styles.statusInfo} classList={{ [styles.isLoading]: state().isLoading }}>
+        <div class={styles.statusRow}>
+          <span class={styles.statusLabel}>Game Status:</span>
+          <span class={styles.statusValue}>
             {state().gameJoined ? '✅ Joined' : '❌ Not Joined'}
           </span>
         </div>
         
         <Show when={state().gameJoined}>
-          <div class="status-row">
-            <span class="status-label">Home Base:</span>
-            <span class="status-value">
+          <div class={styles.statusRow}>
+            <span class={styles.statusLabel}>Home Base:</span>
+            <span class={styles.statusValue}>
               ({state().homeX}, {state().homeY})
             </span>
           </div>
@@ -344,14 +262,14 @@ export function GameStatus() {
       </div>
 
       {/* Action buttons */}
-      <div class="actions">
+      <div class={styles.actions}>
         <Show
           when={state().gameJoined}
           fallback={
             <button 
               onClick={handleJoinGame} 
               disabled={state().isLoading}
-              class="join-button"
+              class={styles.joinButton}
             >
               {state().isLoading ? 'Joining...' : 'Join Game'}
             </button>
@@ -360,7 +278,7 @@ export function GameStatus() {
           <button 
             onClick={handleLeaveGame} 
             disabled={state().isLoading}
-            class="leave-button"
+            class={styles.leaveButton}
           >
             {state().isLoading ? 'Leaving...' : 'Leave Game'}
           </button>

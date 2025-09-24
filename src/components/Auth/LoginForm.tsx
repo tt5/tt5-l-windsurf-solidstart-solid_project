@@ -1,7 +1,7 @@
 import { createSignal } from 'solid-js';
 import { A, useNavigate, useLocation } from '@solidjs/router';
 import { useAuth } from '~/contexts/auth';
-import styles from './LoginForm.module.css';
+import styles from './Login.module.css';
 
 interface LocationState {
   registered?: boolean;
