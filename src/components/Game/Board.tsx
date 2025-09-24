@@ -8,6 +8,7 @@ import {
 import type { JSX } from 'solid-js/jsx-runtime';
 import { useAuth } from '../../contexts/auth';
 import { usePlayerPosition } from '../../contexts/playerPosition';
+import { jumpToPosition } from '../../lib/utils/navigation';
 import { 
   type Direction, 
   type Point, 
@@ -51,24 +52,32 @@ const Board: Component = () => {
     setRestrictedSquares
   } = usePlayerPosition();
   
-  // Initialize position from context if available and sync with context changes
+  // Initialize position using jumpToPosition
+  onMount(async () => {
+    try {
+      const result = await jumpToPosition(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]);
+      if (result) {
+        setCurrentPosition(result.position);
+        setContextPosition(result.position);
+        setRestrictedSquares(result.restrictedSquares);
+      }
+    } catch (error) {
+      console.error('Error initializing position:', error);
+      // Fallback to default position if jump fails
+      const defaultPos = createPoint(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]);
+      setCurrentPosition(defaultPos);
+      setContextPosition(defaultPos);
+    }
+  });
+
+  // Sync position with context changes
   createEffect(() => {
     const pos = contextPosition();
     if (pos) {
-      // Only update if the position has actually changed
       const [x, y] = pos;
       const current = currentPosition();
       if (current[0] !== x || current[1] !== y) {
         setCurrentPosition(createPoint(x, y));
-      }
-    } else {
-      const current = currentPosition();
-      if (current[0] !== BOARD_CONFIG.DEFAULT_POSITION[0] || 
-          current[1] !== BOARD_CONFIG.DEFAULT_POSITION[1]) {
-        // If no position in context, set the default position to context
-        const defaultPos = createPoint(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]);
-        setContextPosition(defaultPos);
-        setCurrentPosition(defaultPos);
       }
     }
   });
@@ -372,7 +381,7 @@ const Board: Component = () => {
         setRestrictedSquares: (value) => {
           // Ensure we're using the latest position when updating restricted squares
           const currentPos = currentPosition();
-          setRestrictedSquares(prev => {
+          setRestrictedSquares((prev: number[]) => {
             const newValue = typeof value === 'function' ? value(prev) : value;
             console.log('Updating restricted squares:', { 
               prevLength: prev.length, 
