@@ -43,7 +43,7 @@
   left: 50%;
   width: 100vw;
   height: 100vh;
-  min-height: 600px;
+  min-height: 2000px;
   overflow: visible;
   background-color: var(--tile-bg-color);
   transform: 
