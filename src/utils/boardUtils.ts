@@ -114,22 +114,28 @@ export const handleAddBasePoint = async ({
 
 export const calculateRestrictedSquares = (
   p: Point,
-  currentRestrictedSquares: number[]
+  currentRestrictedSquares: number[],
+  currentPosition: Point
 ): number[] => {
-  const [x, y] = p; // Destructure the Point tuple
+  const [x, y] = p; // Base point position in world coordinates
+  const [offsetX, offsetY] = currentPosition; // Player's current position
   const gridSize = BOARD_CONFIG.GRID_SIZE;
   const maxIndex = gridSize * gridSize - 1;
+  
+  // Convert world coordinates to grid coordinates
+  const gridX = x + offsetX;
+  const gridY = y + offsetY;
   
   // Helper function to check if a point is within the grid
   const isValidSquare = (square: number): boolean => {
     return square >= 0 && square <= maxIndex;
   };
 
-  // Calculate squares in a straight line from (x,y) in a given direction
+  // Calculate squares in a straight line from (gridX,gridY) in a given direction
   const calculateLine = (dx: number, dy: number): number[] => {
     const squares: number[] = [];
-    let cx = x + dx;
-    let cy = y + dy;
+    let cx = gridX + dx;
+    let cy = gridY + dy;
     
     while (cx >= 0 && cx < gridSize && cy >= 0 && cy < gridSize) {
       const square = cx + cy * gridSize;

@@ -255,7 +255,8 @@ const Board: Component = () => {
         // Recalculate restricted squares with the new base point
         const newRestrictedSquares = calculateRestrictedSquares(
           createPoint(worldX, worldY),
-          getRestrictedSquares()
+          getRestrictedSquares(),
+          currentPosition()
         );
         setRestrictedSquares(newRestrictedSquares);
         console.log(`[Board] handleSquareClick - New restricted squares:`, newRestrictedSquares)
