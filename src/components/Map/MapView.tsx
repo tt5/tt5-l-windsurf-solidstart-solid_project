@@ -276,7 +276,7 @@ const MapView: Component = () => {
       return;
     }
     
-    const spiralRadius = 2;
+    const spiralRadius = 2; // Original spiral radius
     
     const tileCoords = worldToTileCoords(vp.x,vp.y);
     const spiralCoords = generateSpiralCoords(tileCoords.tileX, tileCoords.tileY, spiralRadius);
@@ -1035,6 +1035,36 @@ const MapView: Component = () => {
     }
   };
   
+  // Render all tiles in the world bounds
+  const renderAllTiles = () => {
+    const WORLD_MIN = -16;
+    const WORLD_MAX = 16;
+    const tileElements = [];
+    
+    for (let y = WORLD_MIN; y <= WORLD_MAX; y++) {
+      for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
+        const key = `${x},${y}`;
+        const existingTile = tiles()[key];
+        
+        // Create a placeholder tile if it doesn't exist yet
+        const tile = existingTile || {
+          x,
+          y,
+          loading: false,
+          error: false,
+          data: null,
+          mountId: currentMountId,
+          timestamp: Date.now(),
+          fromCache: false
+        };
+        
+        tileElements.push(renderTile(tile));
+      }
+    }
+    
+    return tileElements;
+  };
+
   return (
     <div
       class={styles.mapContainer}
@@ -1050,7 +1080,7 @@ const MapView: Component = () => {
           style={{
             '--translate-x': '0px',
             '--translate-y': '0px',
-            // TAG-t
+            // Center the map at (0,0)
             'transform': `translate(${-viewport().x - 16*64}px, ${-viewport().y - 16*64}px)`
           }}
         >
@@ -1062,7 +1092,7 @@ const MapView: Component = () => {
             height: '100%',
             'z-index': 2
           }}>
-            {Object.values(tiles()).map(tile => renderTile(tile))}
+            {renderAllTiles()}
           </div>
         </div>
       </div>
