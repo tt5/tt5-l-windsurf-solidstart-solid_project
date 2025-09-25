@@ -584,19 +584,22 @@ const MapView: Component = () => {
     
     // Skip if already loading (duplicate check removed)
     
-    // Mark as loading
-    setTiles(prev => ({
-      ...prev,
-      [key]: {
-        x: tileX,
-        y: tileY,
-        data: null,
-        loading: true,
-        error: false,
-        timestamp: 0,
-        mountId: currentMountId
-      }
-    }));
+    // Mark as loading but keep existing data
+    setTiles(prev => {
+      const existingTile = prev[key];
+      return {
+        ...prev,
+        [key]: {
+          x: tileX,
+          y: tileY,
+          data: existingTile?.data || null, // Keep existing data
+          loading: true,
+          error: false,
+          timestamp: existingTile?.timestamp || 0, // Keep existing timestamp
+          mountId: currentMountId
+        }
+      };
+    });
 
     let cleanupFn: (() => void) | null = null;
     
@@ -868,8 +871,8 @@ const MapView: Component = () => {
           </div>
         </div>
       );
-    } else if (tile.loading) {
-      // Loading state with animation
+    } else if (tile.loading && (!tile.data || tile.data.length === 0)) {
+      // Only show full loading state if we don't have any data yet
       content = (
         <div 
           class={`${styles.fallbackTile} loading`}
@@ -927,6 +930,7 @@ const MapView: Component = () => {
               </svg>
               <div class={styles.tileLabel}>
                 {tile.x},{tile.y}
+                {tile.loading && <div class={styles.loadingIndicator} />}
               </div>
             </div>
           );

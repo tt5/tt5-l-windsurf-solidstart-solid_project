@@ -210,6 +210,24 @@
   background-color: rgb(255 255 255 / 0%);
   border-radius: 3px;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.loadingIndicator {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  border-top-color: #000;
+  animation: spin 1s linear infinite;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Tile image and SVG styles */
