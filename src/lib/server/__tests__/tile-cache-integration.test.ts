@@ -115,12 +115,18 @@ describe('Tile Cache Database Integration', () => {
     }
   });
 
-  // Simple test tile creation without compression for testing
+  // Create a properly compressed test tile
   async function createTestTile(x: number, y: number, data: number[] = [x + y, x + y + 1, x + y + 2]): Promise<MapTile> {
+    const testData = new Uint8Array(data);
+    // Compress the data using pako
+    const compressed = deflate(testData, { level: 6 });
+    const compressedData = Buffer.concat([Buffer.from([0x01]), Buffer.from(compressed)]);
+    
     return {
       tileX: x,
       tileY: y,
-      data: new Uint8Array(data),
+      data: testData,
+      compressedData,
       version: 1,
       lastUpdatedMs: Date.now()
     };
