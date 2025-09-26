@@ -1,4 +1,4 @@
-import { MapTile, MapTileRepository } from '~/lib/server/repositories/map-tile.repository';
+import { MapTile, MapTileRepository } from '../repositories/map-tile.repository';
 
 interface CacheEntry<T> {
   data: T;
@@ -121,7 +121,7 @@ export class TileCacheService {
 }
 
 // Export a singleton instance
-import { getDb } from '~/lib/server/db';
+import { getDb } from '../db';
 
 // Lazy initialization pattern
 let _tileCacheService: TileCacheService | null = null;
