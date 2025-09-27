@@ -223,7 +223,11 @@ export const handleDirection = async (
   const now = Date.now();
   
   // Prevent multiple movements at once and enforce cooldown
-  if (isMoving() || now - lastMoveTime < MOVE_COOLDOWN_MS) {
+  const timeSinceLastMove = now - lastMoveTime;
+  // Only enforce cooldown if the last move was recent (within 5 seconds)
+  const isRecentMove = timeSinceLastMove < 5000; // 5 seconds
+  
+  if (isMoving() || (isRecentMove && timeSinceLastMove < MOVE_COOLDOWN_MS)) {
     return;
   }
   
