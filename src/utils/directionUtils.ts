@@ -8,7 +8,7 @@ const GRID_SIZE = BOARD_CONFIG.GRID_SIZE;
  * @param edge Which edge to generate indices for
  * @returns Array of indices for the specified edge
  */
-const getBorderIndices = (edge: 'top' | 'bottom' | 'left' | 'right'): readonly number[] => {
+export const getBorderIndices = (edge: 'top' | 'bottom' | 'left' | 'right'): readonly number[] => {
   const last = GRID_SIZE - 1;
   
   switch (edge) {
@@ -16,6 +16,9 @@ const getBorderIndices = (edge: 'top' | 'bottom' | 'left' | 'right'): readonly n
     case 'bottom': return Array.from({ length: GRID_SIZE }, (_, i) => last * GRID_SIZE + i);
     case 'left':   return Array.from({ length: GRID_SIZE }, (_, i) => i * GRID_SIZE);
     case 'right':  return Array.from({ length: GRID_SIZE }, (_, i) => i * GRID_SIZE + last);
+    default: 
+      const _exhaustiveCheck: never = edge;
+      return _exhaustiveCheck;
   }
 };
 
@@ -37,7 +40,7 @@ interface DirectionVectors {
 /**
  * Maps each direction to its movement and border information
  */
-const DIRECTION_MAP: Record<Direction, DirectionVectors> = {
+export const DIRECTION_MAP: Record<Direction, DirectionVectors> = {
   up: {
     delta: createPoint(0, -1),
     borderIndices: getBorderIndices('bottom')

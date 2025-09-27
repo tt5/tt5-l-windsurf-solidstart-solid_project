@@ -1,7 +1,7 @@
 import { BOARD_CONFIG } from '../constants/game';
 import { createPoint, Point, BasePoint, Direction, BasePoint as BasePointType } from '../types/board';
 import { createSignal, createEffect, onCleanup, onMount, batch, Accessor } from 'solid-js';
-import { moveSquares } from './directionUtils';
+import { moveSquares, DIRECTION_MAP } from './directionUtils';
 import type { ApiResponse } from './api';
 
 type AddBasePointOptions = {
@@ -251,37 +251,8 @@ export const handleDirection = async (
     const squaresAsCoords = indicesToPoints([...restrictedSquares()]);
     const newSquares = moveSquares(squaresAsCoords, dir, newPosition);
 
-    // Calculate the opposite border in the direction of movement
-    const borderSquares = [];
-    const gridSize = BOARD_CONFIG.GRID_SIZE; // 15x15
-    
-    // Get the row or column indices for the opposite border
-    switch(dir) {
-      case 'up':
-        // Bottom row (y = gridSize - 1)
-        for (let x = 0; x < gridSize; x++) {
-          borderSquares.push((gridSize - 1) * gridSize + x);
-        }
-        break;
-      case 'down':
-        // Top row (y = 0)
-        for (let x = 0; x < gridSize; x++) {
-          borderSquares.push(x);
-        }
-        break;
-      case 'left':
-        // Right column (x = gridSize - 1)
-        for (let y = 0; y < gridSize; y++) {
-          borderSquares.push(y * gridSize + (gridSize - 1));
-        }
-        break;
-      case 'right':
-        // Left column (x = 0)
-        for (let y = 0; y < gridSize; y++) {
-          borderSquares.push(y * gridSize);
-        }
-        break;
-    }
+    // Get the border indices for the opposite direction using directionUtils
+    const borderSquares = [...DIRECTION_MAP[dir as keyof typeof DIRECTION_MAP].borderIndices];
 
     // Batch the position and restricted squares updates together
     batch(() => {
