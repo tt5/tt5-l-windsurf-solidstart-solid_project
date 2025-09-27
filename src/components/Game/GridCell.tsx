@@ -1,26 +1,34 @@
 import { type Component, JSX } from 'solid-js';
 import styles from './Board.module.css';
 
-interface GridCellProps {
+interface Position {
   x: number;
   y: number;
   worldX: number;
   worldY: number;
-  isBP: boolean;
+}
+
+interface CellState {
+  isBasePoint: boolean;
   isSelected: boolean;
   isPlayerPosition: boolean;
   isHovered: boolean;
   isValid: boolean;
   isSaving: boolean;
-  onMouseDown: (e: MouseEvent) => void;
-  onMouseUp: (e: MouseEvent) => void;
-  onMouseLeave: () => void;
-  onClick: (e: MouseEvent) => void;
-  onContextMenu: (e: MouseEvent) => void;
-  onMouseEnter: () => void;
 }
 
-const GridCell: Component<GridCellProps> = (props) => {
+interface GridCellProps {
+  position: Position;
+  state: CellState;
+  onHover: (isHovered: boolean) => void;
+  onClick: (e: MouseEvent) => void;
+}
+
+export const GridCell: Component<GridCellProps> = (props) => {
+  const { position, state, onHover, onClick } = props;
+  const { x, y, worldX, worldY } = position;
+  const { isBasePoint, isSelected, isPlayerPosition, isHovered, isValid, isSaving } = state;
+  
   // Track if we should process the click
   let shouldProcessClick = true;
   let isMouseDown = false;
@@ -33,7 +41,6 @@ const GridCell: Component<GridCellProps> = (props) => {
     isMouseDown = true;
     mouseDownTime = Date.now();
     e.preventDefault();
-    props.onMouseDown(e);
   };
 
   const handleMouseUp = (e: MouseEvent) => {
@@ -45,11 +52,10 @@ const GridCell: Component<GridCellProps> = (props) => {
       shouldProcessClick = false;
     }
     e.preventDefault();
-    props.onMouseUp(e);
   };
 
   const handleMouseLeave = () => {
-    props.onMouseLeave();
+    onHover(false);
     
     // If mouse leaves while button is down, only cancel if it's a long press
     if (isMouseDown) {
@@ -64,28 +70,28 @@ const GridCell: Component<GridCellProps> = (props) => {
     e.stopPropagation();
     e.preventDefault();
     
-    if (!shouldProcessClick || props.isSelected || props.isSaving || props.isBP) {
+    if (!shouldProcessClick || isSelected || isSaving || isBasePoint) {
       return;
     }
     
-    props.onClick(e);
+    onClick(e);
   };
 
   const squareClass = () => {
     const classes = [styles.square];
-    if (props.isBP) {
+    if (isBasePoint) {
       classes.push(styles.basePoint);
-      if (isOnRestrictedLine(props.worldX, props.worldY)) {
+      if (isOnRestrictedLine(worldX, worldY)) {
         classes.push(styles.restricted);
       }
     }
-    if (props.isSelected) {
+    if (isSelected) {
       classes.push(styles.selected);
     }
-    if (props.isPlayerPosition) classes.push(styles.playerPosition);
-    if (props.isSaving && props.isHovered) classes.push(styles.loading);
-    else if (props.isHovered) {
-      classes.push(props.isValid ? styles['valid-hover'] : styles['invalid-hover']);
+    if (isPlayerPosition) classes.push(styles.playerPosition);
+    if (isSaving && isHovered) classes.push(styles.loading);
+    else if (isHovered) {
+      classes.push(isValid ? styles['valid-hover'] : styles['invalid-hover']);
     }
     return classes.join(' ');
   };
@@ -121,22 +127,25 @@ const GridCell: Component<GridCellProps> = (props) => {
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
-      onMouseEnter={props.onMouseEnter}
-      onContextMenu={props.onContextMenu}
-      disabled={props.isSaving}
+      onMouseEnter={() => onHover(true)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        shouldProcessClick = false;
+      }}
       classList={{
-        [styles.square]: true,
-        [styles.saving]: props.isSaving,
-        [styles.interactive]: !props.isSaving
+        [styles.gridCell]: true,
+        [styles.basePoint]: isBasePoint,
+        [styles.selected]: isSelected,
+        [styles.playerPosition]: isPlayerPosition,
+        [styles.hovered]: isHovered,
+        [styles.valid]: isValid && !isSaving,
       }}
     >
-      {props.isBP ? (
+      {isBasePoint ? (
         <div class={styles.basePointMarker} />
-      ) : !props.isSelected ? (
+      ) : !isSelected ? (
         <div class={styles.emptyMarker}>×</div>
       ) : null}
     </button>
   );
 };
-
-export default GridCell;

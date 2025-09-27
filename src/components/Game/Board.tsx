@@ -5,7 +5,7 @@ import {
   onMount,
   on
 } from 'solid-js';
-import GridCell from './GridCell';
+import { GridCell } from './GridCell';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlayerPosition } from '../../contexts/PlayerPositionContext';
 import { jumpToPosition } from '../../lib/utils/navigation';
@@ -50,37 +50,45 @@ const Board: Component = () => {
   
   // Initialize board on mount
   onMount(async () => {
-    console.log(`[Board]: onMount - Initializing board`);
-    
     // Set up CSS variable for grid size
     document.documentElement.style.setProperty('--grid-size', BOARD_CONFIG.GRID_SIZE.toString());
     
     // Initialize base points
     setBasePoints([]);
     
+    // Set initial position
+    const defaultPos = createPoint(
+      BOARD_CONFIG.DEFAULT_POSITION[0],
+      BOARD_CONFIG.DEFAULT_POSITION[1]
+    );
+    
     try {
-      // Initialize position
+      // Try to get position from URL or other source
       const result = await jumpToPosition(
-        BOARD_CONFIG.DEFAULT_POSITION[0], 
-        BOARD_CONFIG.DEFAULT_POSITION[1]
+        BOARD_CONFIG.DEFAULT_POSITION[0],
+        BOARD_CONFIG.DEFAULT_POSITION[1],
+        setContextPosition  // Pass the setPosition function
       );
       
-      if (result) {
-        setCurrentPosition(result.position);
-        setContextPosition(result.position);
-        setRestrictedSquares(result.restrictedSquares);
-      }
+      const position = result?.position || defaultPos;
+      const restrictedSquares = result?.restrictedSquares || [];
       
-      // Fetch base points after position is set
+      // Update state with position and restricted squares
+      setCurrentPosition(position);
+      setRestrictedSquares(restrictedSquares);
+      
+      // Now that we have a position, fetch base points
       await fetchBasePoints();
     } catch (error) {
-      console.error('Error initializing board:', error);
-      const defaultPos = createPoint(
-        BOARD_CONFIG.DEFAULT_POSITION[0], 
-        BOARD_CONFIG.DEFAULT_POSITION[1]
-      );
+      // If there's an error, use default position
       setCurrentPosition(defaultPos);
       setContextPosition(defaultPos);
+      setRestrictedSquares([]);
+      
+      // Still try to fetch base points with default position
+      await fetchBasePoints().catch(() => {
+        // Ignore fetch errors here, they'll be handled by fetchBasePoints
+      });
     }
   });
 
@@ -115,29 +123,17 @@ const Board: Component = () => {
     }
   };
   
-  // Initialize on mount
-  onMount(() => {
-    console.log(`[Board]: onMount1 - setBasePoints([]), fetchBasePoints()`);
-    // Set CSS variable for grid size
-    document.documentElement.style.setProperty('--grid-size', BOARD_CONFIG.GRID_SIZE.toString());
-    
-    setBasePoints([]);
-    fetchBasePoints();
-    
-    // Cleanup function
-    return () => {
-      console.log(`[Board]: onUnmount1`);
-    };
-  });
-  
   // Track the current fetch promise to prevent duplicate requests
   let currentFetch: Promise<void> | null = null;
   
   // Fetch base points with proper error handling and loading states
   const fetchBasePoints = async () => {
+    // Get the current position value at the time of the call
+    const currentPos = currentPosition();
+    
     const promise = fetchBasePointsUtil({
       user: () => currentUser,
-      currentPosition,
+      currentPosition: () => currentPos, // Use the captured position
       lastFetchTime,
       isFetching,
       isMoving,
@@ -218,7 +214,6 @@ const Board: Component = () => {
   
   // Setup and cleanup event listeners
   onMount(() => {
-    console.log("[Board] onMount2 - event listeners")
     const eventListeners: [string, EventListener][] = [
       ['keydown', handleKeyDown as EventListener],
       ['keyup', handleKeyUp as EventListener]
@@ -245,8 +240,6 @@ const Board: Component = () => {
     const worldX = gridX - offsetX;
     const worldY = gridY - offsetY;
 
-    console.log(`[Board] handleSquareClick - Attempting to add base point at:`, { x: worldX, y: worldY });
-    
     try {
       const response = await handleAddBasePoint({
         x: worldX,
@@ -267,14 +260,11 @@ const Board: Component = () => {
           currentPosition()
         );
         setRestrictedSquares(newRestrictedSquares);
-        console.log(`[Board] handleSquareClick - New restricted squares:`, newRestrictedSquares)
       } else if (response.error) {
-        console.error('Error adding base point:', response.error);
         setError(response.error);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      console.error('Error in handleSquareClick:', errorMessage);
       setError(errorMessage);
     }
   };
@@ -291,7 +281,6 @@ const Board: Component = () => {
 
   // Handle direction movement
   const handleDirection = async (dir: Direction): Promise<void> => {
-    console.log("[Board] handleDirection");
     setReachedBoundary(false); // Reset boundary flag on new movement
     
     const currentPos = currentPosition();
@@ -374,29 +363,29 @@ const Board: Component = () => {
           const validation = validateSquarePlacementLocal(index);
           const isValid = validation.isValid && !isSaving();
           
+          const cellState = {
+            isBasePoint: isBP,
+            isSelected,
+            isPlayerPosition,
+            isHovered,
+            isValid,
+            isSaving: isSaving()
+          };
+
+          const position = { x, y, worldX, worldY };
+
           return (
             <GridCell
-              x={x}
-              y={y}
-              worldX={worldX}
-              worldY={worldY}
-              isBP={isBP}
-              isSelected={isSelected}
-              isPlayerPosition={isPlayerPosition}
-              isHovered={isHovered}
-              isValid={isValid}
-              isSaving={isSaving()}
-              onMouseDown={(e) => {
-                // Only process left mouse button clicks
-                e.preventDefault();
+              position={position}
+              state={cellState}
+              onHover={(hovered: boolean) => {
+                if (hovered) {
+                  handleSquareHover(y * BOARD_CONFIG.GRID_SIZE + x);
+                } else {
+                  handleSquareHover(null);
+                }
               }}
-              onMouseUp={(e) => {
-                e.preventDefault();
-              }}
-              onMouseLeave={() => {
-                handleSquareHover(null);
-              }}
-              onClick={(e) => {
+              onClick={(e: MouseEvent) => {
                 e.stopPropagation();
                 e.preventDefault();
                 
@@ -407,10 +396,6 @@ const Board: Component = () => {
                 handleSquareClick(squareIndex)
                   .catch(err => console.error('Error processing click:', err));
               }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-              }}
-              onMouseEnter={() => handleSquareHover(y * BOARD_CONFIG.GRID_SIZE + x)}
             />
           );
         })}

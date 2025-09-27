@@ -50,12 +50,15 @@ async function fetchRestrictedSquares(position: Point): Promise<number[] | null>
  * Utility function to jump to a specific position in the game and fetch restricted squares
  * @param x The x-coordinate to jump to
  * @param y The y-coordinate to jump to
+ * @param setPosition Function to update the position in the parent component
  * @returns Promise with an object containing the new position and restricted squares, or null if there was an error
  */
-export async function jumpToPosition(x: number, y: number): Promise<{ position: Point; restrictedSquares: number[] } | null> {
+export async function jumpToPosition(
+  x: number, 
+  y: number, 
+  setPosition: (position: Point) => void
+): Promise<{ position: Point; restrictedSquares: number[] } | null> {
   try {
-    // Get the current position context
-    const { setPosition } = usePlayerPosition();
     
     // Create a new position point
     const newPosition = createPoint(
@@ -70,7 +73,7 @@ export async function jumpToPosition(x: number, y: number): Promise<{ position: 
       return null;
     }
     
-    // Update the position
+    // Update the position using the provided setPosition function
     setPosition(newPosition);
     
     console.log(`Jumped to position: [${x}, ${y}] with ${restrictedSquares.length} restricted squares`);

@@ -246,7 +246,7 @@ const MapView: Component = () => {
     const vpx = Math.floor(Math.abs(vp.x)/64);
     const vpy = Math.floor(Math.abs(vp.y)/64);
     if(vpx > 16 || vpy > 16) return;
-    /*
+    
     if (specificTiles && specificTiles.length > 0) {
       setTileQueue(prev => {
         const newQueue = [...prev];
@@ -264,7 +264,7 @@ const MapView: Component = () => {
       processTileQueue();
       return;
     }
-    */
+    
     if (shouldStopProcessing) return;
     
     const currentQueue = tileQueue();
