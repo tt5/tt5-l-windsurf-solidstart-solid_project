@@ -53,15 +53,6 @@ const Board: Component = () => {
     // Set up CSS variable for grid size
     document.documentElement.style.setProperty('--grid-size', BOARD_CONFIG.GRID_SIZE.toString());
     
-    // Initialize base points
-    setBasePoints([]);
-    
-    // Set initial position
-    const defaultPos = createPoint(
-      BOARD_CONFIG.DEFAULT_POSITION[0],
-      BOARD_CONFIG.DEFAULT_POSITION[1]
-    );
-    
     try {
       // Try to get position from URL or other source
       const result = await jumpToPosition(
@@ -70,8 +61,11 @@ const Board: Component = () => {
         setContextPosition  // Pass the setPosition function
       );
       
-      const position = result?.position || defaultPos;
-      const restrictedSquares = result?.restrictedSquares || [];
+      if (!result) {
+        throw new Error('Failed to initialize game: Could not determine starting position');
+      }
+      
+      const { position, restrictedSquares } = result;
       
       // Update state with position and restricted squares
       setCurrentPosition(position);
@@ -80,15 +74,11 @@ const Board: Component = () => {
       // Now that we have a position, fetch base points
       await fetchBasePoints();
     } catch (error) {
-      // If there's an error, use default position
-      setCurrentPosition(defaultPos);
-      setContextPosition(defaultPos);
-      setRestrictedSquares([]);
-      
-      // Still try to fetch base points with default position
-      await fetchBasePoints().catch(() => {
-        // Ignore fetch errors here, they'll be handled by fetchBasePoints
-      });
+      if (error instanceof Error) {
+        throw new Error(`Failed to initialize game: ${error.message}`);
+      } else {
+        throw new Error('Failed to initialize game: Unknown error occurred');
+      }
     }
   });
 
@@ -318,19 +308,11 @@ const Board: Component = () => {
           return updatedPosition;
         },
         restrictedSquares: getRestrictedSquares,
-        setRestrictedSquares: (value) => {
-          // Ensure we're using the latest position when updating restricted squares
-          const currentPos = currentPosition();
-          setRestrictedSquares((prev: number[]) => {
-            const newValue = typeof value === 'function' ? value(prev) : value;
-            return newValue;
-          });
-        },
+        setRestrictedSquares: setRestrictedSquares,
         setIsMoving,
         isBasePoint: (x: number, y: number) => isBasePoint(x, y, basePoints())
       });
     } catch (error) {
-      console.error('Error in handleDirectionUtil:', error);
       // Revert position if there was an error
       setCurrentPosition(currentPosition());
       setContextPosition(currentPosition());
@@ -358,17 +340,13 @@ const Board: Component = () => {
           const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
           const isBP = isBasePoint(worldX, worldY, basePoints());
           const isSelected = getRestrictedSquares().includes(squareIndex);
-          const isPlayerPosition = worldX === 0 && worldY === 0;
-          const isHovered = hoveredSquare() === index;
-          const validation = validateSquarePlacementLocal(index);
-          const isValid = validation.isValid && !isSaving();
           
           const cellState = {
             isBasePoint: isBP,
             isSelected,
-            isPlayerPosition,
-            isHovered,
-            isValid,
+            isPlayerPosition: worldX === 0 && worldY === 0,
+            isHovered: hoveredSquare() === index,
+            isValid: validateSquarePlacementLocal(index).isValid && !isSaving(),
             isSaving: isSaving()
           };
 
