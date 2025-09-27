@@ -1,6 +1,6 @@
 import { BOARD_CONFIG } from '../constants/game';
 import { createPoint, Point, BasePoint, Direction, BasePoint as BasePointType } from '../types/board';
-import type { Accessor, Setter } from 'solid-js';
+import { createSignal, createEffect, onCleanup, onMount, batch, Accessor } from 'solid-js';
 import { moveSquares } from './directionUtils';
 import type { ApiResponse } from './api';
 
@@ -188,12 +188,9 @@ type FetchBasePointsOptions = {
   currentPosition: () => [number, number];
   lastFetchTime: () => number;
   isFetching: () => boolean;
-  isMoving: () => boolean;
   setBasePoints: (value: BasePoint[] | ((prev: BasePoint[]) => BasePoint[])) => void;
   setLastFetchTime: (value: number | ((prev: number) => number)) => void;
   setIsFetching: (value: boolean | ((prev: boolean) => boolean)) => void;
-  setRestrictedSquares: (value: number[] | ((prev: number[]) => number[])) => void;
-  restrictedSquares: () => number[];
 }
 
 export type HandleDirectionOptions = {
@@ -287,11 +284,19 @@ export const handleDirection = async (
         break;
     }
 
-    // Update position
-    setCurrentPosition(newPosition);
-    
-    // Get the new indices from the moved squares
-    const newIndices = pointsToIndices(newSquares);
+    // Batch the position and restricted squares updates together
+    batch(() => {
+      console.log('[handleDirection] Batching updates for position and restricted squares');
+      
+      // Update position
+      setCurrentPosition(newPosition);
+      
+      // Get the new indices from the moved squares
+      const newIndices = pointsToIndices(newSquares);
+      
+      // Set temporary restricted squares to prevent flicker
+      setRestrictedSquares(newIndices);
+    });
     
     try {
       // Fetch new border indices from calculate-squares
@@ -309,13 +314,14 @@ export const handleDirection = async (
         const result = await response.json();
         if (result.success && result.data?.squares && Array.isArray(result.data.squares)) {
           // Check for duplicate indices between newIndices and result.data.squares
-          const duplicates = newIndices.filter(index => result.data.squares.includes(index));
+          const currentIndices = pointsToIndices(newSquares);
+          const duplicates = currentIndices.filter(index => result.data.squares.includes(index));
           if (duplicates.length > 0) {
             throw new Error(`Duplicate restricted squares found: ${duplicates.join(', ')}`);
           }
           
           // Combine indices (no duplicates expected due to check above)
-          const allIndices = [...newIndices, ...result.data.squares];
+          const allIndices = [...currentIndices, ...result.data.squares];
           const [offsetX, offsetY] = currentPosition();
           
           // Filter out indices that are base points
@@ -327,12 +333,7 @@ export const handleDirection = async (
             return !isBasePoint(worldX, worldY);
           });
           
-          console.log("[Board:handleDirection] Combined indices (base points excluded):", { 
-            newIndices, 
-            borderSquares: result.data.squares, 
-            combinedIndices 
-          });
-          
+          console.log('[handleDirection] Updating restricted squares with API response');
           setRestrictedSquares(combinedIndices);
         } else {
           // Fail hard if API response is invalid
@@ -456,12 +457,9 @@ export const fetchBasePoints = async ({
   currentPosition,
   lastFetchTime,
   isFetching,
-  isMoving,
   setBasePoints,
   setLastFetchTime,
   setIsFetching,
-  setRestrictedSquares,
-  restrictedSquares
 }: FetchBasePointsOptions): Promise<void> => {
   const currentUser = user();
   if (!currentUser) {
@@ -505,19 +503,6 @@ export const fetchBasePoints = async ({
     
     const newBasePoints = data.basePoints;
     setBasePoints(newBasePoints);
-      
-    /*
-    newBasePoints.forEach(pB => {
-      const p = {
-        x: pB.x + currentPosition()[0], 
-        y: pB.y + currentPosition()[1]
-      };
-      
-      if (p.x < BOARD_CONFIG.GRID_SIZE && p.x >= 0 && p.y < BOARD_CONFIG.GRID_SIZE && p.y >= 0) {
-        setRestrictedSquares(calculateRestrictedSquares(createPoint(p.x, p.y), restrictedSquares()));
-      }
-    });
-    */
       
     setLastFetchTime(now);
   } catch (error) {

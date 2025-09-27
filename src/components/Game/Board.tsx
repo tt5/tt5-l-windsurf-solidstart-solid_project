@@ -126,12 +126,9 @@ const Board: Component = () => {
       currentPosition: () => currentPos, // Use the captured position
       lastFetchTime,
       isFetching,
-      isMoving,
       setBasePoints,
       setLastFetchTime,
-      setIsFetching,
-      setRestrictedSquares,
-      restrictedSquares: getRestrictedSquares
+      setIsFetching
     });
     
     if (promise) {
@@ -308,7 +305,14 @@ const Board: Component = () => {
           return updatedPosition;
         },
         restrictedSquares: getRestrictedSquares,
-        setRestrictedSquares: setRestrictedSquares,
+        setRestrictedSquares: (value) => {
+          // Ensure we're using the latest position when updating restricted squares
+          const currentPos = currentPosition();
+          setRestrictedSquares((prev: number[]) => {
+            const newValue = typeof value === 'function' ? value(prev) : value;
+            return newValue;
+          });
+        },
         setIsMoving,
         isBasePoint: (x: number, y: number) => isBasePoint(x, y, basePoints())
       });
