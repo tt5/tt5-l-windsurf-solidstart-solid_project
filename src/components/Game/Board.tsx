@@ -6,7 +6,6 @@ import {
   on
 } from 'solid-js';
 import GridCell from './GridCell';
-import type { JSX } from 'solid-js/jsx-runtime';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlayerPosition } from '../../contexts/PlayerPositionContext';
 import { jumpToPosition } from '../../lib/utils/navigation';
@@ -14,11 +13,8 @@ import {
   type Direction, 
   type Point, 
   type BasePoint,
-  type RestrictedSquares,
-  type AddBasePointResponse,
   createPoint
 } from '../../types/board';
-import type { ApiResponse } from '../../utils/api';
 import { 
   calculateRestrictedSquares, 
   fetchBasePoints as fetchBasePointsUtil, 
@@ -47,39 +43,44 @@ const Board: Component = () => {
   const [isSaving, setIsSaving] = createSignal<boolean>(false);
   // Get position and restricted squares from context
   const { 
-    position: contextPosition, 
     setPosition: setContextPosition,
     restrictedSquares: getRestrictedSquares,
     setRestrictedSquares
   } = usePlayerPosition();
   
-  // Initialize position using jumpToPosition
+  // Initialize board on mount
   onMount(async () => {
+    console.log(`[Board]: onMount - Initializing board`);
+    
+    // Set up CSS variable for grid size
+    document.documentElement.style.setProperty('--grid-size', BOARD_CONFIG.GRID_SIZE.toString());
+    
+    // Initialize base points
+    setBasePoints([]);
+    
     try {
-      const result = await jumpToPosition(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]);
+      // Initialize position
+      const result = await jumpToPosition(
+        BOARD_CONFIG.DEFAULT_POSITION[0], 
+        BOARD_CONFIG.DEFAULT_POSITION[1]
+      );
+      
       if (result) {
         setCurrentPosition(result.position);
         setContextPosition(result.position);
         setRestrictedSquares(result.restrictedSquares);
       }
+      
+      // Fetch base points after position is set
+      await fetchBasePoints();
     } catch (error) {
-      console.error('Error initializing position:', error);
-      // Fallback to default position if jump fails
-      const defaultPos = createPoint(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]);
+      console.error('Error initializing board:', error);
+      const defaultPos = createPoint(
+        BOARD_CONFIG.DEFAULT_POSITION[0], 
+        BOARD_CONFIG.DEFAULT_POSITION[1]
+      );
       setCurrentPosition(defaultPos);
       setContextPosition(defaultPos);
-    }
-  });
-
-  // Sync position with context changes
-  createEffect(() => {
-    const pos = contextPosition();
-    if (pos) {
-      const [x, y] = pos;
-      const current = currentPosition();
-      if (current[0] !== x || current[1] !== y) {
-        setCurrentPosition(createPoint(x, y));
-      }
     }
   });
 
@@ -159,22 +160,19 @@ const Board: Component = () => {
   // Effect to handle user changes and fetch base points
   createEffect(on(
     () => user(),
-    (currentUserValue) => {
-      if (currentUserValue === undefined) return;
-      console.log("[Board] Effect: User changed, fetching base points");
+    (currentUser) => {
+      if (currentUser === undefined) return;
       
-      // Only reset restricted squares if user logs out
-      if (!currentUserValue) {
+      // Clear state on logout
+      if (!currentUser) {
         setRestrictedSquares([]);
-      } else if (getRestrictedSquares().length === 0) {
-        // Initialize with default restricted squares for new user session
-        setRestrictedSquares([]);
+        return;
       }
       
-      // Always fetch base points on user change
+      // Only fetch base points on login
       fetchBasePoints().catch(console.error);
     },
-    { defer: true }  // Don't run the effect on initial setup
+    { defer: true }
   ));
 
   // Effect to handle position changes and fetch base points
