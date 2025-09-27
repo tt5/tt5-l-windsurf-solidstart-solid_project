@@ -3,7 +3,8 @@ import {
   createEffect, 
   createSignal, 
   onMount,
-  on 
+  on, 
+  For
 } from 'solid-js';
 import type { JSX } from 'solid-js/jsx-runtime';
 import { useAuth } from '../../contexts/AuthContext';
@@ -167,7 +168,7 @@ const Board: Component = () => {
         setRestrictedSquares([]);
       } else if (getRestrictedSquares().length === 0) {
         // Initialize with default restricted squares for new user session
-        setRestrictedSquares(INITIAL_SQUARES);
+        setRestrictedSquares([]);
       }
       
       // Always fetch base points on user change
@@ -280,54 +281,6 @@ const Board: Component = () => {
     }
   };
 
-  // Initial squares for a single quadrant with (0,0) at the center
-  // Using only positive x and y coordinates (top-right quadrant)
-  const localGridSize = 15;
-  
-  // Helper function to convert (x,y) to grid index for bottom-right quadrant
-  const toIndex = (x: number, y: number): number => {
-    // Convert from world coordinates to grid indices
-    // For bottom-right quadrant, both x and y increase as we go right and down
-    return y * localGridSize + x;
-  };
-  
-  // Calculate all lines in the positive quadrant
-  const INITIAL_SQUARES: number[] = [];
-  
-  // Add axes
-  for (let x = 0; x < localGridSize; x++) {
-    INITIAL_SQUARES.push(toIndex(x, 0));  // Bottom x-axis
-  }
-  for (let y = 0; y < localGridSize; y++) {
-    INITIAL_SQUARES.push(toIndex(0, y));  // Left y-axis
-  }
-  
-  // Add diagonal (y = x)
-  for (let d = 1; d < localGridSize; d++) {
-    INITIAL_SQUARES.push(toIndex(d, d));
-  }
-  
-  // Add slope 2:1 (y = 2x)
-  for (let x = 1; x < localGridSize / 2; x++) {
-    INITIAL_SQUARES.push(toIndex(x, 2 * x));
-  }
-  
-  // Add slope 1:2 (y = x/2)
-  for (let x = 2; x < localGridSize; x += 2) {
-    INITIAL_SQUARES.push(toIndex(x, x / 2));
-  }
-
-  INITIAL_SQUARES.push(toIndex(0, 0));
-
-  // Initialize squares on mount
-  createEffect(() => {
-    console.log("[Board] Effect - initial squares");
-    // Initialize restricted squares if empty
-    if (getRestrictedSquares().length === 0) {
-      setRestrictedSquares(INITIAL_SQUARES);
-    }
-  });
-  
   // Calculate movement deltas based on direction
   const getMovementDeltas = (dir: Direction): Point => {
     switch (dir) {
@@ -414,168 +367,147 @@ const Board: Component = () => {
         Position: ({currentPosition()[0]}, {currentPosition()[1]})
       </div>
       <div class={styles.grid}>
-        {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
-          const x = index % BOARD_CONFIG.GRID_SIZE;
-          const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-          const [offsetX, offsetY] = currentPosition();
-          const worldX = x - offsetX;
-          const worldY = y - offsetY;
-          const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
-          const isBP = isBasePoint(worldX, worldY, basePoints());
-          const isSelected = getRestrictedSquares().includes(squareIndex);
-          const isPlayerPosition = worldX === 0 && worldY === 0;
-          const isHovered = hoveredSquare() === index;
-          const validation = validateSquarePlacementLocal(index);
-          const isValid = validation.isValid && !isSaving();
-          
-          // Check if two points are on the same restricted line
-          const areOnSameLine = (x1: number, y1: number, x2: number, y2: number): boolean => {
-            // Calculate relative position
-            const dx = x2 - x1;
-            const dy = y2 - y1;
+        <For each={Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE })}>
+          {(_, index) => {
+            const x = index() % BOARD_CONFIG.GRID_SIZE;
+            const y = Math.floor(index() / BOARD_CONFIG.GRID_SIZE);
+            const [offsetX, offsetY] = currentPosition();
+            const worldX = x - offsetX;
+            const worldY = y - offsetY;
+            const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
+            const isBP = isBasePoint(worldX, worldY, basePoints());
+            const isSelected = getRestrictedSquares().includes(squareIndex);
+            const isPlayerPosition = worldX === 0 && worldY === 0;
+            const isHovered = hoveredSquare() === index();
+            const validation = validateSquarePlacementLocal(index());
+            const isValid = validation.isValid && !isSaving();
             
-            // If same point
-            if (dx === 0 && dy === 0) return false;
+            // Check if two points are on the same restricted line
+            const areOnSameLine = (x1: number, y1: number, x2: number, y2: number): boolean => {
+              // Calculate relative position
+              const dx = x2 - x1;
+              const dy = y2 - y1;
+              
+              // If same point
+              if (dx === 0 && dy === 0) return false;
+              
+              // Check if on same axis
+              if (dx === 0 || dy === 0) return true;
+              
+              // Check if on diagonal
+              if (dx === dy || dx === -dy) return true;
+              
+              // Check if on 2:1 or 1:2 slope
+              if (dy === 2 * dx || dx === 2 * dy) return true;
+              if (dy === -2 * dx || dx === -2 * dy) return true;
+              
+              return false;
+            };
             
-            // Check if on same axis
-            if (dx === 0 || dy === 0) return true;
-            
-            // Check if on diagonal
-            if (dx === dy || dx === -dy) return true;
-            
-            // Check if on 2:1 or 1:2 slope
-            if (dy === 2 * dx || dx === 2 * dy) return true;
-            if (dy === -2 * dx || dx === -2 * dy) return true;
-            
-            return false;
-          };
-          
-          // Check if this basepoint is on a restricted line from any other basepoint or origin
-          const isOnRestrictedLine = (x: number, y: number): boolean => {
-            // First check against origin (0,0)
-            if (areOnSameLine(x, y, 0, 0)) return true;
-            
-            // Then check against other basepoints
-            return basePoints().some(bp => {
-              // Skip self
-              if (bp.x === x && bp.y === y) return false;
-              return areOnSameLine(x, y, bp.x, bp.y);
-            });
-          };
+            // Check if this basepoint is on a restricted line from any other basepoint or origin
+            const isOnRestrictedLine = (x: number, y: number): boolean => {
+              // First check against origin (0,0)
+              if (areOnSameLine(x, y, 0, 0)) return true;
+              
+              // Then check against other basepoints
+              return basePoints().some(bp => {
+                // Skip self
+                if (bp.x === x && bp.y === y) return false;
+                return areOnSameLine(x, y, bp.x, bp.y);
+              });
+            };
 
-          // Determine the class based on state
-          const squareClass = () => {
-            const classes = [styles.square];
-            if (isBP) {
-              classes.push(styles.basePoint);
-              if (isOnRestrictedLine(worldX, worldY)) {
-                classes.push(styles.restricted);
-              }
-            }
-            if (isSelected) {
-              classes.push(styles.selected);
-            }
-            if (isPlayerPosition) classes.push(styles.playerPosition);
-            if (isSaving() && isHovered) classes.push(styles.loading);
-            else if (isHovered) {
-              classes.push(isValid ? styles['valid-hover'] : styles['invalid-hover']);
-            }
-            return classes.join(' ');
-          };
-
-          // Enhanced click handler with detailed logging
-          // Track if we should process the click
-          let shouldProcessClick = true;
-          let isMouseDown = false;
-          let mouseDownTime = 0;
-          const MAX_CLICK_DURATION = 300; // ms
-          
-          const handleMouseDown = (e: MouseEvent) => {
-            // Only process left mouse button clicks
-            shouldProcessClick = e.button === 0;
-            isMouseDown = true;
-            mouseDownTime = Date.now();
-            e.preventDefault();
-          };
-          
-          const handleClick = (e: MouseEvent) => {
-            e.stopPropagation();
-            e.preventDefault();
-            
-            if (!shouldProcessClick) {
-              return;
-            }
-            
-            // Calculate grid position from index
-            const gridX = squareIndex % BOARD_CONFIG.GRID_SIZE;
-            const gridY = Math.floor(squareIndex / BOARD_CONFIG.GRID_SIZE);
-            
-            if (isSelected) {
-              return;
-            }
-            
-            if (isSaving()) {
-              return;
-            }
-            
-      if (isBasePoint(worldX, worldY, basePoints())) {
-              return;
-            }
-            
-            if (getRestrictedSquares().includes(squareIndex)) {
-              return;
-            }
-            
-            handleSquareClick(squareIndex)
-              .then(() => console.log('Click processed successfully'))
-              .catch(err => console.error('Error processing click:', err))
-              .finally(() => console.groupEnd());
-          };
-          
-          return (
-            <button
-              class={squareClass()}
-              onClick={handleClick}
-              onMouseDown={handleMouseDown}
-              onMouseUp={(e) => {
-                const clickDuration = Date.now() - mouseDownTime;
-                isMouseDown = false;
-                
-                // Only prevent click if mouseup happened outside the button and it was a quick click
-                if (!e.currentTarget.contains(e.target as Node) && clickDuration < MAX_CLICK_DURATION) {
-                  shouldProcessClick = false;
+            // Determine the class based on state
+            const squareClass = () => {
+              const classes = [styles.square];
+              if (isBP) {
+                classes.push(styles.basePoint);
+                if (isOnRestrictedLine(worldX, worldY)) {
+                  classes.push(styles.restricted);
                 }
-                e.preventDefault();
-              }}
-              onMouseLeave={() => {
-                handleSquareHover(null);
-                
-                // If mouse leaves while button is down, only cancel if it's a long press
-                if (isMouseDown) {
-                  const pressDuration = Date.now() - mouseDownTime;
-                  if (pressDuration < MAX_CLICK_DURATION) {
+              }
+              if (isSelected) {
+                classes.push(styles.selected);
+              }
+              if (isPlayerPosition) classes.push(styles.playerPosition);
+              if (isSaving() && isHovered) classes.push(styles.loading);
+              else if (isHovered) {
+                classes.push(isValid ? styles['valid-hover'] : styles['invalid-hover']);
+              }
+              return classes.join(' ');
+            };
+
+            // Track if we should process the click
+            let shouldProcessClick = true;
+            let isMouseDown = false;
+            let mouseDownTime = 0;
+            const MAX_CLICK_DURATION = 300; // ms
+            
+            const handleMouseDown = (e: MouseEvent) => {
+              // Only process left mouse button clicks
+              shouldProcessClick = e.button === 0;
+              isMouseDown = true;
+              mouseDownTime = Date.now();
+              e.preventDefault();
+            };
+            
+            const handleClick = (e: MouseEvent) => {
+              e.stopPropagation();
+              e.preventDefault();
+              
+              if (!shouldProcessClick || isSelected || isSaving() || isBP || getRestrictedSquares().includes(squareIndex)) {
+                return;
+              }
+              
+              handleSquareClick(squareIndex)
+                .catch(err => console.error('Error processing click:', err))
+            };
+            
+            return (
+              <button
+                class={squareClass()}
+                onClick={handleClick}
+                onMouseDown={handleMouseDown}
+                onMouseUp={(e) => {
+                  const clickDuration = Date.now() - mouseDownTime;
+                  isMouseDown = false;
+                  
+                  // Only prevent click if mouseup happened outside the button and it was a quick click
+                  if (!e.currentTarget.contains(e.target as Node) && clickDuration < MAX_CLICK_DURATION) {
                     shouldProcessClick = false;
                   }
-                }
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-              }}
-              disabled={isSaving()}
-              classList={{
-                [styles.square]: true,
-                [styles.saving]: isSaving(),
-                [styles.interactive]: !isSaving()
-              }}
-            >
-              {isBP ? (
-                <div class={styles.basePointMarker} />
-              ) : !isSelected ? (
-                <div class={styles.emptyMarker}>×</div>
-              ) : null}
-            </button>
-          );
-        })}
+                  e.preventDefault();
+                }}
+                onMouseLeave={() => {
+                  handleSquareHover(null);
+                  
+                  // If mouse leaves while button is down, only cancel if it's a long press
+                  if (isMouseDown) {
+                    const pressDuration = Date.now() - mouseDownTime;
+                    if (pressDuration < MAX_CLICK_DURATION) {
+                      shouldProcessClick = false;
+                    }
+                  }
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                }}
+                disabled={isSaving()}
+                classList={{
+                  [styles.square]: true,
+                  [styles.saving]: isSaving(),
+                  [styles.interactive]: !isSaving()
+                }}
+              >
+                {isBP ? (
+                  <div class={styles.basePointMarker} />
+                ) : !isSelected ? (
+                  <div class={styles.emptyMarker}>×</div>
+                ) : null}
+              </button>
+            );
+          }}
+        </For>
       </div>
       {error() && (
         <div class={styles.errorMessage}>
