@@ -27,6 +27,7 @@ import styles from './Board.module.css';
 
 // Import shared board configuration
 import { BOARD_CONFIG } from '~/constants/game';
+import { DIRECTION_MAP } from '~/utils/directionUtils';
 
 const Board: Component = () => {
   
@@ -273,22 +274,12 @@ const Board: Component = () => {
     }
   };
 
-  // Calculate movement deltas based on direction
-  const getMovementDeltas = (dir: Direction): Point => {
-    switch (dir) {
-      case 'left': return createPoint(-1, 0);
-      case 'right': return createPoint(1, 0);
-      case 'up': return createPoint(0, -1);
-      case 'down': return createPoint(0, 1);
-    }
-  };
-
   // Handle direction movement
   const handleDirection = async (dir: Direction): Promise<void> => {
     setReachedBoundary(false); // Reset boundary flag on new movement
     
     const currentPos = currentPosition();
-    const [dx, dy] = getMovementDeltas(dir);
+    const [dx, dy] = DIRECTION_MAP[dir].delta;
     const newX = currentPos[0] + dx;
     const newY = currentPos[1] + dy;
     const newPosition = createPoint(newX, newY);
@@ -324,10 +315,7 @@ const Board: Component = () => {
           positionUpdated = true;
         },
         restrictedSquares: getRestrictedSquares,
-        setRestrictedSquares: (value) => {
-          const newValue = typeof value === 'function' ? value(getRestrictedSquares()) : value;
-          setRestrictedSquares(newValue);
-        },
+        setRestrictedSquares,
         setIsMoving,
         isBasePoint: (x: number, y: number) => isBasePoint(x, y, basePoints())
       });

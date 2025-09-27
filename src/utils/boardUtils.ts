@@ -197,7 +197,7 @@ export type HandleDirectionOptions = {
   currentPosition: Accessor<Point>;
   setCurrentPosition: (value: Point | ((prev: Point) => Point)) => void;
   restrictedSquares: Accessor<number[]>;
-  setRestrictedSquares: (value: number[] | ((prev: number[]) => number[])) => void;
+  setRestrictedSquares: ((value: number[]) => void) & ((updater: (prev: number[]) => number[]) => void);
   setIsMoving: (value: boolean | ((prev: boolean) => boolean)) => void;
   isBasePoint: (x: number, y: number) => boolean;
 };
@@ -232,7 +232,7 @@ export const handleDirection = async (
   
   try {
     const [x, y] = currentPosition();
-    const [dx, dy] = getMovementDeltas(dir);
+    const [dx, dy] = DIRECTION_MAP[dir].delta;
     const newX = x + dx;
     const newY = y + dy;
     
@@ -250,9 +250,7 @@ export const handleDirection = async (
     // Process square movement before updating position
     const squaresAsCoords = indicesToPoints([...restrictedSquares()]);
     const newSquares = moveSquares(squaresAsCoords, dir, newPosition);
-
-    // Get the border indices for the opposite direction using directionUtils
-    const borderSquares = [...DIRECTION_MAP[dir as keyof typeof DIRECTION_MAP].borderIndices];
+    const newIndices = pointsToIndices(newSquares);
 
     // Batch the position and restricted squares updates together
     batch(() => {
@@ -260,13 +258,13 @@ export const handleDirection = async (
       // Update position
       setCurrentPosition(newPosition);
       
-      // Get the new indices from the moved squares
-      const newIndices = pointsToIndices(newSquares);
-      
       // Set temporary restricted squares to prevent flicker
-      setRestrictedSquares(newIndices);
+      setRestrictedSquares(prev => [...newIndices]);
     });
     
+    // Get the border indices for the opposite direction using directionUtils
+    const borderSquares = [...DIRECTION_MAP[dir as keyof typeof DIRECTION_MAP].borderIndices];
+
     // Fetch new border indices from calculate-squares
     const response = await fetch('/api/calculate-squares', {
       method: 'POST',
@@ -318,16 +316,6 @@ export const handleDirection = async (
     setTimeout(() => {
       setIsMoving(false);
     }, Math.max(0, remainingCooldown));
-  }
-};
-
-// Helper functions
-const getMovementDeltas = (dir: Direction): [number, number] => {
-  switch (dir) {
-    case 'up': return [0, -1];
-    case 'down': return [0, 1];
-    case 'left': return [-1, 0];
-    case 'right': return [1, 0];
   }
 };
 
