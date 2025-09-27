@@ -37,12 +37,29 @@ const Board: Component = () => {
   const currentUser = user();
   const [currentPosition, setCurrentPosition] = createSignal<Point>(createPoint(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]));
   const [basePoints, setBasePoints] = createSignal<BasePoint[]>([]);
+  
+  // Track if position update is from context or local
+  const positionUpdateSource = { fromContext: false };
+  
+  // Sync position with context on mount and when context position changes
+  createEffect(() => {
+    const contextPos = position();
+    if (contextPos && !positionUpdateSource.fromContext) {
+      const [cx, cy] = contextPos;
+      const [px, py] = currentPosition();
+      if (cx !== px || cy !== py) {
+        console.log(`[Board] Syncing position from context: [${cx}, ${cy}]`);
+        setCurrentPosition(createPoint(cx, cy));
+      }
+    }
+  });
   const [lastFetchTime, setLastFetchTime] = createSignal<number>(0); // base points, rate limiting
   const [isFetching, setIsFetching] = createSignal<boolean>(false);
   const [isMoving, setIsMoving] = createSignal<boolean>(false);
   const [isSaving, setIsSaving] = createSignal<boolean>(false);
   // Get position and restricted squares from context
   const { 
+    position,
     setPosition: setContextPosition,
     restrictedSquares: getRestrictedSquares,
     setRestrictedSquares
@@ -274,44 +291,42 @@ const Board: Component = () => {
     const [dx, dy] = getMovementDeltas(dir);
     const newX = currentPos[0] + dx;
     const newY = currentPos[1] + dy;
+    const newPosition = createPoint(newX, newY);
     
-    // Check world boundaries
-    if (newX < BOARD_CONFIG.WORLD_BOUNDS.MIN_X || 
-        newX > BOARD_CONFIG.WORLD_BOUNDS.MAX_X ||
-        newY < BOARD_CONFIG.WORLD_BOUNDS.MIN_Y || 
-        newY > BOARD_CONFIG.WORLD_BOUNDS.MAX_Y) {
+    // Check boundaries
+    if (
+      newX < BOARD_CONFIG.WORLD_BOUNDS.MIN_X || 
+      newX > BOARD_CONFIG.WORLD_BOUNDS.MAX_X || 
+      newY < BOARD_CONFIG.WORLD_BOUNDS.MIN_Y || 
+      newY > BOARD_CONFIG.WORLD_BOUNDS.MAX_Y
+    ) {
       setReachedBoundary(true);
       return;
     }
     
-    // Create a new position object but don't update it yet
-    const newPosition = createPoint(newX, newY);
-    
     let positionUpdated = false;
+    
+    // Don't update position here - let handleDirectionUtil handle it
+    positionUpdated = false;
     
     try {
       await handleDirectionUtil(dir, {
         isMoving,
-        currentPosition: () => currentPosition(), // Always get the current position from the signal
+        currentPosition: () => currentPosition(),
         setCurrentPosition: (value: Point | ((prev: Point) => Point)) => {
           if (positionUpdated) {
             console.warn('Position already updated, ignoring duplicate update');
             return newPosition;
           }
-          const updatedPosition = typeof value === 'function' ? value(currentPosition()) : value;
-          setCurrentPosition(updatedPosition);
-          setContextPosition(updatedPosition);
+          const updatedValue = typeof value === 'function' ? value(currentPosition()) : value;
+          setCurrentPosition(updatedValue);
+          setContextPosition(updatedValue);
           positionUpdated = true;
-          return updatedPosition;
         },
         restrictedSquares: getRestrictedSquares,
         setRestrictedSquares: (value) => {
-          // Ensure we're using the latest position when updating restricted squares
-          const currentPos = currentPosition();
-          setRestrictedSquares((prev: number[]) => {
-            const newValue = typeof value === 'function' ? value(prev) : value;
-            return newValue;
-          });
+          const newValue = typeof value === 'function' ? value(getRestrictedSquares()) : value;
+          setRestrictedSquares(newValue);
         },
         setIsMoving,
         isBasePoint: (x: number, y: number) => isBasePoint(x, y, basePoints())
