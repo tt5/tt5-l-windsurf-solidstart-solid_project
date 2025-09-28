@@ -1,7 +1,7 @@
 import { render, screen } from '@solidjs/testing-library';
 import { vi, describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
-import { Router, Route, useNavigate, useLocation } from '@solidjs/router';
-import { Component } from 'solid-js';
+import { Router, useNavigate, useLocation, Route } from '@solidjs/router';
+import { createRoot } from 'solid-js';
 import LoginForm from '../LoginForm';
 
 // Mock the auth context
@@ -70,9 +70,7 @@ afterAll(() => {
 const renderLoginForm = () => {
   return render(() => (
     <Router>
-      <Route path="/">
-        <LoginForm />
-      </Route>
+      <Route path="/" component={LoginForm} />
     </Router>
   ));
 };
