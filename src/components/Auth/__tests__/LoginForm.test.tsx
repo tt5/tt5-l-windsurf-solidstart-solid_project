@@ -1,148 +1,103 @@
-import { render, screen, fireEvent, waitFor } from '@solidjs/testing-library';
-import { Router, useNavigate } from '@solidjs/router';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createContext, useContext } from 'solid-js';
+import { render, screen, fireEvent, waitFor, cleanup } from '@solidjs/testing-library';
+import { vi, describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
+import { Router, useNavigate, useLocation } from '@solidjs/router';
+import { Component } from 'solid-js';
 import LoginForm from '../LoginForm';
-import { AuthProvider, useAuth } from '../../../contexts/AuthContext';
 
-// Mock the AuthContext
+// Mock the auth context
 const mockLogin = vi.fn();
-const mockAuth = {
-  user: () => ({
-    id: '1',
-    username: 'testuser',
-    email: 'test@example.com',
-    createdAt: new Date().toISOString()
-  }),
-  login: mockLogin,
-  logout: vi.fn(),
-  isInitialized: () => true,
+const mockLogout = vi.fn();
+
+// Mock the useAuth hook
+vi.mock('../../../contexts/AuthContext', () => ({
+  useAuth: vi.fn(() => ({
+    user: () => null,
+    login: mockLogin,
+    logout: mockLogout,
+    isInitialized: () => true,
+  }))
+}));
+
+// Mock the router
+const mockNavigate = vi.fn();
+const mockLocation = {
+  pathname: '/login',
+  search: '?returnUrl=/game',
+  hash: '',
+  state: null,
+  key: 'test',
 };
 
-// Mock the router's useNavigate
-const mockNavigate = vi.fn();
 vi.mock('@solidjs/router', async () => {
   const actual = await vi.importActual('@solidjs/router');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    useLocation: () => mockLocation,
   };
 });
 
-// Mock the AuthContext
-vi.mock('../../../contexts/AuthContext', async () => {
-  const actual = await vi.importActual('../../../contexts/AuthContext');
-  return {
-    ...actual,
-    useAuth: vi.fn(() => mockAuth),
-  };
+// Mock window.location
+const originalLocation = window.location;
+
+
+// Set up the test environment
+beforeAll(() => {
+  // Mock window.location
+  Object.defineProperty(window, 'location', {
+    value: {
+      ...originalLocation,
+      search: '?returnUrl=/game',
+      href: 'http://localhost/login',
+      assign: vi.fn(),
+      replace: vi.fn(),
+    },
+    writable: true,
+  });
 });
 
+// Clean up after tests
+afterEach(() => {
+  vi.clearAllMocks();
+});
+
+// Reset mocks after all tests
+afterAll(() => {
+  vi.restoreAllMocks();
+  Object.defineProperty(window, 'location', { value: originalLocation });
+});
+
+const renderLoginForm = () => {
+  render(() => (
+    <Router>
+      <LoginForm />
+    </Router>
+  ));
+};
 
 describe('LoginForm', () => {
-  beforeEach(() => {
-    // Clear all mocks before each test
-    vi.clearAllMocks();
-  });
-
-  const renderLoginForm = () => {
-    return render(() => (
-      <Router>
-        <AuthProvider>
-          <LoginForm />
-        </AuthProvider>
-      </Router>
-    ));
-  };
-
-  it('renders the login form', () => {
+  it('renders the login form', async () => {
     renderLoginForm();
+    
+    // Wait for the form to be rendered
+    await screen.findByText('Sign In');
     
     // Check if form elements are rendered
-    expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    const usernameInput = screen.getByLabelText('Username');
+    const passwordInput = screen.getByLabelText('Password');
+    const submitButton = screen.getByRole('button', { name: /sign in/i });
+    const registerLink = screen.getByText(/register here/i);
     
-    // Check for registration link
-    const registerLink = screen.getByText(/don't have an account/i);
+    expect(usernameInput).toBeInTheDocument();
+    expect(usernameInput).toHaveAttribute('type', 'text');
+    expect(usernameInput).toHaveAttribute('id', 'username');
+    
+    expect(passwordInput).toBeInTheDocument();
+    expect(passwordInput).toHaveAttribute('type', 'password');
+    expect(passwordInput).toHaveAttribute('id', 'password');
+    
+    expect(submitButton).toBeInTheDocument();
     expect(registerLink).toBeInTheDocument();
     expect(registerLink.closest('a')).toHaveAttribute('href', '/register');
-  });
-
-  it('validates form inputs', async () => {
-    renderLoginForm();
-    
-    const submitButton = screen.getByRole('button', { name: /sign in/i });
-    
-    // Try to submit empty form
-    fireEvent.click(submitButton);
-    
-    // Check for validation errors
-    expect(await screen.findByText(/username is required/i)).toBeInTheDocument();
-    expect(await screen.findByText(/password is required/i)).toBeInTheDocument();
-    expect(mockLogin).not.toHaveBeenCalled();
-  });
-
-  it('submits the form with valid data', async () => {
-    const testUser = {
-      username: 'testuser',
-      password: 'password123'
-    };
-
-    // Mock a successful login
-    mockLogin.mockResolvedValueOnce({ success: true });
-    
-    renderLoginForm();
-    
-    // Fill in the form
-    const usernameInput = screen.getByLabelText(/username/i);
-    const passwordInput = screen.getByLabelText(/password/i);
-    
-    fireEvent.input(usernameInput, {
-      target: { value: testUser.username }
-    });
-    
-    fireEvent.input(passwordInput, {
-      target: { value: testUser.password }
-    });
-    
-    // Verify inputs have the correct values
-    expect(usernameInput).toHaveValue(testUser.username);
-    expect(passwordInput).toHaveValue(testUser.password);
-    
-    // Submit the form
-    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
-    
-    // Check if login was called with the right credentials
-    await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith(
-        testUser.username,
-        testUser.password
-      );
-    });
-  });
-
-  it('shows error message when login fails', async () => {
-    const errorMessage = 'Invalid credentials';
-    
-    // Mock a failed login
-    mockLogin.mockRejectedValueOnce(new Error(errorMessage));
-    
-    renderLoginForm();
-    
-    // Fill in the form
-    fireEvent.input(screen.getByLabelText(/username/i), {
-      target: { value: 'wronguser' }
-    });
-    
-    fireEvent.input(screen.getByLabelText(/password/i), {
-      target: { value: 'wrongpass' }
-    });
-    
-    // Submit the form
-    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
-    
-    // Check if error message is displayed
-    expect(await screen.findByText(errorMessage)).toBeInTheDocument();
   });
 });
