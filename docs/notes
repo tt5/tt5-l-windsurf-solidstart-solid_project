@@ -8,8 +8,27 @@ curl -b cookies.txt -X POST http://localhost:3000/api/cleanup-lines \
 http POST :3000/api/calculate-squares "Cookie:auth_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c2VyX2QwNjIyNTBlNzVhMGViN2Y1OGFiM2E4NmRlYTI4Y2Q3IiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsImlhdCI6MTc1ODIwMjMyNiwiZXhwIjoxNzU4ODA3MTI2fQ.n_yVhmPKNTDRnL9zoM9jvq_bJPfBaq1CcbDJ5_3_HRY"
 
 http POST :3000/api/calculate-squares "Cookie:auth_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c2VyX2QwNjIyNTBlNzVhMGViN2Y1OGFiM2E4NmRlYTI4Y2Q3IiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsImlhdCI6MTc1ODIwMjMyNiwiZXhwIjoxNzU4ODA3MTI2fQ.n_yVhmPKNTDRnL9zoM9jvq_bJPfBaq1CcbDJ5_3_HRY" < request.json
-podman pod create -n superstar
-podman run -dt --pod superstar localhost/superstar:latest
-podman pod rm superstar -f
+
 podman run -dt --pod new:superstar localhost/superstar:latest
+
+podman build -t superstar .
 podman kube play --replace --network host pod.yml
+podman kube down pod.yml
+
+podman build -t localhost:32000/superstar:latest .
+podman push localhost:32000/superstar:latest --tls-verify=false
+microk8s kubectl apply -f microk8s-deployment.yml
+NODE_PORT=$(microk8s kubectl get svc superstar-service -o=jsonpath='{.spec.ports[0].nodePort}')
+curl http://localhost:${NODE_PORT}
+
+kubectl get crd gateways.gateway.networking.k8s.io || \
+  { kubectl kustomize "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v1.0.0" | kubectl apply -f -; }
+
+kubectl apply -f https://projectcontour.io/quickstart/contour-gateway-provisioner.yaml
+kubectl apply -f gateway-api-resources.yml
+
+Get the external IP (if using LoadBalancer)
+kubectl get svc -n projectcontour
+
+Or use port-forwarding for testing
+kubectl port-forward -n projectcontour svc/envoy-superstar-gateway 8080:80

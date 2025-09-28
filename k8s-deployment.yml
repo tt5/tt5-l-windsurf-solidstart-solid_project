@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: superstar
+  labels:
+    app: superstar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: superstar
+  template:
+    metadata:
+      labels:
+        app: superstar
+    spec:
+      containers:
+      - name: superstar
+        image: localhost/superstar:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: DATABASE_URL
+          value: "file:/app/data/app.db"
+        - name: JWT_SECRET
+          value: "your-secret-key-here"  # In production, use a secret for this
+        - name: SIMULATION_MOVE_DELAY
+          value: "1000"
+        - name: SIMULATION_NUM_POINTS
+          value: "800"
+        - name: SIMULATION_START_X
+          value: "0"
+        - name: SIMULATION_START_Y
+          value: "0"
+        - name: ENABLE_SIMULATION
+          value: "true"
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+      volumes:
+      - name: data
+        emptyDir: {}
+      # Uncomment the following if you want to use a persistent volume
+      # - name: data
+      #   persistentVolumeClaim:
+      #     claimName: superstar-data
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: superstar-service
+spec:
+  selector:
+    app: superstar
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
+  type: ClusterIP
