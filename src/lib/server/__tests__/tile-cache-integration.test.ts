@@ -272,7 +272,13 @@ describe('Tile Cache Database Integration', () => {
     expect(tileGenerationService.generateTile).toHaveBeenCalledTimes(2);
     expect(tile1).toBeDefined();
     expect(tile2).toBeDefined();
-    expect(tile1).toEqual(tile2);
+    // Compare relevant properties, ignoring the timestamp
+    expect(tile1.tileX).toBe(tile2.tileX);
+    expect(tile1.tileY).toBe(tile2.tileY);
+    expect(tile1.version).toBe(tile2.version);
+    expect(Array.from(tile1.data)).toEqual(Array.from(tile2.data));
+    
+    // Verify against test data
     expect(tile1.tileX).toBe(testX);
     expect(tile1.tileY).toBe(testY);
     expect(Array.from(tile1.data)).toEqual(Array.from(testTile.data));

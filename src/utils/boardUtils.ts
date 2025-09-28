@@ -427,7 +427,6 @@ export const fetchBasePoints = async ({
   setIsFetching(true);
 
   try {
-    console.log(`[Board:fetchBasePoints] currentPosition: ${JSON.stringify(currentPosition())}`)
     let [x, y] = currentPosition();
     // moves opposite direction
     x = -x;

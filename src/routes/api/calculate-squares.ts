@@ -41,15 +41,6 @@ export const POST = withAuth(async ({ request, user }) => {
       throw new Error(`Expected basePoints to be an array, got ${typeof basePoints}`);
     }
 
-    /*
-    console.log("====")
-    console.log(Date.now())
-    console.log("borderIndices: ", borderIndices)
-    console.log("currentPosition: ", currentPosition)
-    console.log("direction: ", direction)
-    console.log("====")
-    */
-
     const uniqueBasePoints = basePoints.length > 0 
       ? [...new Map(basePoints.map(p => [`${p.x},${p.y}`, p])).values()]
       : [{ x: 0, y: 0, userId: 'default' }];

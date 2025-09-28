@@ -27,7 +27,6 @@
 
 ## map
 
-- world borders in the map, max and min zoom
 - player can move to any position
 - load at current position, getInitialViewport, TAG-t
 
@@ -37,6 +36,4 @@
 - documentation
 - types
 - unit testing
-- styles
 - performance testing, metrics, logging
-- enhance error handling in cleanup process (in progress)

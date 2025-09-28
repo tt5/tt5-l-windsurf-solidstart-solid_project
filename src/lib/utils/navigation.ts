@@ -1,6 +1,5 @@
 import { createPoint, type Point } from '~/types/board';
 import { usePlayerPosition } from '../../contexts/PlayerPositionContext';
-import { BOARD_CONFIG } from '~/constants/game';
 
 /**
  * Fetches restricted squares for a given position

@@ -3,14 +3,6 @@ import { withAuth } from '~/middleware/auth';
 import { createApiResponse, createErrorResponse, generateRequestId, type ApiResponse } from '~/utils/api';
 import { basePointEventService } from '~/lib/server/events/base-point-events';
 
-type BasePointResponse = ApiResponse<{
-  id: number;
-  x: number;
-  y: number;
-  userId: string;
-  createdAtMs: number;
-}>;
-
 type BasePointRequest = { x: number; y: number };
 
 const MAX_COORDINATE = 1000; // Reasonable limit to prevent abuse

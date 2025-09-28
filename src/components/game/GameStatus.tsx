@@ -139,8 +139,6 @@ export function GameStatus() {
           // Then fetch and update restricted squares
           const result = await jumpToPosition(-data.homeX, -data.homeY);
           if (result) {
-            console.log(`Jumped to home base at (${data.homeX}, ${data.homeY})`);
-            console.log('Restricted squares:', result.restrictedSquares);
             
             // Update the restricted squares in the context
             setRestrictedSquares(result.restrictedSquares);

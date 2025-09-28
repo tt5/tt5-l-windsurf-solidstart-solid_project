@@ -7,7 +7,7 @@ type DevUserConfig = {
 
 const DEFAULT_DEV_USER: DevUserConfig = {
   username: 'devuser',
-  password: 'devpassword',
+  password: 'devuser',
 };
 
 export async function setupDevUser(updateUser: (user: User | null) => void): Promise<boolean> {

@@ -5,8 +5,16 @@ import type { MapTile } from '~/lib/server/repositories/map-tile.repository';
 import { tileGenerationService } from '~/lib/server/services/tile-generation.service';
 import { tileCacheService } from '~/lib/server/services/tile-cache.service';
 
-// Maximum tile coordinates to prevent abuse
-const MAX_TILE_COORD = 10000;
+// World bounds in world coordinates
+const WORLD_BOUNDS = {
+  min: -1000,
+  max: 1000
+};
+
+// Calculate maximum tile coordinates based on world bounds and tile size (64x64)
+const TILE_SIZE = 64;
+const MAX_TILE_COORD = Math.ceil(WORLD_BOUNDS.max / TILE_SIZE);
+const MIN_TILE_COORD = Math.floor(WORLD_BOUNDS.min / TILE_SIZE);
 
 // Validate tile coordinates
 const validateTileCoords = (tileX: number, tileY: number) => {
@@ -19,8 +27,9 @@ const validateTileCoords = (tileX: number, tileY: number) => {
     throw new Error('Tile coordinates must be whole numbers');
   }
   
-  if (Math.abs(tileX) > MAX_TILE_COORD || Math.abs(tileY) > MAX_TILE_COORD) {
-    throw new Error(`Tile coordinates must be between -${MAX_TILE_COORD} and ${MAX_TILE_COORD}`);
+  if (tileX < MIN_TILE_COORD || tileX > MAX_TILE_COORD || 
+      tileY < MIN_TILE_COORD || tileY > MAX_TILE_COORD) {
+    throw new Error(`Tile coordinates must be between ${MIN_TILE_COORD} and ${MAX_TILE_COORD}`);
   }
 };
 

@@ -5,8 +5,8 @@ import styles from "./index.module.css";
 export default function Home() {
   return (
     <div class={styles.container}>
-      <Title>Welcome to the Game</Title>
-      <h1 class={styles.title}>Welcome to the Game</h1>
+      <Title>Superstar</Title>
+      <h1 class={styles.title}>Welcome</h1>
       
       <div class={styles.links}>
         <A href="/login" class={styles.link}>
