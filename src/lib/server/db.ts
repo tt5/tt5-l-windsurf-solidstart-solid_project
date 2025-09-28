@@ -8,8 +8,14 @@ import { MapTileRepository } from './repositories/map-tile.repository';
 
 export type SqliteDatabase = Database<sqlite3.Database, sqlite3.Statement>;
 
-// Use an absolute path to ensure consistency
-const dbPath = '/home/n/data/l/windsurf/solidstart/solid-project/data/app.db';
+import { join } from 'path';
+
+// Use a path relative to the project root
+const dbDir = process.env.NODE_ENV === 'production' 
+  ? process.env.DATA_DIR || join(process.cwd(), 'data')
+  : join(process.cwd(), 'data');
+
+const dbPath = join(dbDir, 'app.db');
 
 // Initialize database
 let db: SqliteDatabase;

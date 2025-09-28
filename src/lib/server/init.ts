@@ -28,12 +28,17 @@ class ServerInitializer {
     console.log('Initializing server...');
 
     try {
-      const { runDatabaseMigrations } = await import('./migrate');
-      await runDatabaseMigrations();
+      // In production, we run migrations during build, so we skip them here
+      if (process.env.NODE_ENV !== 'production') {
+        const { runDatabaseMigrations } = await import('./migrate');
+        await runDatabaseMigrations();
+        console.log('Development migrations completed successfully');
+      } else {
+        console.log('Skipping migrations in production (already handled during build)');
+      }
       
       // Initialize tile invalidation service
       tileInvalidationService.initialize();
-      console.log('Migrations completed successfully');
 
       // Start simulation service if enabled
       if (process.env.ENABLE_SIMULATION === 'true') {

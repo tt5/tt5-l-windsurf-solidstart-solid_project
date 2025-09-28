@@ -9,10 +9,11 @@
     "dev": "{ (lsof -t -i:3000) && { kill -9 $(lsof -t -i:3000); vinxi dev; } } || { vinxi dev; }",
     "dev:no-devuser": "VITE_DISABLE_DEV_USER=true vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start",
+    "postbuild": "npm run db:init",
+    "start": "NODE_ENV=production node .output/server/index.mjs",
+    "db:init": "mkdir -p ./data && npx tsx --no-warnings scripts/init-db.ts",
     "db:create-migration": "tsx scripts/create-migration.ts",
     "db:migrate": "tsx scripts/migrate.ts migrate",
-    "db:init": "tsx scripts/migrate.ts init",
     "db:check": "tsx scripts/check-db.ts",
     "db:verify": "tsx scripts/check-db.ts verify",
     "db:validate": "tsx scripts/validate-migrations.ts",
@@ -55,6 +56,7 @@
     "stylelint-order": "^7.0.0",
     "stylelint-scss": "^6.12.1",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.2",
     "vitest": "^1.2.2"
   }
