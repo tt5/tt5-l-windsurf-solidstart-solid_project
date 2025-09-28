@@ -45,8 +45,10 @@
     "node": ">=22"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.1",
     "@solidjs/testing-library": "^0.8.4",
     "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.5.2",
     "@types/yargs": "^17.0.33",
     "jsdom": "^23.2.0",
     "postcss": "^8.5.6",

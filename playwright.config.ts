@@ -1,0 +1,108 @@
+import { defineConfig, devices } from '@playwright/test';
+import { execSync } from 'child_process';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory name in ES module
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+
+// Port to run the app on during tests
+const PORT = 3000;
+
+// Start the dev server before the tests
+const devServer = {
+  command: 'npm run dev',
+  port: PORT,
+  reuseExistingServer: !process.env.CI,
+  env: {
+    NODE_ENV: 'test',
+  },
+};
+
+/**
+ * See https://playwright.dev/docs/test-configuration.
+ */
+export default defineConfig({
+  // Look for test files in the e2e directory
+  testDir: './e2e',
+  
+  // Timeout for each test in milliseconds
+  timeout: 30 * 1000,
+  
+  // Expect timeout in milliseconds
+  expect: {
+    timeout: 5000,
+  },
+  
+  // Run tests in files in parallel
+  fullyParallel: true,
+  
+  // Fail the build on CI if you accidentally left test.only in the source code
+  forbidOnly: !!process.env.CI,
+  
+  // Retry on CI only
+  retries: process.env.CI ? 2 : 0,
+  
+  // Opt out of parallel tests on CI
+  workers: process.env.CI ? 1 : undefined,
+  
+  // Reporter to use
+  reporter: [
+    ['html', { open: 'never' }],
+    ['list'],
+    process.env.CI ? ['github'] : ['line'],
+  ],
+  
+  // Shared settings for all projects
+  use: {
+    // Base URL to use in actions like `await page.goto('/')`
+    baseURL: `http://localhost:${PORT}`,
+    
+    // Collect trace when retrying the failed test
+    trace: 'on-first-retry',
+    
+    // Capture screenshot after each test failure
+    screenshot: 'only-on-failure',
+    
+    // Record video for failed tests
+    video: 'on-first-retry',
+  },
+
+  // Configure projects for major browsers
+  projects: [
+    {
+      name: 'chromium',
+      use: { 
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 },
+      },
+    },
+
+    /* Test against mobile viewports. */
+    // {
+    //   name: 'Mobile Chrome',
+    //   use: { ...devices['Pixel 5'] },
+    // },
+    // {
+    //   name: 'Mobile Safari',
+    //   use: { ...devices['iPhone 12'] },
+    // },
+
+    /* Test against branded browsers. */
+    // {
+    //   name: 'Microsoft Edge',
+    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
+    // },
+    // {
+    //   name: 'Google Chrome',
+    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+    // },
+  ],
+
+  /* Run your local dev server before starting the tests */
+  // webServer: {
+  //   command: 'npm run start',
+  //   url: 'http://localhost:3000',
+  //   reuseExistingServer: !process.env.CI,
+  // },
+});

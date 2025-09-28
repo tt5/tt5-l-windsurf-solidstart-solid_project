@@ -55,3 +55,8 @@ microk8s enable dashboard
 token=microk8s enable dashboard
 kubectl port-forward -n kube-system service/kubernetes-dashboard 10442:443
 kubectl -n kube-system get secret   $(kubectl -n kube-system get secret | grep "microk8s-dashboard-token" | awk '{print $1}')   -o jsonpath='{.data.token}' | base64 --decode
+
+npm run dev:no-devuser
+npx playwright test
+npx playwright test --ui
+npx playwright test e2e/tests/home.spec.ts
