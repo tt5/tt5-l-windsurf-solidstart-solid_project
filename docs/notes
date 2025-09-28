@@ -32,3 +32,5 @@ kubectl get svc -n projectcontour
 
 Or use port-forwarding for testing
 kubectl port-forward -n projectcontour svc/envoy-superstar-gateway 8080:80
+
+kubectl rollout restart deployment/superstar
