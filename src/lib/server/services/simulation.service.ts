@@ -1,4 +1,8 @@
 import { randomInt } from 'crypto';
+import { getBasePointRepository } from '../db';
+import { basePointEventService } from '../events/base-point-events';
+import { calculateRestrictedSquares } from '../../../utils/boardUtils';
+import { createPoint, Point } from '~/types/board';
 
 type MoveDirection = 'right' | 'left' | 'up' | 'down';
 
@@ -22,7 +26,7 @@ export class SimulationService {
   private placedBasePoints: Array<{x: number, y: number}> = [{x: 0, y: 0}];
   
   // Track restricted squares from server
-  private restrictedSquares: Array<[number, number]> = [];
+  private restrictedSquares: Point[] = [];
   
   private constructor() {
     // Initialize with random direction
@@ -114,57 +118,29 @@ export class SimulationService {
 
   private async resetBasePoints(): Promise<void> {
     try {
-      console.log('🧹 Resetting base points for test user...');
+      console.log('🧹 Resetting base points for simulation...');
       
-      // Delete all base points
-      const deleteResponse = await fetch(`${process.env.API_URL || 'http://localhost:3000'}/api/base-points`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}`,
-        },
-      });
-
-      if (!deleteResponse.ok) {
-        const error = await deleteResponse.json().catch(() => ({}));
-        console.error('Failed to delete base points:', {
-          status: deleteResponse.status,
-          statusText: deleteResponse.statusText,
-          error
-        });
-        throw new Error('Failed to delete base points');
+      // Get the repository
+      const repository = await getBasePointRepository();
+      
+      // Get all base points for the simulation user and delete them one by one
+      const simulationPoints = await repository.getByUser('simulation');
+      for (const point of simulationPoints) {
+        await repository.deleteBasePoint(point.id);
       }
-
-      console.log('✅ Successfully deleted all base points from server');
+      
+      console.log(`✅ Successfully deleted ${simulationPoints.length} base points from database`);
       
       // Clear local tracking
       this.placedBasePoints = [];
       
-      // Add (0,0) point for this user
-      console.log('Adding (0,0) base point for test user...');
-      const addResponse = await fetch(`${process.env.API_URL || 'http://localhost:3000'}/api/base-points`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}`,
-        },
-        body: JSON.stringify({ x: 0, y: 0 }),
-      });
-
-      if (!addResponse.ok) {
-        const error = await addResponse.json().catch(() => ({}));
-        console.error('Failed to add (0,0) base point:', {
-          status: addResponse.status,
-          statusText: addResponse.statusText,
-          error
-        });
-        throw new Error('Failed to add (0,0) base point');
-      }
-
-      console.log('✅ Successfully added (0,0) base point for test user');
+      // Add (0,0) point for this simulation
+      console.log('Adding (0,0) base point for simulation...');
+      await repository.add('simulation', 0, 0);
       
       // Update local tracking
       this.placedBasePoints = [{ x: 0, y: 0 }];
+      console.log('✅ Successfully added (0,0) base point for simulation');
       
     } catch (error) {
       console.error('Error resetting base points:', error);
@@ -185,7 +161,6 @@ export class SimulationService {
         bottom: -this.playerPosition.y + halfViewport
       };
       
-      // Get all squares in the viewport
       const viewportSquares: number[] = [];
       for (let y = viewport.top; y <= viewport.bottom; y++) {
         for (let x = viewport.left; x <= viewport.right; x++) {
@@ -197,89 +172,79 @@ export class SimulationService {
         }
       }
       
-      const response = await fetch(`${process.env.API_URL || 'http://localhost:3000'}/api/calculate-squares`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}`,
-        },
-        body: JSON.stringify({
-          borderIndices: viewportSquares,
-          currentPosition: [-this.playerPosition.x, -this.playerPosition.y],
-          direction: direction
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data?.squares) {
-          // Convert 1D indices back to coordinates
-          this.restrictedSquares = data.data.squares.map((index: number) => {
-            const x = (index % this.GRID_SIZE) + this.playerPosition.x;
-            const y = Math.floor(index / this.GRID_SIZE) + this.playerPosition.y;
-            return [x, y] as [number, number];
-          });
+      // Calculate restricted squares for the current player position
+      const currentPosition = createPoint(-this.playerPosition.x, -this.playerPosition.y);
+      const newRestrictedSquares: Point[] = [];
+      
+      // For each square in the viewport, check if it would be restricted if placed
+      for (let y = viewport.top; y <= viewport.bottom; y++) {
+        for (let x = viewport.left; x <= viewport.right; x++) {
+          const point = createPoint(x, y);
+          const restrictedIndices = calculateRestrictedSquares(
+            point,
+            [],
+            currentPosition
+          );
+          
+          // If this position would restrict any squares, add it to our list
+          if (restrictedIndices.length > 0) {
+            newRestrictedSquares.push(point);
+          }
         }
-      } else {
-        console.error('Failed to fetch restricted squares:', await response.text());
       }
+      
+      this.restrictedSquares = newRestrictedSquares;
     } catch (error) {
-      console.error('Error fetching restricted squares:', error);
+      console.error('Error in fetchRestrictedSquares:', error);
+      this.restrictedSquares = [];
     }
   }
-
+  
   private isRestricted(x: number, y: number): boolean {
     // Can't place on player's position
     if (x === -this.playerPosition.x + this.VIEW_RADIUS && y === -this.playerPosition.y + this.VIEW_RADIUS) {
       return true;
     }
     
-    // Check if it's in the restricted squares from the server
-    return this.restrictedSquares.some(([sx, sy]) => sx === x && sy === y);
+    // Check against restricted squares
+    return this.restrictedSquares.some(point => point[0] === x && point[1] === y);
   }
 
   private async placeBasePoint(x: number, y: number): Promise<boolean> {
-    // Special handling for (0,0) - we want to ensure our user has this point
-    const isOrigin = x === 0 && y === 0;
-    
-    // For non-origin points, check local tracking
-    if (!isOrigin && this.placedBasePoints.some(p => p.x === x && p.y === y)) {
-      return false;
-    }
-
-    // Check if the point is restricted
-    if (this.isRestricted(x, y)) {
-      return false;
-    }
-
     try {
-      const response = await fetch(`${process.env.API_URL || 'http://localhost:3000'}/api/base-points`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}`,
-        },
-        body: JSON.stringify({ x, y }),
-      });
-
-      const responseData = await response.json().catch(() => ({}));
-      
-      if (!response.ok) {
-        console.error(`❌ Failed to place base point at (${x}, ${y}):`, {
-          status: response.status,
-          statusText: response.statusText,
-          error: responseData
-        });
+      // Check if we already have a point at this location
+      const existingPoint = this.placedBasePoints.find(p => p.x === x && p.y === y);
+      if (existingPoint) {
+        console.log(`Point already exists at [${x}, ${y}], skipping...`);
         return false;
       }
+
+      // Check if the point is restricted
+      if (this.isRestricted(x, y)) {
+        console.log(`Point at [${x}, ${y}] is restricted, skipping...`);
+        return false;
+      }
+
+      // Get the repository and add the point directly
+      const repository = await getBasePointRepository();
+      await repository.add('simulation', x, y);
       
-      console.log(`✅ Successfully placed base point at (${x}, ${y})`);
-      
-      // Track the placed base point
+      // Update local tracking
       this.placedBasePoints.push({ x, y });
+      
+      // Emit event for any listeners
+      basePointEventService.emitCreated({ 
+        x, 
+        y, 
+        userId: 'simulation', 
+        id: Date.now(),
+        createdAtMs: Date.now()
+      });
+      
+      console.log(`✅ Placed base point at [${x}, ${y}] (Total: ${this.placedBasePoints.length})`);
       return true;
     } catch (error) {
-      console.error(`Error placing base point at (${x}, ${y}):`, error);
+      console.error(`Failed to place base point at (${x}, ${y}):`, error);
       return false;
     }
   }

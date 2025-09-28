@@ -29,6 +29,40 @@ export interface GameStatusResult {
   error?: string;
 }
 
+export interface RestrictedSquaresResult {
+  success: boolean;
+  squares: number[];
+  message?: string;
+  error?: string;
+}
+
+export interface CalculateRestrictedSquaresInput {
+  borderIndices: number[];
+  currentPosition: [number, number];
+  direction: 'up' | 'down' | 'left' | 'right';
+}
+
+export async function calculateRestrictedSquares(
+  input: CalculateRestrictedSquaresInput
+): Promise<RestrictedSquaresResult> {
+  try {
+    // This is a simplified version. You'll need to implement the actual logic
+    // based on your game's rules for restricted squares.
+    // For now, we'll return an empty array as a placeholder.
+    return {
+      success: true,
+      squares: []
+    };
+  } catch (error) {
+    console.error('Error calculating restricted squares:', error);
+    return {
+      success: false,
+      squares: [],
+      error: 'Failed to calculate restricted squares'
+    };
+  }
+}
+
 export class GameService {
   private userRepository: UserRepository;
   private basePointRepository: BasePointRepository;
