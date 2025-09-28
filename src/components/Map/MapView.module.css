@@ -1,4 +1,4 @@
-@import url('../../styles/variables.css');
+@import '../../styles/variables.css';
 
 /* Base container */
 .mapContainer {
@@ -218,7 +218,7 @@
 .loadingIndicator {
   width: 10px;
   height: 10px;
-  border: 2px solid rgba(0, 0, 0, 0.2);
+  border: 2px solid rgb(0 0 0 / 20%);
   border-radius: 50%;
   border-top-color: #000;
   animation: spin 1s linear infinite;
