@@ -1,6 +1,6 @@
-import { render, screen, fireEvent, waitFor, cleanup } from '@solidjs/testing-library';
+import { render, screen } from '@solidjs/testing-library';
 import { vi, describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
-import { Router, useNavigate, useLocation } from '@solidjs/router';
+import { Router, Route, useNavigate, useLocation } from '@solidjs/router';
 import { Component } from 'solid-js';
 import LoginForm from '../LoginForm';
 
@@ -68,9 +68,11 @@ afterAll(() => {
 });
 
 const renderLoginForm = () => {
-  render(() => (
+  return render(() => (
     <Router>
-      <LoginForm />
+      <Route path="/">
+        <LoginForm />
+      </Route>
     </Router>
   ));
 };
