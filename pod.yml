@@ -1,0 +1,26 @@
+# Save the output of this file and use kubectl create -f to import
+# it into Kubernetes.
+#
+# Created with podman-5.6.1
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    io.kubernetes.cri-o.SandboxID/adoringhermann: 056bfbe9cc7ff1dba37b374ffa8d23921e549cc22f0b57d0126b96769cb798c5
+  creationTimestamp: "2025-09-28T18:28:40Z"
+  labels:
+    app: superstar
+  name: superstar
+spec:
+  containers:
+  - args:
+    - node
+    - server/index.mjs
+    env:
+    - name: TERM
+      value: xterm
+    image: localhost/superstar:latest
+    name: adoringhermann
+    securityContext: {}
+    tty: true
+

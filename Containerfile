@@ -1,23 +1,59 @@
 FROM node:22-alpine as builder
 
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /build
 COPY package.json ./
 COPY package-lock.json ./
 
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm ci --omit=dev
 
 COPY . .
 RUN npm run build
 
+# Stage to create the entrypoint script
+FROM alpine:3.18 as entrypoint-builder
+
+# Copy and set up the entrypoint script
+COPY docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Final stage
 FROM node:22-alpine
 
-RUN apk update && apk add --no-cache dumb-init
-ENV HOME=/home/app
-ENV APP_HOME=$HOME/node/
+RUN apk add --no-cache dumb-init
+
+# Create app directory
+WORKDIR /app
+
+# Copy built application from builder
+COPY --from=builder /build/.output /app
+
+# Copy the initialized database from the builder stage
+COPY --from=builder /build/data /app/data
+
+# Copy the entrypoint script from the builder
+COPY --from=entrypoint-builder /entrypoint.sh /app/entrypoint.sh
+
+# Create a non-root user and set permissions
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    mkdir -p /app/data && \
+    chown -R appuser:appgroup /app
+
+# Switch to non-root user
+USER appuser
+
 ENV NODE_ENV=production
-WORKDIR $APP_HOME
-COPY --chown=node:node --from=builder /build/.output $APP_HOME
-USER node
+ENV DATABASE_URL=file:/app/data/app.db
+ENV JWT_SECRET=${JWT_SECRET:-default-secret-key-change-me}
+ENV SIMULATION_MOVE_DELAY=${SIMULATION_MOVE_DELAY:-1000}
+ENV SIMULATION_NUM_POINTS=${SIMULATION_NUM_POINTS:-800}
+ENV SIMULATION_START_X=${SIMULATION_START_X:-0}
+ENV SIMULATION_START_Y=${SIMULATION_START_Y:-0}
+ENV ENABLE_SIMULATION=${ENABLE_SIMULATION:-true}
+
 EXPOSE 3000
-ENTRYPOINT ["dumb-init"]
-CMD ["node", "server/index.mjs"]
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["/app/entrypoint.sh", "node", "/app/server/index.mjs"]
