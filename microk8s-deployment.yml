@@ -21,7 +21,7 @@ metadata:
   labels:
     app: superstar
 spec:
-  replicas: 1 # Keep this at 1 for SQlite
+  replicas: 1 # Keep this at 1 for SQLite
   selector:
     matchLabels:
       app: superstar

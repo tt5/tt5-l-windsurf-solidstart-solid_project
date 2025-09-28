@@ -1,7 +1,7 @@
 import { createContext, createEffect, createSignal, useContext, type ParentComponent } from 'solid-js';
-import { setupDevUser } from '~/lib/utils/devUser';
-import { getEnvVar } from '~/lib/utils/env';
-import type { User, NullableUser } from '~/types/user';
+import { setupDevUser } from '../lib/utils/devUser';
+import { getEnvVar } from '../lib/utils/env';
+import type { User, NullableUser } from '../types/user';
 
 interface AuthStore {
   user: () => NullableUser;
