@@ -208,7 +208,7 @@ class ServerInitializer {
       } catch (error) {
         console.error('[Cleanup] Error:', error);
       }
-    }, 100000);
+    }, 10000);
   }
 }
 

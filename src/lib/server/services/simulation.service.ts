@@ -269,13 +269,11 @@ export class SimulationService {
       // Check if we already have a point at this location
       const existingPoint = this.placedBasePoints.find(p => p.x === x && p.y === y);
       if (existingPoint) {
-        console.log(`Point already exists at [${x}, ${y}], skipping...`);
         return false;
       }
 
       // Check if the point is restricted
       if (this.isRestricted(x, y)) {
-        console.log(`Point at [${x}, ${y}] is restricted, skipping...`);
         return false;
       }
 

@@ -120,6 +120,13 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           const isDeletion = eventData.type === 'basePointDeleted' || eventData.event === 'basePointDeleted';
           const count = eventData.count || 1;
           
+          // Update added/deleted counts
+          if (isDeletion) {
+            setDeletedCount(prev => prev + (count || 1));
+          } else {
+            setAddedCount(prev => prev + (count || 1));
+          }
+          
           // Create a notification for the point change
           const notification: Notification = {
             id: pointData.id || Date.now(),
