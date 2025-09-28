@@ -1,5 +1,5 @@
 import { randomInt } from 'crypto';
-import { getBasePointRepository } from '../db';
+import { getBasePointRepository, getDb } from '../db';
 import { basePointEventService } from '../events/base-point-events';
 import { calculateRestrictedSquares } from '../../../utils/boardUtils';
 import { createPoint, Point } from '~/types/board';
@@ -117,7 +117,25 @@ export class SimulationService {
   }
 
   private async resetBasePoints(): Promise<void> {
+    const db = await getDb();
     try {
+      // Ensure simulation user exists
+      const existingUser = await db.get(
+        'SELECT id FROM users WHERE id = ?', 
+        ['simulation']
+      );
+
+      if (!existingUser) {
+        console.log('Creating simulation user...');
+        // Create a simulation user with a hashed password (this is just a placeholder)
+        // In a real app, you'd want to use a proper password hashing library
+        const hashedPassword = 'simulation_hashed_password';
+        await db.run(
+          'INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)',
+          ['simulation', 'simulation', hashedPassword]
+        );
+        console.log('✅ Created simulation user');
+      }
       console.log('🧹 Resetting base points for simulation...');
       
       // Get the repository
