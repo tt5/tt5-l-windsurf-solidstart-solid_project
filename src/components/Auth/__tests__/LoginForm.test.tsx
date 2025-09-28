@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@solidjs/testing-library';
-import { Router } from '@solidjs/router';
+import { Router, useNavigate } from '@solidjs/router';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createContext, useContext } from 'solid-js';
 import LoginForm from '../LoginForm';
@@ -18,6 +18,16 @@ const mockAuth = {
   logout: vi.fn(),
   isInitialized: () => true,
 };
+
+// Mock the router's useNavigate
+const mockNavigate = vi.fn();
+vi.mock('@solidjs/router', async () => {
+  const actual = await vi.importActual('@solidjs/router');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 // Mock the AuthContext
 vi.mock('../../../contexts/AuthContext', async () => {
