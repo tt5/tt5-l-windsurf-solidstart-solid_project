@@ -1,8 +1,8 @@
 import { randomInt } from 'crypto';
 import { getBasePointRepository, getDb } from '../db';
 import { basePointEventService } from '../events/base-point-events';
-import { calculateRestrictedSquares } from '../../../utils/boardUtils';
 import { createPoint, Point } from '~/types/board';
+import { calculateRestrictedSquaresForSimulation } from '~/utils/simulationUtils';
 
 type MoveDirection = 'right' | 'left' | 'up' | 'down';
 
@@ -166,55 +166,89 @@ export class SimulationService {
     }
   }
 
-  private async fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right' = 'up'): Promise<void> {
+  private async fetchRestrictedSquares(direction: 'up' | 'down' | 'left' | 'right' = 'up'): Promise<Point[]> {
     try {
       const viewportSize = this.GRID_SIZE;
       const halfViewport = Math.floor(viewportSize / 2);
       
       // Calculate the viewport bounds in world coordinates
       const viewport = {
-        left: -this.playerPosition.x - halfViewport,
-        right: -this.playerPosition.x + halfViewport,
-        top: -this.playerPosition.y - halfViewport,
-        bottom: -this.playerPosition.y + halfViewport
+        left: -this.playerPosition.x,
+        right: -this.playerPosition.x + 15,
+        top: -this.playerPosition.y,
+        bottom: -this.playerPosition.y + 15
       };
       
-      const viewportSquares: number[] = [];
-      for (let y = viewport.top; y <= viewport.bottom; y++) {
-        for (let x = viewport.left; x <= viewport.right; x++) {
-          // Convert world coordinates to grid indices (0-14 for a 15x15 grid)
-          const gridX = ((x % viewportSize) + viewportSize) % viewportSize;
-          const gridY = ((y % viewportSize) + viewportSize) % viewportSize;
-          const index = gridY * viewportSize + gridX;
-          viewportSquares.push(index);
-        }
-      }
+      // Generate border indices based on direction
+      const borderIndices: number[] = [];
       
-      // Calculate restricted squares for the current player position
-      const currentPosition = createPoint(-this.playerPosition.x, -this.playerPosition.y);
-      const newRestrictedSquares: Point[] = [];
-      
-      // For each square in the viewport, check if it would be restricted if placed
-      for (let y = viewport.top; y <= viewport.bottom; y++) {
-        for (let x = viewport.left; x <= viewport.right; x++) {
-          const point = createPoint(x, y);
-          const restrictedIndices = calculateRestrictedSquares(
-            point,
-            [],
-            currentPosition
-          );
-          
-          // If this position would restrict any squares, add it to our list
-          if (restrictedIndices.length > 0) {
-            newRestrictedSquares.push(point);
+      switch (direction) {
+        case 'up':
+          for (let x = viewport.left; x <= viewport.right; x++) {
+            const y = viewport.top;
+            const gridX = ((x % viewportSize) + viewportSize) % viewportSize;
+            const gridY = ((y % viewportSize) + viewportSize) % viewportSize;
+            borderIndices.push(gridY * viewportSize + gridX);
           }
-        }
+          break;
+        case 'down':
+          for (let x = viewport.left; x <= viewport.right; x++) {
+            const y = viewport.bottom;
+            const gridX = ((x % viewportSize) + viewportSize) % viewportSize;
+            const gridY = ((y % viewportSize) + viewportSize) % viewportSize;
+            borderIndices.push(gridY * viewportSize + gridX);
+          }
+          break;
+        case 'left':
+          for (let y = viewport.top; y <= viewport.bottom; y++) {
+            const x = viewport.left;
+            const gridX = ((x % viewportSize) + viewportSize) % viewportSize;
+            const gridY = ((y % viewportSize) + viewportSize) % viewportSize;
+            borderIndices.push(gridY * viewportSize + gridX);
+          }
+          break;
+        case 'right':
+          for (let y = viewport.top; y <= viewport.bottom; y++) {
+            const x = viewport.right;
+            const gridX = ((x % viewportSize) + viewportSize) % viewportSize;
+            const gridY = ((y % viewportSize) + viewportSize) % viewportSize;
+            borderIndices.push(gridY * viewportSize + gridX);
+          }
+          break;
       }
       
-      this.restrictedSquares = newRestrictedSquares;
+      // Get restricted squares using the server-side function
+      const restrictedIndices = await calculateRestrictedSquaresForSimulation(
+        Array.from({ length: 15*15 }, (v, k) => k),
+        [-this.playerPosition.x, -this.playerPosition.y],
+        direction
+      );
+      
+      /*
+      // Log restricted indices as a 15x15 grid
+      const grid = Array(15).fill(null).map(() => Array(15).fill('.'));
+      restrictedIndices.forEach(index => {
+        const x = index % 15;
+        const y = Math.floor(index / 15);
+        if (x >= 0 && x < 15 && y >= 0 && y < 15) {
+          grid[y][x] = 'x';
+        }
+      });
+      console.log(grid.map(row => row.join(' ')).join('\n'));
+      */
+      
+      // Convert indices back to points
+      this.restrictedSquares = restrictedIndices.map(index => {
+        const x = (index % viewportSize)+this.playerPosition.x;
+        const y = Math.floor(index / viewportSize)+this.playerPosition.y;
+        return createPoint(x, y);
+      });
+      
+      return this.restrictedSquares;
     } catch (error) {
       console.error('Error in fetchRestrictedSquares:', error);
       this.restrictedSquares = [];
+      return [];
     }
   }
   
@@ -230,6 +264,8 @@ export class SimulationService {
 
   private async placeBasePoint(x: number, y: number): Promise<boolean> {
     try {
+      //console.log(`Player position: [${this.playerPosition.x}, ${this.playerPosition.y}]`)
+      
       // Check if we already have a point at this location
       const existingPoint = this.placedBasePoints.find(p => p.x === x && p.y === y);
       if (existingPoint) {
