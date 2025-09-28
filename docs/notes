@@ -34,3 +34,24 @@ Or use port-forwarding for testing
 kubectl port-forward -n projectcontour svc/envoy-superstar-gateway 8080:80
 
 kubectl rollout restart deployment/superstar
+
+Implementation Example:
+In your Kubernetes deployment, services would call each other using internal DNS:
+typescript
+// In your service code
+const response = await fetch('http://other-service.namespace.svc.cluster.local/api/endpoint', {
+  headers: {
+    'Authorization': `Bearer ${jwtToken}`
+  }
+});
+
+Security Considerations:
+Use Kubernetes NetworkPolicies to restrict pod-to-pod communication
+Store JWT secret in Kubernetes Secrets
+Mount the secret to all pods that need to validate tokens
+
+microk8s enable dashboard
+
+token=microk8s enable dashboard
+kubectl port-forward -n kube-system service/kubernetes-dashboard 10442:443
+kubectl -n kube-system get secret   $(kubectl -n kube-system get secret | grep "microk8s-dashboard-token" | awk '{print $1}')   -o jsonpath='{.data.token}' | base64 --decode
