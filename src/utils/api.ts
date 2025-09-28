@@ -27,24 +27,6 @@ export interface ApiResponse<T = unknown> {
 }
 
 /**
- * Paginated API response
- * @template T - Type of items in the data array
- */
-export interface PaginatedResponse<T> extends ApiResponse<T[]> {
-  /** Current page number (1-based) */
-  page: number;
-  
-  /** Number of items per page */
-  pageSize: number;
-  
-  /** Total number of items across all pages */
-  total: number;
-  
-  /** Whether there are more items available */
-  hasMore: boolean;
-}
-
-/**
  * Options for creating an API response
  * @interface ApiResponseOptions
  * @property {number} [status=200] - HTTP status code

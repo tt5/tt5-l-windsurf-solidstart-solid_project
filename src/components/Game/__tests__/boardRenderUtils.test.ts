@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { createPoint } from '../../../types/board';
+import { createPoint, Point } from '../../../types/board';
 import { BOARD_CONFIG } from '../../../constants/game';
 
 const GRID_SIZE = BOARD_CONFIG.GRID_SIZE;
 
-// We'll test these functions directly
+// Utility functions for testing
 const indicesToPoints = (indices: number[], gridSize: number = GRID_SIZE) => 
   indices.map(index => createPoint(
     index % gridSize,
@@ -13,6 +13,17 @@ const indicesToPoints = (indices: number[], gridSize: number = GRID_SIZE) =>
 
 const pointsToIndices = (coords: Point[], gridSize: number = GRID_SIZE) => 
   coords.map(([x, y]) => y * gridSize + x);
+
+// Helper function for movement deltas
+const getMovementDeltas = (dir: 'left' | 'right' | 'up' | 'down') => {
+  switch (dir) {
+    case 'left': return createPoint(-1, 0);
+    case 'right': return createPoint(1, 0);
+    case 'up': return createPoint(0, -1);
+    case 'down': return createPoint(0, 1);
+    default: throw new Error('Invalid direction');
+  }
+};
 
 describe('Board Utilities', () => {
   describe('indicesToPoints', () => {
@@ -88,6 +99,24 @@ describe('Board Utilities', () => {
       const roundTrippedIndices = pointsToIndices(coords);
       
       expect(roundTrippedIndices).toEqual(originalIndices);
+    });
+  });
+
+  describe('Movement Deltas', () => {
+    it('returns correct delta for left direction', () => {
+      expect(getMovementDeltas('left')).toEqual(createPoint(-1, 0));
+    });
+
+    it('returns correct delta for right direction', () => {
+      expect(getMovementDeltas('right')).toEqual(createPoint(1, 0));
+    });
+
+    it('returns correct delta for up direction', () => {
+      expect(getMovementDeltas('up')).toEqual(createPoint(0, -1));
+    });
+
+    it('returns correct delta for down direction', () => {
+      expect(getMovementDeltas('down')).toEqual(createPoint(0, 1));
     });
   });
 });
