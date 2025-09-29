@@ -54,9 +54,6 @@ const MapView: Component = () => {
     getInitialViewport(containerRef, VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
   );
   
-  // Log initial viewport dimensions
-  console.log(`width, height: ${viewport().width}, ${viewport().height}`);
-  
   // Clear any existing tiles to force a reload
   setTiles({});
   const [isDragging, setIsDragging] = createSignal(false);
@@ -93,8 +90,6 @@ const MapView: Component = () => {
   const [isMounted, setIsMounted] = createSignal(false);
   const currentMountId = Math.floor(Math.random() * 1000000);
   
-  // isTileStale is now imported from mapUtils
-
   // Function to load all visible tiles
   const loadVisibleTiles = () => {
     loadVisibleTilesUtil(tiles(), isMounted, isTileStale, loadTile);
@@ -111,10 +106,14 @@ const MapView: Component = () => {
         loadVisibleTiles();
       }
     }, 10 * 1000); // 10 seconds
+
+    // Add window resize event listener
+    window.addEventListener('resize', handleResize);
     
     // Clean up on unmount
     return () => {
       clearInterval(intervalId);
+      window.removeEventListener('resize', handleResize);
       setIsMounted(false);
     };
   });
@@ -436,10 +435,6 @@ const MapView: Component = () => {
     }
   };
 
-  // worldToTileCoords and tileToWorldCoords are now imported from mapUtils
-
-  // getTileKey is now imported from mapUtils
-
   // Load a single tile
   const loadTile = async (tileX: number, tileY: number, forceRefresh = false): Promise<void> => {
     
@@ -589,38 +584,25 @@ const MapView: Component = () => {
       // Process tile data
       const tileData = responseData.data;
       let bytes: Uint8Array;
-      
+
+      // Convert data to Uint8Array based on its type
       if (typeof tileData.data === 'string') {
-        try {
-          // Convert comma-separated string to Uint8Array
-          const numbers = tileData.data.split(',').map(Number);
-          if (numbers.some(isNaN)) {
-            throw new Error('Invalid number in tile data');
-          }
-          bytes = new Uint8Array(numbers);
-          
-          // Store the processed data in cache
-          try {
-            await tileCache.setTile(tileX, tileY, bytes);
-          } catch (cacheError) {
-            console.error(`[loadTile] Error caching tile (${tileX}, ${tileY}):`, cacheError);
-          }
-          
-        } catch (error) {
-          console.error('Error parsing tile data:', error);
-          throw new Error('Failed to parse tile data');
+        const numbers = tileData.data.split(',').map(Number);
+        if (numbers.some(isNaN)) {
+          throw new Error('Invalid number in tile data');
         }
+        bytes = new Uint8Array(numbers);
       } else if (Array.isArray(tileData.data)) {
         bytes = new Uint8Array(tileData.data);
-        
-        // Store the processed data in cache
-        try {
-          await tileCache.setTile(tileX, tileY, bytes);
-        } catch (cacheError) {
-          console.error(`[loadTile] Error caching tile (${tileX}, ${tileY}):`, cacheError);
-        }
       } else {
         throw new Error('Unexpected tile data format');
+      }
+
+      // Cache the processed tile data
+      try {
+        await tileCache.setTile(tileX, tileY, bytes);
+      } catch (cacheError) {
+        console.error(`[loadTile] Error caching tile (${tileX}, ${tileY}):`, cacheError);
       }
       
       // Only update state if we're still mounted
@@ -784,7 +766,7 @@ const MapView: Component = () => {
   // Generate a consistent color based on tile coordinates
   const getTileColor = (x: number, y: number): string => {
     const hue = (x * 13 + y * 7) % 360;
-    return `hsl(${hue}, 70%, ${tiles()[`${x},${y}`]?.data ? '85%' : '90%'})`;
+    return `hsl(${hue}, 70%, ${tiles()[`${x},${y}`]?.data ? '75%' : '90%'})`;
   };
 
   // Render a single tile
