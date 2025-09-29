@@ -794,9 +794,11 @@ const MapView: Component = () => {
       // Error state
       content = (
         <div class={`${styles.fallbackTile} ${styles.error}`}>
-          <div class={styles.fallbackTileContent}>
+          <div 
+            class={styles.fallbackTileContent}
+            data-coords={`${tile.x},${tile.y}`}
+          >
             Error
-            <div class={styles.tileCoords}>{tile.x},{tile.y}</div>
           </div>
         </div>
       );
@@ -805,11 +807,13 @@ const MapView: Component = () => {
       content = (
         <div 
           class={`${styles.fallbackTile} loading`}
-          style={`--tile-bg-color: ${getTileColor(tile.x, tile.y)}`}
+          style={{ '--tile-bg-color': getTileColor(tile.x, tile.y) } as JSX.CSSProperties}
         >
-          <div class={styles.fallbackTileContent}>
+          <div 
+            class={styles.fallbackTileContent}
+            data-coords={`${tile.x},${tile.y}`}
+          >
             <div class={styles.loadingSpinner} />
-            <div class={styles.tileCoords}>{tile.x},{tile.y}</div>
           </div>
         </div>
       );
@@ -818,7 +822,7 @@ const MapView: Component = () => {
       content = (
         <div 
           class={styles.fallbackTile}
-          style={`--tile-bg-color: ${getTileColor(tile.x, tile.y)}`}
+          style={{ '--tile-bg-color': getTileColor(tile.x, tile.y) } as JSX.CSSProperties}
         >
           <div class={styles.fallbackTileContent}>
             <div class={styles.tileCoords}>{tile.x},{tile.y}</div>
@@ -868,11 +872,12 @@ const MapView: Component = () => {
           content = (
             <div 
               class={styles.fallbackTile}
-              style={`--tile-bg-color: ${getTileColor(tile.x, tile.y)}`}
+              style={{ '--tile-bg-color': getTileColor(tile.x, tile.y) } as JSX.CSSProperties}
             >
-              <div class={styles.fallbackTileContent}>
-                <div class={styles.tileCoords}>{tile.x},{tile.y}</div>
-              </div>
+              <div 
+                class={styles.fallbackTileContent}
+                data-coords={`${tile.x},${tile.y}`}
+              />
             </div>
           );
         }

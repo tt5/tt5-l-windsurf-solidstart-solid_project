@@ -165,7 +165,7 @@
   line-height: 1;
   background: rgb(0 0 0 / 50%);
   border-top-left-radius: 3px;
-  content: attr(style);
+  content: attr(data-coords);
   pointer-events: none;
 }
 
