@@ -1,3 +1,5 @@
+NOTE: visual check for temporary collision removed after commit 03a61f5
+
 # Basepoints and Restricted Lines
 
 This document explains how basepoints and restricted lines work in the game board.

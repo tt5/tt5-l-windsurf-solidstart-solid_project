@@ -18,15 +18,13 @@ interface CellState {
 }
 
 interface GridCellProps {
-  position: Position;
   state: CellState;
   onHover: (isHovered: boolean) => void;
   onClick: (e: MouseEvent) => void;
 }
 
 export const GridCell: Component<GridCellProps> = (props) => {
-  const { position, state, onHover, onClick } = props;
-  const { x, y, worldX, worldY } = position;
+  const { state, onHover, onClick } = props;
   const { isBasePoint, isSelected, isPlayerPosition, isHovered, isValid, isSaving } = state;
   
   // Track if we should process the click
@@ -81,9 +79,6 @@ export const GridCell: Component<GridCellProps> = (props) => {
     const classes = [styles.square];
     if (isBasePoint) {
       classes.push(styles.basePoint);
-      if (isOnRestrictedLine(worldX, worldY)) {
-        classes.push(styles.restricted);
-      }
     }
     if (isSelected) {
       classes.push(styles.selected);
@@ -94,30 +89,6 @@ export const GridCell: Component<GridCellProps> = (props) => {
       classes.push(isValid ? styles['valid-hover'] : styles['invalid-hover']);
     }
     return classes.join(' ');
-  };
-
-  // Check if two points are on the same restricted line
-  const areOnSameLine = (x1: number, y1: number, x2: number, y2: number): boolean => {
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    
-    if (dx === 0 && dy === 0) return false;
-    if (dx === 0 || dy === 0) return true;
-    if (dx === dy || dx === -dy) return true;
-    if (dy === 2 * dx || dx === 2 * dy) return true;
-    if (dy === -2 * dx || dx === -2 * dy) return true;
-    
-    return false;
-  };
-  
-  // Check if this basepoint is on a restricted line from any other basepoint or origin
-  const isOnRestrictedLine = (x: number, y: number): boolean => {
-    // First check against origin (0,0)
-    if (areOnSameLine(x, y, 0, 0)) return true;
-    
-    // Note: This is a simplified version - you'll need to pass basePoints as a prop
-    // or use a context if you want to check against other base points
-    return false;
   };
 
   return (

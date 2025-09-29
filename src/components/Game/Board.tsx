@@ -352,11 +352,8 @@ const Board: Component = () => {
             isSaving: isSaving()
           };
 
-          const position = { x, y, worldX, worldY };
-
           return (
             <GridCell
-              position={position}
               state={cellState}
               onHover={(hovered: boolean) => {
                 if (hovered) {
