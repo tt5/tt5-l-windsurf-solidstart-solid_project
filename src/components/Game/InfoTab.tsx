@@ -2,65 +2,64 @@ import { Component, Show } from 'solid-js';
 import styles from './SidePanel.module.css';
 import { GameStatus } from '../game/GameStatus';
 
-export interface Notification {
+type Notification = {
   id: string | number;
   message: string;
   timestamp: number;
   userId?: string;
   count?: number;
-}
+};
 
-interface InfoTabProps {
+type InfoTabProps = {
   username: string;
   addedCount: number;
   deletedCount: number;
   totalBasePoints: () => number | null;
   oldestPrimeNotification: Notification | null;
-}
-
-const InfoTab: Component<InfoTabProps> = (props) => {
-  return (
-    <div class={styles.infoTab}>
-      <h3>Player: {props.username}</h3>
-      <div class={styles.notifications}>
-        <h4>Activity Counters</h4>
-        <div class={styles.counters}>
-          <div class={styles.counter}>
-            <span class={`${styles.counterNumber} ${styles.added}`}>{props.addedCount}</span>
-            <span class={styles.counterLabel}>Added</span>
-          </div>
-          <div class={styles.counter}>
-            <span class={`${styles.counterNumber} ${styles.deleted}`}>{props.deletedCount}</span>
-            <span class={styles.counterLabel}>Removed</span>
-          </div>
-        </div>
-        <div class={styles.tabContent}>
-          <h3>Game Information</h3>
-          <div class={styles.gameStatusContainer}>
-            <GameStatus />
-          </div>
-          <Show when={props.totalBasePoints() !== null}>
-            <p>Total base points: {props.totalBasePoints()}</p>
-          </Show>
-          
-          {/* Oldest Prime Notification */}
-          <Show when={props.oldestPrimeNotification}>
-            <div class={styles.notificationsSection} style={{ 'margin-top': '1rem' }}>
-              <h4>Oldest Prime Notification</h4>
-              <div class={styles.notificationItem}>
-                <div class={styles.notificationText}>
-                  {props.oldestPrimeNotification?.message}
-                </div>
-                <div class={styles.notificationTime}>
-                  {new Date(props.oldestPrimeNotification?.timestamp || 0).toLocaleString()}
-                </div>
-              </div>
-            </div>
-          </Show>
-        </div>
-      </div>
-    </div>
-  );
 };
+
+const Counter: Component<{ value: number; label: string; type: 'added' | 'deleted' }> = (props) => (
+  <div class={styles.counter}>
+    <span class={`${styles.counterNumber} ${styles[props.type]}`}>
+      {props.value}
+    </span>
+    <span class={styles.counterLabel}>{props.label}</span>
+  </div>
+);
+
+const NotificationItem: Component<{ notification: Notification }> = (props) => (
+  <div class={styles.notificationItem}>
+    <div class={styles.notificationText}>{props.notification.message}</div>
+    <div class={styles.notificationTime}>
+      {new Date(props.notification.timestamp).toLocaleString()}
+    </div>
+  </div>
+);
+
+const InfoTab: Component<InfoTabProps> = (props) => (
+  <div class={styles.infoTab}>
+    <h3>Player: {props.username}</h3>
+    
+    <div class={styles.counters}>
+      <Counter value={props.addedCount} label="Added" type="added" />
+      <Counter value={props.deletedCount} label="Removed" type="deleted" />
+    </div>
+
+    <div class={styles.gameStatusContainer}>
+      <GameStatus />
+    </div>
+
+    <Show when={props.totalBasePoints() !== null}>
+      <p>Total base points: {props.totalBasePoints()}</p>
+    </Show>
+
+    <Show when={props.oldestPrimeNotification}>
+      <div class={styles.notificationsSection}>
+        <h4>Oldest Prime</h4>
+        <NotificationItem notification={props.oldestPrimeNotification!} />
+      </div>
+    </Show>
+  </div>
+);
 
 export default InfoTab;
