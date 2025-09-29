@@ -8,7 +8,6 @@ type AddBasePointOptions = {
   x: number;
   y: number;
   currentUser: { id: string } | null;
-  isSaving: () => boolean;
   setIsSaving: (value: boolean | ((prev: boolean) => boolean)) => void;
   setBasePoints: (value: BasePoint[] | ((prev: BasePoint[]) => BasePoint[])) => void;
   isBasePoint: (x: number, y: number, basePoints: BasePoint[]) => boolean;
@@ -18,14 +17,11 @@ export const handleAddBasePoint = async ({
   x,
   y,
   currentUser,
-  isSaving,
   setIsSaving,
   setBasePoints,
   isBasePoint
 }: AddBasePointOptions): Promise<ApiResponse<BasePoint>> => {
   if (!currentUser) return { success: false, error: 'User not authenticated', timestamp: Date.now() };
-  if (isSaving()) return { success: false, error: 'Operation already in progress', timestamp: Date.now() };
-
   
   // Validate input coordinates
   if (!isValidCoordinate(x) || !isValidCoordinate(y)) {
@@ -357,7 +353,6 @@ type ValidationResult = { isValid: boolean; reason?: string };
 
 type ValidateSquarePlacementOptions = {
   index: number;
-  currentUser: any;
   currentPosition: Point;
   basePoints: BasePoint[];
   restrictedSquares: number[];
@@ -368,14 +363,10 @@ type ValidateSquarePlacementOptions = {
  */
 export const validateSquarePlacement = ({
   index,
-  currentUser,
   currentPosition,
   basePoints,
   restrictedSquares
 }: ValidateSquarePlacementOptions): ValidationResult => {
-  if (!currentUser) {
-    return { isValid: false, reason: 'Not logged in' };
-  }
 
   const [gridX, gridY] = indicesToPoints([index])[0];
   const [offsetX, offsetY] = currentPosition;

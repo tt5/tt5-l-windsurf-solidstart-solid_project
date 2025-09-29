@@ -78,11 +78,7 @@ export const GridCell: Component<GridCellProps> = (props) => {
 
   const squareClass = () => {
     const classes = [styles.square];
-    if (isBasePoint) {
-    }
-    if (isSelected) {
-      classes.push(styles.selected);
-    }
+    if (isSelected) classes.push(styles.selected);
     if (isSaving && isHovered) classes.push(styles.loading);
     else if (isHovered) {
       classes.push(isValid ? styles['valid-hover'] : styles['invalid-hover']);

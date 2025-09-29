@@ -122,9 +122,9 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           
           // Update added/deleted counts
           if (isDeletion) {
-            setDeletedCount(prev => prev + (count || 1));
+            setDeletedCount((prev: number) => prev + (count || 1));
           } else {
-            setAddedCount(prev => prev + (count || 1));
+            setAddedCount((prev: number) => prev + (count || 1));
           }
           
           // Create a notification for the point change
@@ -140,7 +140,7 @@ const SidePanel: Component<SidePanelProps> = (props) => {
           
           // Check if this is a prime notification
           if (pointData.isPrime || (pointData.message && (pointData.message as string).toLowerCase().includes('prime'))) {
-            setOldestPrimeNotification(prev => {
+            setOldestPrimeNotification((prev: Notification | null) => {
               // If we don't have a previous prime notification or this one is older
               if (!prev || notification.timestamp < prev.timestamp) {
                 return notification;
@@ -161,7 +161,7 @@ const SidePanel: Component<SidePanelProps> = (props) => {
             ? eventData.initialCount 
             : eventData.totalBasePoints;
             
-          setTotalBasePoints(prev => count);
+          setTotalBasePoints((prev: number) => count);
         }
         
         // Update oldest prime timestamp if available

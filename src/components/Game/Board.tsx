@@ -103,7 +103,6 @@ const Board: Component = () => {
     
     return validateSquarePlacement({
       index,
-      currentUser,
       currentPosition: pos,
       basePoints: basePoints(),
       restrictedSquares: getRestrictedSquares()
@@ -179,9 +178,6 @@ const Board: Component = () => {
     // Skip if we don't have a position or user
     if (!currentPos || !currentUser) return;
     
-    const [x, y] = currentPos;
-    console.log(`[Board] Effect - Position changed to [${x}, ${y}], fetching base points`);
-    
     // Use requestIdleCallback to batch the fetch with the position update
     const id = requestIdleCallback(() => {
       fetchBasePoints().catch(console.error);
@@ -246,7 +242,6 @@ const Board: Component = () => {
         x: worldX,
         y: worldY,
         currentUser,
-        isSaving,
         setIsSaving,
         setBasePoints,
         isBasePoint: (x: number, y: number) => isBasePoint(x, y, basePoints())
