@@ -49,7 +49,7 @@ const Board: Component = () => {
   });
   
   // Create a memoized version of the current position to avoid recreating it
-  const currentPos = createMemo(() => position() || createPoint(0, 0));
+  const currentPos = createMemo<Point>(() => position() || createPoint(0, 0));
   const [lastFetchTime, setLastFetchTime] = createSignal<number>(0); // base points, rate limiting
   const [isFetching, setIsFetching] = createSignal<boolean>(false);
   const [isMoving, setIsMoving] = createSignal<boolean>(false);
@@ -102,13 +102,13 @@ const Board: Component = () => {
   
   // Validate if a square can have a base point
   const validateSquarePlacementLocal = (index: number) => {
-    const currentPos = position();
-    if (!currentPos) return { isValid: false, reason: 'Position not initialized' };
+    const pos = position();
+    if (!pos) return { isValid: false, reason: 'Position not initialized' };
     
     return validateSquarePlacement({
       index,
       currentUser,
-      currentPosition: currentPos,
+      currentPosition: pos,
       basePoints: basePoints(),
       restrictedSquares: getRestrictedSquares()
     });
@@ -261,12 +261,15 @@ const Board: Component = () => {
       
       if (response.success && response.data) {
         // Recalculate restricted squares with the new base point
-        const newRestrictedSquares = calculateRestrictedSquares(
-          createPoint(worldX, worldY),
-          getRestrictedSquares(),
-          currentPos
-        );
-        setRestrictedSquares(newRestrictedSquares);
+        const pos = position();
+        if (pos) {
+          const newRestrictedSquares = calculateRestrictedSquares(
+            createPoint(worldX, worldY),
+            getRestrictedSquares(),
+            pos
+          );
+          setRestrictedSquares(newRestrictedSquares);
+        }
       } else if (response.error) {
         setError(response.error);
       }
@@ -303,8 +306,9 @@ const Board: Component = () => {
         isMoving,
         currentPosition: () => currentPos(),
         setCurrentPosition: (value: Point | ((prev: Point) => Point)) => {
+          const current = currentPos();
           const updatedValue = typeof value === 'function' 
-            ? value(currentPos())
+            ? value(current)
             : value;
           setContextPosition(updatedValue);
           return updatedValue;
