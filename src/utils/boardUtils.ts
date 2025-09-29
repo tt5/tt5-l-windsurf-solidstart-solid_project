@@ -118,12 +118,13 @@ export const calculateRestrictedSquares = (
 ): number[] => {
   const [x, y] = p; // Base point position in world coordinates
   const [offsetX, offsetY] = currentPosition; // Player's current position
+  // opposite direction
+  const gridX = x + offsetX;
+  const gridY = y + offsetY;
+
   const gridSize = BOARD_CONFIG.GRID_SIZE;
   const maxIndex = gridSize * gridSize - 1;
   
-  // Convert world coordinates to grid coordinates
-  const gridX = x + offsetX;
-  const gridY = y + offsetY;
   
   // Helper function to check if a point is within the grid
   const isValidSquare = (square: number): boolean => {
@@ -195,11 +196,10 @@ type FetchBasePointsOptions = {
 export type HandleDirectionOptions = {
   isMoving: Accessor<boolean>;
   currentPosition: Accessor<Point>;
-  setCurrentPosition: (value: Point | ((prev: Point) => Point)) => void;
+  setCurrentPosition: (value: Point) => void;
   restrictedSquares: Accessor<number[]>;
   setRestrictedSquares: ((value: number[]) => void) & ((updater: (prev: number[]) => number[]) => void);
   setIsMoving: (value: boolean | ((prev: boolean) => boolean)) => void;
-  isBasePoint: (x: number, y: number) => boolean;
 };
 
 // Track the last movement time to prevent rapid successive movements
@@ -217,7 +217,6 @@ export const handleDirection = async (
     restrictedSquares,
     setRestrictedSquares,
     setIsMoving,
-    isBasePoint
   } = options;
 
   const now = Date.now();
@@ -237,6 +236,7 @@ export const handleDirection = async (
   try {
     const [x, y] = currentPosition();
     const [dx, dy] = DIRECTION_MAP[dir].delta;
+    // opposite direction
     const newX = x + dx;
     const newY = y + dy;
     
@@ -298,18 +298,6 @@ export const handleDirection = async (
     
     // Combine indices (no duplicates expected due to check above)
     const allIndices = [...currentIndices, ...result.data.squares];
-    const [offsetX, offsetY] = currentPosition();
-    
-    /*
-    // Filter out indices that are base points
-    const combinedIndices = allIndices.filter(index => {
-      const x = index % BOARD_CONFIG.GRID_SIZE;
-      const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-      const worldX = x - offsetX;
-      const worldY = y - offsetY;
-      return !isBasePoint(worldX, worldY);
-    });
-    */
     
     //setRestrictedSquares(combinedIndices);
     setRestrictedSquares(allIndices);
@@ -326,14 +314,26 @@ export const handleDirection = async (
   }
 };
 
-const indicesToPoints = (indices: number[]): Point[] => 
+export const indicesToPoints = (indices: number[]): Point[] => 
   indices.map(index => createPoint(
     index % BOARD_CONFIG.GRID_SIZE,
     Math.floor(index / BOARD_CONFIG.GRID_SIZE)
   ));
 
-const pointsToIndices = (points: Point[]): number[] => 
+export const pointsToIndices = (points: Point[]): number[] => 
   points.map(([x, y]) => y * BOARD_CONFIG.GRID_SIZE + x);
+
+/**
+ * Converts grid coordinates to world coordinates using the current position offset
+ * @param gridX X coordinate in grid space
+ * @param gridY Y coordinate in grid space
+ * @param offsetX X offset from current position
+ * @param offsetY Y offset from current position
+ * @returns [worldX, worldY] in world coordinates
+ */
+export const gridToWorld = (gridX: number, gridY: number, offsetX: number, offsetY: number): Point => {
+  return createPoint(gridX - offsetX, gridY - offsetY);
+};
 
 /**
  * Validates if a coordinate is within the world bounds
@@ -377,11 +377,9 @@ export const validateSquarePlacement = ({
     return { isValid: false, reason: 'Not logged in' };
   }
 
-  const gridX = index % BOARD_CONFIG.GRID_SIZE;
-  const gridY = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
+  const [gridX, gridY] = indicesToPoints([index])[0];
   const [offsetX, offsetY] = currentPosition;
-  const worldX = gridX - offsetX;
-  const worldY = gridY - offsetY;
+  const [worldX, worldY] = gridToWorld(gridX, gridY, offsetX, offsetY);
 
   // Check if it's the player's position
   if (worldX === 0 && worldY === 0) {

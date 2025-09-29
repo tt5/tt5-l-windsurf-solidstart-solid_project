@@ -4,7 +4,8 @@ import { ApiResponse } from "~/utils/api";
 declare const brand: unique symbol;
 type Brand<T, B> = T & { [brand]: B };
 
-export type Point = Brand<[number, number], 'Point'>;
+// Simple tuple type for better compatibility with spread operators
+export type Point = [number, number];
 
 export function createPoint(x: number, y: number): Point {
   return [x, y] as Point;

@@ -22,7 +22,10 @@ import {
   handleDirection as handleDirectionUtil,
   handleAddBasePoint,
   isBasePoint,
-  validateSquarePlacement
+  validateSquarePlacement,
+  indicesToPoints,
+  pointsToIndices,
+  gridToWorld
 } from '../../utils/boardUtils';
 import styles from './Board.module.css';
 
@@ -71,11 +74,9 @@ const Board: Component = () => {
         );
         
         if (!result) {
-          console.warn('Failed to jump to default position, falling back to (0,0)');
-          setContextPosition(createPoint(0, 0));
+          throw new Error('Failed to jump to default position. The game cannot start without a valid position.');
         } else {
           const { restrictedSquares } = result;
-          console.log(`Initialized game with position and ${restrictedSquares.length} restricted squares`);
           setRestrictedSquares(restrictedSquares);
         }
       }
@@ -91,7 +92,6 @@ const Board: Component = () => {
     }
   });
 
-  // Use restricted squares from context
   const [hoveredSquare, setHoveredSquare] = createSignal<number | null>(null);
   const [error, setError] = createSignal<string | null>(null);
   const [reachedBoundary, setReachedBoundary] = createSignal<boolean>(false);
@@ -237,12 +237,9 @@ const Board: Component = () => {
     const pos = position();
     if (!pos) return;
     
-    // Calculate grid position from index
-    const gridX = index % BOARD_CONFIG.GRID_SIZE;
-    const gridY = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
+    const [gridX, gridY] = indicesToPoints([index])[0];
     const [offsetX, offsetY] = pos;
-    const worldX = gridX - offsetX;
-    const worldY = gridY - offsetY;
+    const [worldX, worldY] = gridToWorld(gridX, gridY, offsetX, offsetY);
 
     try {
       const response = await handleAddBasePoint({
@@ -301,18 +298,13 @@ const Board: Component = () => {
       await handleDirectionUtil(dir, {
         isMoving,
         currentPosition: () => current,
-        setCurrentPosition: (value: Point | ((prev: Point) => Point)) => {
-          const currentPosition = currentPos();
-          const updatedValue = typeof value === 'function' 
-            ? value(currentPosition)
-            : value;
-          setContextPosition(updatedValue);
-          return updatedValue;
+        setCurrentPosition: (value: Point) => {
+          setContextPosition(value);
+          return value;
         },
         restrictedSquares: getRestrictedSquares,
         setRestrictedSquares,
         setIsMoving,
-        isBasePoint: (x: number, y: number) => isBasePoint(x, y, basePoints())
       });
     } catch (error) {
       console.error('Error in handleDirection:', error);
@@ -335,11 +327,9 @@ const Board: Component = () => {
 
           const pos = currentPos();
           if (!pos) return null; // Skip rendering if position is not yet set
+          const [x, y] = indicesToPoints([index])[0];
           const [offsetX, offsetY] = pos;
-          const x = index % BOARD_CONFIG.GRID_SIZE;
-          const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-          const worldX = x - offsetX;
-          const worldY = y - offsetY;
+          const [worldX, worldY] = gridToWorld(x, y, offsetX, offsetY);
           const isBP = isBasePoint(worldX, worldY, basePoints());
 
           const isSelected = getRestrictedSquares().includes(index);
