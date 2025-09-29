@@ -283,12 +283,12 @@ const Board: Component = () => {
   const handleDirection = async (dir: Direction): Promise<void> => {
     setReachedBoundary(false); // Reset boundary flag on new movement
     
-    const currentPos = position();
-    if (!currentPos) return;
+    const current = currentPos(); // Call the accessor to get the current position
+    if (!current) return;
     
     const [dx, dy] = DIRECTION_MAP[dir].delta;
-    const newX = currentPos[0] + dx;
-    const newY = currentPos[1] + dy;
+    const newX = current[0] + dx;
+    const newY = current[1] + dy;
     
     // Check boundaries
     if (
@@ -302,13 +302,13 @@ const Board: Component = () => {
     }
     
     try {
-      const current = currentPos();
       await handleDirectionUtil(dir, {
         isMoving,
         currentPosition: () => current,
         setCurrentPosition: (value: Point | ((prev: Point) => Point)) => {
+          const currentPosition = currentPos();
           const updatedValue = typeof value === 'function' 
-            ? value(current)
+            ? value(currentPosition)
             : value;
           setContextPosition(updatedValue);
           return updatedValue;
