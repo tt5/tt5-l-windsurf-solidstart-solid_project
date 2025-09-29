@@ -1,16 +1,16 @@
 import { Title } from "@solidjs/meta";
 import { Show, createSignal } from 'solid-js';
 import { useAuth } from '~/contexts/AuthContext';
-import { PlayerPositionProvider, usePlayerPosition } from '~/contexts/PlayerPositionContext';
+import { PlayerPositionProvider } from '~/contexts/PlayerPositionContext';
 import Board from '~/components/Game/Board';
 import SidePanel from '~/components/Game/SidePanel';
+import PositionIndicator from '~/components/Game/PositionIndicator';
 import MapView from '~/components/Map/MapView';
 import styles from './game.module.css';
 
 function GameContent() {
   const { user, isInitialized, logout } = useAuth();
   const [activeTab, setActiveTab] = createSignal('info');
-  const { position } = usePlayerPosition();
   
   return (
     <div class={styles.container}>
@@ -39,9 +39,7 @@ function GameContent() {
               />
               
               <div class={styles.gameBoard}>
-                <div class={styles.positionIndicator}>
-                  Position: ({position()?.[0] ?? 0}, {position()?.[1] ?? 0})
-                </div>
+                <PositionIndicator />
                 <Show when={activeTab() === 'info'}>
                   <Board />
                 </Show>
