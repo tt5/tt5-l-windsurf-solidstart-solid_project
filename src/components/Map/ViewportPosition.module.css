@@ -1,0 +1,61 @@
+.playerViewport {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid #ff6b6b;
+  background-color: rgba(255, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  box-sizing: border-box;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+  animation: viewportPulse 2s infinite;
+}
+
+.viewportLabel {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  background-color: rgba(255, 0, 0, 0.8);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  font-family: monospace;
+  font-weight: bold;
+}
+
+.coordinates {
+  position: absolute;
+  bottom: -20px;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: monospace;
+  pointer-events: none;
+}
+
+/* Add a subtle pulse effect */
+@keyframes viewportPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.4); }
+  70% { box-shadow: 0 0 0 5px rgba(255, 0, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+}
+
+/* Grid overlay showing world coordinates */
+.playerViewport::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 64px 64px; /* Each tile is 64x64 pixels */
+  pointer-events: none;
+}
