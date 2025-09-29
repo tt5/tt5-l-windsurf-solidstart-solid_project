@@ -38,20 +38,6 @@ const Board: Component = () => {
   const currentUser = user();
   const [basePoints, setBasePoints] = createSignal<BasePoint[]>([]);
   
-  // Initialize position if not set
-  onMount(() => {
-    if (!position()) {
-      // Place player at (0,0) in the top-left corner of the viewport
-      setContextPosition(createPoint(0, 0));
-    }
-  });
-  
-  // Create a memoized version of the current position to avoid recreating it
-  const currentPos = createMemo<Point>(() => position() || createPoint(0, 0));
-  const [lastFetchTime, setLastFetchTime] = createSignal<number>(0); // base points, rate limiting
-  const [isFetching, setIsFetching] = createSignal<boolean>(false);
-  const [isMoving, setIsMoving] = createSignal<boolean>(false);
-  const [isSaving, setIsSaving] = createSignal<boolean>(false);
   // Get position and restricted squares from context
   const { 
     position,
@@ -60,14 +46,24 @@ const Board: Component = () => {
     setRestrictedSquares
   } = usePlayerPosition();
   
+  // Create a memoized version of the current position to avoid recreating it
+  const currentPos = createMemo<Point>(() => position() || createPoint(0, 0));
+  
+  // Other state variables
+  const [lastFetchTime, setLastFetchTime] = createSignal<number>(0); // base points, rate limiting
+  const [isFetching, setIsFetching] = createSignal<boolean>(false);
+  const [isMoving, setIsMoving] = createSignal<boolean>(false);
+  const [isSaving, setIsSaving] = createSignal<boolean>(false);
+  
   // Initialize board on mount
   onMount(async () => {
     // Set up CSS variable for grid size
     document.documentElement.style.setProperty('--grid-size', BOARD_CONFIG.GRID_SIZE.toString());
     
     try {
+      // If we don't have a position yet, try to jump to the default position
       if (!position()) {
-        // Try to get position from URL or other source
+        console.log('No position set, jumping to default position');
         const result = await jumpToPosition(
           BOARD_CONFIG.DEFAULT_POSITION[0],
           BOARD_CONFIG.DEFAULT_POSITION[1],
@@ -75,11 +71,13 @@ const Board: Component = () => {
         );
         
         if (!result) {
-          throw new Error('Failed to initialize game: Could not determine starting position');
+          console.warn('Failed to jump to default position, falling back to (0,0)');
+          setContextPosition(createPoint(0, 0));
+        } else {
+          const { restrictedSquares } = result;
+          console.log(`Initialized game with position and ${restrictedSquares.length} restricted squares`);
+          setRestrictedSquares(restrictedSquares);
         }
-        
-        const { restrictedSquares } = result;
-        setRestrictedSquares(restrictedSquares);
       }
       
       // Fetch base points with the current position
