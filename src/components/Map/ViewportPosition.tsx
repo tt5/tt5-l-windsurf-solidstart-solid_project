@@ -2,12 +2,12 @@ import { Component, createEffect, createSignal } from 'solid-js';
 import { usePlayerPosition } from '~/contexts/PlayerPositionContext';
 import styles from './ViewportPosition.module.css';
 
-// Constants for the player's viewport (in world coordinates)
-const VIEWPORT_WIDTH = 15; // 15 squares wide (world units)
-const VIEWPORT_HEIGHT = 15; // 15 squares tall (world units)
+// Player's viewport size in world coordinates
+const VIEWPORT_WIDTH = 15; // 15 world units wide
+const VIEWPORT_HEIGHT = 15; // 15 world units tall
 
 // Map tile size (pixels per tile)
-const TILE_SIZE = 64; // 64x64 pixels per map tile
+const TILE_SIZE = 64; // 64x64 pixels per map tile (1 world unit = 1 pixel)
 
 const ViewportPosition: Component = () => {
   const { position } = usePlayerPosition();
@@ -17,16 +17,21 @@ const ViewportPosition: Component = () => {
   createEffect(() => {
     const pos = position();
     if (pos) {
-      // The player's position is in world coordinates (1 unit = 1 square in their viewport)
-      // On the map, we need to convert these to pixel coordinates (1 tile = 64x64 pixels)
-      const left = pos[0];  // Already in world coordinates
-      const top = pos[1];   // Already in world coordinates
+      // Player's position is in world coordinates (1 unit = 1 pixel in world space)
+      // On the map, we need to convert to pixel coordinates (1 world unit = 1 pixel)
+      // But since the map shows tiles (64x64 pixels per tile), we need to scale accordingly
       
-      // Convert world coordinates to map pixel coordinates
-      const pixelLeft = left * TILE_SIZE;
-      const pixelTop = top * TILE_SIZE;
-      const pixelWidth = VIEWPORT_WIDTH * TILE_SIZE;
-      const pixelHeight = VIEWPORT_HEIGHT * TILE_SIZE;
+      // Calculate the viewport bounds in world coordinates
+      const worldLeft = pos[0];
+      const worldTop = pos[1];
+      const worldRight = worldLeft + VIEWPORT_WIDTH;
+      const worldBottom = worldTop + VIEWPORT_HEIGHT;
+      
+      // Convert to map pixel coordinates (1 world unit = 1 pixel)
+      const pixelLeft = worldLeft;
+      const pixelTop = worldTop;
+      const pixelWidth = VIEWPORT_WIDTH;
+      const pixelHeight = VIEWPORT_HEIGHT;
       
       setPlayerViewportStyle({
         left: `${pixelLeft}px`,
@@ -38,7 +43,9 @@ const ViewportPosition: Component = () => {
         pointerEvents: 'none',
         zIndex: 1000,
         boxSizing: 'border-box',
-        backgroundColor: 'rgba(255, 0, 0, 0.1)'
+        backgroundColor: 'rgba(255, 0, 0, 0.1)',
+        // Ensure the viewport is always visible on top of map tiles
+        transform: 'translateZ(0)'
       });
     }
   });
@@ -54,10 +61,13 @@ const ViewportPosition: Component = () => {
       }
     >
       <div class={styles.viewportLabel}>
-        Player Viewport
+        Player Viewport (15×15)
       </div>
       <div class={styles.coordinates}>
         {position()?.[0] || 0},{position()?.[1] || 0}
+      </div>
+      <div class={styles.worldCoords}>
+        World: {position()?.[0] || 0},{position()?.[1] || 0}
       </div>
     </div>
   );
