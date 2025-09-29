@@ -7,7 +7,11 @@ import {
   isTileStale, 
   getTileKey, 
   worldToTileCoords, 
-  tileToWorldCoords 
+  tileToWorldCoords,
+  getInitialViewport,
+  handleResize as handleViewportResize,
+  loadVisibleTiles as loadVisibleTilesUtil,
+  updateViewport as updateViewportUtil
 } from '../../utils/mapUtils';
 
 import styles from './MapView.module.css';
@@ -46,20 +50,12 @@ width: number;
 const MapView: Component = () => {
   const [tiles, setTiles] = createSignal<Record<string, Tile>>({});
   let containerRef: HTMLDivElement | undefined;
-  // Initialize viewport with (0,0) at top-left
-  const getInitialViewport = (): Viewport => {
-    const width = containerRef?.clientWidth || VIEWPORT_WIDTH;
-    const height = containerRef?.clientHeight || VIEWPORT_HEIGHT;
-    console.log(`width, height: ${width}, ${height}`)
-    return {
-      x: 0,  // Start exactly at (0,0)
-      y: 0,
-      width,
-      height
-    };
-  };
-
-  const [viewport, setViewport] = createSignal<Viewport>(getInitialViewport());
+  const [viewport, setViewport] = createSignal<Viewport>(
+    getInitialViewport(containerRef, VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
+  );
+  
+  // Log initial viewport dimensions
+  console.log(`width, height: ${viewport().width}, ${viewport().height}`);
   
   // Clear any existing tiles to force a reload
   setTiles({});
@@ -90,17 +86,7 @@ const MapView: Component = () => {
   
   // Handle window resize to update viewport dimensions
   const handleResize = () => {
-    if (containerRef) {
-      const width = containerRef.clientWidth;
-      const height = containerRef.clientHeight;
-      setViewport(prev => ({
-        ...prev,
-        width,
-        height
-      }));
-      // Reschedule tiles after a short delay to avoid excessive updates
-      setTimeout(scheduleTilesForLoading, 100);
-    }
+    handleViewportResize(containerRef, setViewport, scheduleTilesForLoading);
   };
 
   // Track mount state and mount ID
@@ -111,22 +97,7 @@ const MapView: Component = () => {
 
   // Function to load all visible tiles
   const loadVisibleTiles = () => {
-    if (!isMounted()) {
-      return;
-    }
-    
-    // Check for stale tiles that need refresh
-    const currentTiles = tiles();
-    let staleCount = 0;
-    
-    Object.values(currentTiles).forEach(tile => {
-      if (isTileStale(tile)) {
-        staleCount++;
-        loadTile(tile.x, tile.y, true).catch(error => {
-          console.error(`[loadVisibleTiles] Error refreshing tile (${tile.x}, ${tile.y}):`, error);
-        });
-      }
-    });
+    loadVisibleTilesUtil(tiles(), isMounted, isTileStale, loadTile);
   };
 
   // Set mount state when component mounts
@@ -182,19 +153,7 @@ const MapView: Component = () => {
 
   // Update viewport and schedule tiles for loading
   const updateViewport = (updates: Partial<Viewport>) => {
-    setViewport(prev => {
-      const newViewport = {
-        ...prev,
-        ...updates
-      };
-      
-      // Schedule tiles to update after viewport changes
-      requestAnimationFrame(() => {
-        scheduleTilesForLoading();
-      });
-      
-      return newViewport;
-    });
+    updateViewportUtil(updates, setViewport, scheduleTilesForLoading);
   };
   
   // Generate coordinates in a spiral pattern
@@ -301,7 +260,6 @@ const MapView: Component = () => {
       });
     }
     
-    console.log(`visibleTiles: ${visibleTiles}`)
     // Sort by priority (closest first)
     visibleTiles.sort((a, b) => a.priority - b.priority);
     

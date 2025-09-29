@@ -72,6 +72,105 @@ export const tileToWorldCoords = (tileX: number, tileY: number) => ({
 });
 
 /**
+ * Gets the initial viewport dimensions
+ * @param containerRef - Reference to the container element
+ * @param defaultWidth - Default width if container ref is not available
+ * @param defaultHeight - Default height if container ref is not available
+ * @returns Viewport object with x, y, width, and height
+ */
+export const getInitialViewport = (
+  containerRef: HTMLElement | undefined, 
+  defaultWidth: number, 
+  defaultHeight: number
+) => {
+  const width = containerRef?.clientWidth || defaultWidth;
+  const height = containerRef?.clientHeight || defaultHeight;
+  return {
+    x: 0,
+    y: 0,
+    width,
+    height
+  };
+};
+
+/**
+ * Handles viewport resize
+ * @param containerRef - Reference to the container element
+ * @param setViewport - Function to update the viewport state
+ * @param scheduleTilesForLoading - Function to schedule tile loading
+ */
+export const handleResize = (
+  containerRef: HTMLElement | undefined,
+  setViewport: (updater: (prev: any) => any) => void,
+  scheduleTilesForLoading: () => void
+) => {
+  if (containerRef) {
+    const width = containerRef.clientWidth;
+    const height = containerRef.clientHeight;
+    setViewport((prev: any) => ({
+      ...prev,
+      width,
+      height
+    }));
+    // Reschedule tiles after a short delay to avoid excessive updates
+    setTimeout(scheduleTilesForLoading, 100);
+  }
+};
+
+/**
+ * Loads all visible tiles that are stale
+ * @param currentTiles - Current tiles state
+ * @param isMounted - Function to check if component is mounted
+ * @param isTileStale - Function to check if a tile is stale
+ * @param loadTile - Function to load a tile
+ */
+export const loadVisibleTiles = (
+  currentTiles: Record<string, any>,
+  isMounted: () => boolean,
+  isTileStale: (tile: any) => boolean,
+  loadTile: (x: number, y: number, force: boolean) => Promise<void>
+) => {
+  if (!isMounted()) {
+    return;
+  }
+  
+  Object.values(currentTiles).forEach(tile => {
+    if (isTileStale(tile)) {
+      loadTile(tile.x, tile.y, true).catch(error => {
+        console.error(`[loadVisibleTiles] Error refreshing tile (${tile.x}, ${tile.y}):`, error);
+      });
+    }
+  });
+};
+
+/**
+ * Updates the viewport and schedules tiles for loading
+ * @param updates - Partial viewport updates
+ * @param setViewport - Function to update the viewport state
+ * @param scheduleTilesForLoading - Function to schedule tile loading
+ * @returns New viewport state
+ */
+export const updateViewport = (
+  updates: Partial<{ x: number; y: number; width: number; height: number }>,
+  setViewport: (updater: (prev: any) => any) => void,
+  scheduleTilesForLoading: () => void
+) => {
+  setViewport((prev: any) => {
+    const newViewport = {
+      ...prev,
+      ...updates
+    };
+    
+    // Schedule tiles to update after viewport changes
+    requestAnimationFrame(() => {
+      scheduleTilesForLoading();
+    });
+    
+    return newViewport;
+  });
+};
+
+/**
  * Converts tile data to an array of black pixel coordinates
  * @param tileData - The tile data to render (Uint8Array or string)
  * @returns Array of {x, y} coordinates for black pixels
