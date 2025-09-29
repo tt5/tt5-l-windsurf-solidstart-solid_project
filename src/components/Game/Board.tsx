@@ -302,11 +302,11 @@ const Board: Component = () => {
     }
     
     try {
+      const current = currentPos();
       await handleDirectionUtil(dir, {
         isMoving,
-        currentPosition: () => currentPos(),
+        currentPosition: () => current,
         setCurrentPosition: (value: Point | ((prev: Point) => Point)) => {
-          const current = currentPos();
           const updatedValue = typeof value === 'function' 
             ? value(current)
             : value;
