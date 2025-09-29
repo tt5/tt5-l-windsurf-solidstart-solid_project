@@ -766,7 +766,7 @@ const MapView: Component = () => {
   // Generate a consistent color based on tile coordinates
   const getTileColor = (x: number, y: number): string => {
     const hue = (x * 13 + y * 7) % 360;
-    return `hsl(${hue}, 70%, ${tiles()[`${x},${y}`]?.data ? '75%' : '90%'})`;
+    return `hsl(${hue}, 70%, ${tiles()[`${x},${y}`]?.data ? '80%' : '90%'})`;
   };
 
   // Render a single tile
@@ -824,7 +824,10 @@ const MapView: Component = () => {
           class={styles.fallbackTile}
           style={{ '--tile-bg-color': getTileColor(tile.x, tile.y) } as JSX.CSSProperties}
         >
-          <div class={styles.fallbackTileContent}>
+          <div
+            class={styles.fallbackTileContent}
+            data-coords={`${tile.x},${tile.y}`}
+          >
             <div class={styles.tileCoords}>{tile.x},{tile.y}</div>
           </div>
         </div>
@@ -878,6 +881,7 @@ const MapView: Component = () => {
                 class={styles.fallbackTileContent}
                 data-coords={`${tile.x},${tile.y}`}
               />
+            <div class={styles.tileCoords}>{tile.x},{tile.y}</div>
             </div>
           );
         }
