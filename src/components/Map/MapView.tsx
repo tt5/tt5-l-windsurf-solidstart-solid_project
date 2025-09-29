@@ -1,6 +1,7 @@
 
 import { Component, createEffect, createSignal, onCleanup, onMount, batch, JSX } from 'solid-js';
 import { TileCache } from '../../lib/client/services/tile-cache';
+import ViewportPosition from './ViewportPosition';
 import { 
   renderBitmap, 
   TILE_SIZE, 
@@ -1014,8 +1015,7 @@ const MapView: Component = () => {
       
       <div class={styles.controls}>
         <div class={styles.coordinates}>
-          Position: {Math.round(viewport().x)}, {Math.round(viewport().y)}
-          <br />
+          <ViewportPosition />
           Tiles: {Object.keys(tiles()).length}
         </div>
       </div>
