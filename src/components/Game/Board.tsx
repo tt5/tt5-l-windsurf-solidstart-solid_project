@@ -39,12 +39,10 @@ const Board: Component = () => {
   const [basePoints, setBasePoints] = createSignal<BasePoint[]>([]);
   
   // Initialize position if not set
-  createEffect(() => {
+  onMount(() => {
     if (!position()) {
-      setContextPosition(createPoint(
-        BOARD_CONFIG.DEFAULT_POSITION[0],
-        BOARD_CONFIG.DEFAULT_POSITION[1]
-      ));
+      // Place player at (0,0) in the top-left corner of the viewport
+      setContextPosition(createPoint(0, 0));
     }
   });
   
@@ -338,7 +336,9 @@ const Board: Component = () => {
         {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
           const x = index % BOARD_CONFIG.GRID_SIZE;
           const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-          const [offsetX, offsetY] = currentPos();
+          const pos = currentPos();
+          if (!pos) return null; // Skip rendering if position is not yet set
+          const [offsetX, offsetY] = pos;
           const worldX = x - offsetX;
           const worldY = y - offsetY;
           const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
