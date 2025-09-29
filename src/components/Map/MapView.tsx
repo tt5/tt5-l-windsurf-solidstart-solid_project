@@ -1,11 +1,18 @@
 
 import { Component, createEffect, createSignal, onCleanup, onMount, batch, JSX } from 'solid-js';
-import { inflate } from 'pako';
 import { TileCache } from '../../lib/client/services/tile-cache';
+import { 
+  renderBitmap, 
+  TILE_SIZE, 
+  isTileStale, 
+  getTileKey, 
+  worldToTileCoords, 
+  tileToWorldCoords 
+} from '../../utils/mapUtils';
 
 import styles from './MapView.module.css';
 
-const TILE_SIZE = 64; // pixels
+// TILE_SIZE is now imported from mapUtils
 
 const TILE_LOAD_CONFIG = {
   BATCH_SIZE: 4,                  // Reduced to load fewer tiles at once
@@ -100,14 +107,7 @@ const MapView: Component = () => {
   const [isMounted, setIsMounted] = createSignal(false);
   const currentMountId = Math.floor(Math.random() * 1000000);
   
-  // Function to check if a tile is stale and needs refresh
-  const isTileStale = (tile: Tile | undefined): boolean => {
-    if (!tile) return true;
-    if (tile.error) return true; // Always refresh errored tiles
-    const tileAge = Date.now() - tile.timestamp;
-    const isStale = tileAge > 20 * 1000; // 20 seconds threshold
-    return isStale;
-  };
+  // isTileStale is now imported from mapUtils
 
   // Function to load all visible tiles
   const loadVisibleTiles = () => {
@@ -478,20 +478,9 @@ const MapView: Component = () => {
     }
   };
 
-  // Convert world coordinates to tile coordinates
-  const worldToTileCoords = (x: number, y: number) => ({
-    tileX: Math.floor(x / TILE_SIZE),
-    tileY: Math.floor(y / TILE_SIZE)
-  });
+  // worldToTileCoords and tileToWorldCoords are now imported from mapUtils
 
-  // Convert tile coordinates to world coordinates
-  const tileToWorldCoords = (tileX: number, tileY: number) => ({
-    x: tileX * TILE_SIZE,
-    y: tileY * TILE_SIZE
-  });
-
-  // Get tile key from coordinates
-  const getTileKey = (tileX: number, tileY: number) => `${tileX},${tileY}`;
+  // getTileKey is now imported from mapUtils
 
   // Load a single tile
   const loadTile = async (tileX: number, tileY: number, forceRefresh = false): Promise<void> => {
@@ -1004,40 +993,7 @@ const MapView: Component = () => {
     return blackPixels;
   };
 
-  // Convert tile data to an array of black pixel coordinates
-  const renderBitmap = (tileData: Uint8Array | string): Array<{x: number, y: number}> => {
-    // Skip in SSR
-    if (typeof document === 'undefined') return [];
-    
-    // Early return for invalid input
-    if (!(tileData instanceof Uint8Array) || tileData.length === 0) {
-      console.log('Invalid or empty tile data');
-      return [];
-    }
-
-    // Check version byte (0x01 for our format)
-    if (tileData[0] !== 0x01) {
-      console.log('Unsupported data format or missing version byte');
-      return [];
-    }
-
-    try {
-      // Skip the first byte (version) and decompress the rest
-      const compressedData = tileData.subarray(1);
-      const decompressed = inflate(compressedData);
-      
-      // Validate decompressed size (1-bit per pixel)
-      const expectedSize = Math.ceil((TILE_SIZE * TILE_SIZE) / 8);
-      if (decompressed.length !== expectedSize) {
-        console.warn(`Unexpected decompressed size: ${decompressed.length}, expected ${expectedSize}`);
-      }
-
-      return extractBlackPixels(decompressed);
-    } catch (error) {
-      console.error('Failed to process tile data:', error);
-      return [];
-    }
-  };
+  // renderBitmap is now imported from mapUtils.ts
   
   // Render all tiles in the world bounds
   const renderAllTiles = () => {
