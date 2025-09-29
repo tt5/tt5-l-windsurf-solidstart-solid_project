@@ -11,7 +11,6 @@ interface Position {
 interface CellState {
   isBasePoint: boolean;
   isSelected: boolean;
-  isPlayerPosition: boolean;
   isHovered: boolean;
   isValid: boolean;
   isSaving: boolean;
@@ -20,12 +19,12 @@ interface CellState {
 interface GridCellProps {
   state: CellState;
   onHover: (isHovered: boolean) => void;
-  onClick: (e: MouseEvent) => void;
+  onClick?: () => void; // Make this optional since we'll handle the click internally
 }
 
 export const GridCell: Component<GridCellProps> = (props) => {
   const { state, onHover, onClick } = props;
-  const { isBasePoint, isSelected, isPlayerPosition, isHovered, isValid, isSaving } = state;
+  const { isBasePoint, isSelected, isHovered, isValid, isSaving } = state;
   
   // Track if we should process the click
   let shouldProcessClick = true;
@@ -59,31 +58,31 @@ export const GridCell: Component<GridCellProps> = (props) => {
     if (isMouseDown) {
       const pressDuration = Date.now() - mouseDownTime;
       if (pressDuration < MAX_CLICK_DURATION) {
-        shouldProcessClick = false;
       }
     }
   };
 
   const handleClick = (e: MouseEvent) => {
-    e.stopPropagation();
     e.preventDefault();
     
+    // Don't process if we're in the middle of a drag or the cell is not clickable
     if (!shouldProcessClick || isSelected || isSaving || isBasePoint) {
       return;
     }
     
-    onClick(e);
+    // Call the onClick handler if provided
+    if (onClick) {
+      onClick();
+    }
   };
 
   const squareClass = () => {
     const classes = [styles.square];
     if (isBasePoint) {
-      classes.push(styles.basePoint);
     }
     if (isSelected) {
       classes.push(styles.selected);
     }
-    if (isPlayerPosition) classes.push(styles.playerPosition);
     if (isSaving && isHovered) classes.push(styles.loading);
     else if (isHovered) {
       classes.push(isValid ? styles['valid-hover'] : styles['invalid-hover']);
@@ -107,7 +106,6 @@ export const GridCell: Component<GridCellProps> = (props) => {
         [styles.gridCell]: true,
         [styles.basePoint]: isBasePoint,
         [styles.selected]: isSelected,
-        [styles.playerPosition]: isPlayerPosition,
         [styles.hovered]: isHovered,
         [styles.valid]: isValid && !isSaving,
       }}

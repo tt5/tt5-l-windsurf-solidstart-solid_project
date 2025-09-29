@@ -332,21 +332,21 @@ const Board: Component = () => {
       </div>
       <div class={styles.grid}>
         {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
-          const x = index % BOARD_CONFIG.GRID_SIZE;
-          const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
+
           const pos = currentPos();
           if (!pos) return null; // Skip rendering if position is not yet set
           const [offsetX, offsetY] = pos;
+          const x = index % BOARD_CONFIG.GRID_SIZE;
+          const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
           const worldX = x - offsetX;
           const worldY = y - offsetY;
-          const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
           const isBP = isBasePoint(worldX, worldY, basePoints());
-          const isSelected = getRestrictedSquares().includes(squareIndex);
+
+          const isSelected = getRestrictedSquares().includes(index);
           
           const cellState = {
             isBasePoint: isBP,
             isSelected,
-            isPlayerPosition: worldX === 0 && worldY === 0,
             isHovered: hoveredSquare() === index,
             isValid: validateSquarePlacementLocal(index).isValid && !isSaving(),
             isSaving: isSaving()
@@ -362,16 +362,11 @@ const Board: Component = () => {
                   handleSquareHover(null);
                 }
               }}
-              onClick={(e: MouseEvent) => {
-                e.stopPropagation();
-                e.preventDefault();
-                
-                if (isSelected || isSaving() || isBP) {
-                  return;
+              onClick={() => {
+                if (!isSelected && !isSaving() && !isBP) {
+                  handleSquareClick(index)
+                    .catch(err => console.error('Error processing click:', err));
                 }
-                
-                handleSquareClick(squareIndex)
-                  .catch(err => console.error('Error processing click:', err));
               }}
             />
           );
