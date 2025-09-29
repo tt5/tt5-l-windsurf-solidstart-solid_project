@@ -269,14 +269,20 @@ const Board: Component = () => {
 
   // Handle direction movement
   const handleDirection = async (dir: Direction): Promise<void> => {
+    console.log('[handleDirection] Starting movement in direction:', dir);
     setReachedBoundary(false); // Reset boundary flag on new movement
     
     const current = currentPos(); // Call the accessor to get the current position
-    if (!current) return;
+    if (!current) {
+      console.log('[handleDirection] No current position, aborting');
+      return;
+    }
     
+    console.log('[handleDirection] Current position:', current);
     const [dx, dy] = DIRECTION_MAP[dir].delta;
     const newX = current[0] + dx;
     const newY = current[1] + dy;
+    console.log('[handleDirection] Attempting to move to:', [newX, newY]);
     
     // Check boundaries
     if (
@@ -285,24 +291,51 @@ const Board: Component = () => {
       newY < BOARD_CONFIG.WORLD_BOUNDS.MIN_Y || 
       newY > BOARD_CONFIG.WORLD_BOUNDS.MAX_Y
     ) {
+      console.log('[handleDirection] Movement would go out of bounds, setting boundary flag');
       setReachedBoundary(true);
       return;
     }
     
     try {
+      console.log('[handleDirection] Calling handleDirectionUtil with direction:', dir);
       await handleDirectionUtil(dir, {
         isMoving,
-        currentPosition: () => current,
+        currentPosition: () => {
+          // Always get fresh position from context
+          const currentPos = position() || [0, 0];
+          console.log('[handleDirection] Getting current position:', currentPos);
+          return currentPos;
+        },
         setCurrentPosition: (value: Point) => {
+          console.log('[handleDirection] Setting new position:', value);
           setContextPosition(value);
           return value;
         },
-        restrictedSquares: getRestrictedSquares,
-        setRestrictedSquares,
-        setIsMoving,
+        restrictedSquares: () => {
+          const squares = getRestrictedSquares();
+          console.log('[handleDirection] Getting restricted squares:', squares);
+          return squares;
+        },
+        setRestrictedSquares: (squares: number[] | ((prev: number[]) => number[])) => {
+          console.log('[handleDirection] Setting restricted squares:', squares);
+          if (Array.isArray(squares)) {
+            setRestrictedSquares(squares);
+          } else {
+            setRestrictedSquares(squares);
+          }
+        },
+        setIsMoving: (moving: boolean | ((prev: boolean) => boolean)) => {
+          console.log('[handleDirection] Setting isMoving to:', moving);
+          if (typeof moving === 'boolean') {
+            setIsMoving(moving);
+          } else {
+            setIsMoving(moving);
+          }
+        },
       });
+      console.log('[handleDirection] Movement completed successfully');
     } catch (error) {
-      console.error('Error in handleDirection:', error);
+      console.error('[handleDirection] Error during movement:', error);
       throw error;
     }
   };

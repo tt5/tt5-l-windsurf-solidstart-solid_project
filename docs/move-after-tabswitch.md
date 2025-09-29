@@ -1,0 +1,133 @@
+no move (just switched tabs)
+
+[Position Changed] 
+Object { position: (2) […], stack: "runComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\nrunTop@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:832:24\nrunUserEffects@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:942:42\ncompleteUpdates/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:44\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:848:17\ncompleteUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:27\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:849:20\nwriteSignal@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:698:17\nsetter@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:229:12\nonTabChange@http://localhost:3000/_build/@fs/home/n/data/l/windsurf/solidstart/solid-project/src/routes/game/index.tsx?import&pick=default&pick=$css:54:53\nSidePanel</_el$3.$$click@http://localhost:3000/_build/src/components/Game/SidePanel.tsx:66:33\nhandleNode@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-7AJMTGTN.js?v=a14e156f:474:63\neventHandler@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-7AJMTGTN.js?v=a14e156f:495:12\nEventListener.handleEvent*delegateEvents@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-7AJMTGTN.js?v=a14e156f:197:17\n@http://localhost:3000/_build/src/components/DevTools/DevTools.tsx:91:17\n" }
+Board.tsx:65:12
+[Board:fetchBasePoints] setIsFetching(true) boardUtils.ts:412:10
+[Board:fetchBasePoints] setIsFetching(true)
+
+first move:
+
+[handleDirection] Starting movement in direction: left Board.tsx:282:12
+[handleDirection] Current position: 
+Array [ 0, 0 ]
+Board.tsx:291:12
+[handleDirection] Attempting to move to: 
+Array [ -1, 0 ]
+Board.tsx:295:12
+[handleDirection] Calling handleDirectionUtil with direction: left Board.tsx:310:14
+[handleDirection] Setting isMoving to: true Board.tsx:336:18
+[handleDirection] Getting current position: 
+Array [ 0, 0 ]
+Board.tsx:314:18
+[handleDirection] Getting restricted squares: 
+Array(221) [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, … ]
+Board.tsx:324:18
+[handleDirection] Setting new position: 
+Array [ -1, 0 ]
+Board.tsx:318:18
+[handleDirection] Setting restricted squares: 
+function handleDirection(prev)
+Board.tsx:328:18
+[Position Changed] 
+Object { position: (2) […], stack: "runComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\nrunTop@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:832:24\nrunUserEffects@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:942:42\ncompleteUpdates/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:44\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:848:17\ncompleteUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:27\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:849:20\nbatch@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:466:10\nhandleDirection@http://localhost:3000/_build/src/utils/boardUtils.ts:185:10\nhandleDirection@http://localhost:3000/_build/src/components/Game/Board.tsx?t=1759167303566:217:13\nhandleKeyDown@http://localhost:3000/_build/src/components/Game/Board.tsx?t=1759167303566:153:20\nEventListener.handleEvent*Board</</<@http://localhost:3000/_build/src/components/Game/Board.tsx?t=1759167303566:160:14\nBoard</<@http://localhost:3000/_build/src/components/Game/Board.tsx?t=1759167303566:159:20\nuntrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:474:12\nonMount/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:499:29\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\nrunTop@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:832:24\nrunUserEffects@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:942:42\ncompleteUpdates/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:44\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:848:17\ncompleteUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:27\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:849:20\ncompleteUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:27\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:849:20\nwriteSignal@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:698:17\nsetter@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:229:12\nlazy/wrap/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1468:12\npromise callback*wrap@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1465:25\ndevComponent/c</<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:585:12\nuntrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:474:12\ndevComponent/c<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:581:44\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\ndevComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:592:20\ncreateComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1301:29\noutlet@http://localhost:3000/_build/node_modules/@solidjs/router/dist/routing.js?v=a14e156f:568:31\nget children@http://localhost:3000/_build/node_modules/@solidjs/router/dist/routers/components.jsx?v=a14e156f:132:23\ncreateProvider/provider/</res</<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1056:29\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\ncreateMemo@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:272:27\nchildren@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:615:31\ncreateProvider/provider/</res<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1056:14\nuntrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:474:12\ncreateProvider/provider/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1051:36\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\ncreateRenderEffect@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:239:92\nprovider@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1051:23\ndevComponent/c</<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:585:12\nuntrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:474:12\ndevComponent/c<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:581:44\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\ndevComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:592:20\ncreateComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1301:29\nchildren@http://localhost:3000/_build/node_modules/@solidjs/router/dist/routers/components.jsx?v=a14e156f:129:44\n" }
+Board.tsx:65:12
+[handleDirection] Starting movement in direction: left Board.tsx:282:12
+[handleDirection] Current position: 
+Array [ -1, 0 ]
+Board.tsx:291:12
+[handleDirection] Attempting to move to: 
+Array [ -2, 0 ]
+Board.tsx:295:12
+[handleDirection] Calling handleDirectionUtil with direction: left Board.tsx:310:14
+[handleDirection] Movement completed successfully Board.tsx:344:14
+[handleDirection] Setting restricted squares: 
+Array(222) [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, … ]
+Board.tsx:328:18
+[handleDirection] Movement completed successfully Board.tsx:344:14
+[Board:fetchBasePoints] setIsFetching(true) boardUtils.ts:412:10
+[handleDirection] Setting isMoving to: false Board.tsx:336:18
+
+second move:
+
+[handleDirection] Starting movement in direction: left Board.tsx:282:12
+[handleDirection] Current position: 
+Array [ 0, 0 ]
+Board.tsx:291:12
+[handleDirection] Attempting to move to: 
+Array [ -1, 0 ]
+Board.tsx:295:12
+[handleDirection] Calling handleDirectionUtil with direction: left Board.tsx:310:14
+[handleDirection] Setting isMoving to: true Board.tsx:336:18
+[handleDirection] Getting current position: 
+Array [ 0, 0 ]
+Board.tsx:314:18
+[handleDirection] Getting restricted squares: 
+Array(222) [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, … ]
+Board.tsx:324:18
+[handleDirection] Setting new position: 
+Array [ -1, 0 ]
+Board.tsx:318:18
+[handleDirection] Setting restricted squares: 
+function handleDirection(prev)
+Board.tsx:328:18
+[Position Changed] 
+Object { position: (2) […], stack: "runComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\nrunTop@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:832:24\nrunUserEffects@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:942:42\ncompleteUpdates/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:44\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:848:17\ncompleteUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:27\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:849:20\nbatch@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:466:10\nhandleDirection@http://localhost:3000/_build/src/utils/boardUtils.ts:185:10\nhandleDirection@http://localhost:3000/_build/src/components/Game/Board.tsx?t=1759167303566:217:13\nhandleKeyDown@http://localhost:3000/_build/src/components/Game/Board.tsx?t=1759167303566:153:20\nEventListener.handleEvent*Board</</<@http://localhost:3000/_build/src/components/Game/Board.tsx?t=1759167303566:160:14\nBoard</<@http://localhost:3000/_build/src/components/Game/Board.tsx?t=1759167303566:159:20\nuntrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:474:12\nonMount/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:499:29\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\nrunTop@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:832:24\nrunUserEffects@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:942:42\ncompleteUpdates/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:44\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:848:17\ncompleteUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:27\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:849:20\ncompleteUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:27\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:849:20\nwriteSignal@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:698:17\nsetter@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:229:12\nlazy/wrap/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1468:12\npromise callback*wrap@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1465:25\ndevComponent/c</<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:585:12\nuntrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:474:12\ndevComponent/c<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:581:44\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\ndevComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:592:20\ncreateComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1301:29\noutlet@http://localhost:3000/_build/node_modules/@solidjs/router/dist/routing.js?v=a14e156f:568:31\nget children@http://localhost:3000/_build/node_modules/@solidjs/router/dist/routers/components.jsx?v=a14e156f:132:23\ncreateProvider/provider/</res</<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1056:29\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\ncreateMemo@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:272:27\nchildren@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:615:31\ncreateProvider/provider/</res<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1056:14\nuntrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:474:12\ncreateProvider/provider/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1051:36\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\ncreateRenderEffect@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:239:92\nprovider@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1051:23\ndevComponent/c</<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:585:12\nuntrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:474:12\ndevComponent/c<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:581:44\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\ndevComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:592:20\ncreateComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1301:29\nchildren@http://localhost:3000/_build/node_modules/@solidjs/router/dist/routers/components.jsx?v=a14e156f:129:44\n" }
+Board.tsx:65:12
+[handleDirection] Starting movement in direction: left Board.tsx:282:12
+[handleDirection] Current position: 
+Array [ -1, 0 ]
+Board.tsx:291:12
+[handleDirection] Attempting to move to: 
+Array [ -2, 0 ]
+Board.tsx:295:12
+[handleDirection] Calling handleDirectionUtil with direction: left Board.tsx:310:14
+[handleDirection] Movement completed successfully Board.tsx:344:14
+[handleDirection] Setting restricted squares: 
+Array(223) [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, … ]
+Board.tsx:328:18
+[handleDirection] Movement completed successfully Board.tsx:344:14
+[handleDirection] Setting isMoving to: false Board.tsx:336:18
+[Board:fetchBasePoints] setIsFetching(true) boardUtils.ts:412:10
+
+third move:
+
+[handleDirection] Starting movement in direction: left Board.tsx:282:12
+[handleDirection] Current position: 
+Array [ 0, 0 ]
+Board.tsx:291:12
+[handleDirection] Attempting to move to: 
+Array [ -1, 0 ]
+Board.tsx:295:12
+[handleDirection] Calling handleDirectionUtil with direction: left Board.tsx:310:14
+[handleDirection] Setting isMoving to: true Board.tsx:336:18
+[handleDirection] Getting current position: 
+Array [ 0, 0 ]
+Board.tsx:314:18
+[handleDirection] Getting restricted squares: 
+Array(223) [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, … ]
+Board.tsx:324:18
+[handleDirection] Setting new position: 
+Array [ -1, 0 ]
+Board.tsx:318:18
+[handleDirection] Setting restricted squares: 
+function handleDirection(prev)
+Board.tsx:328:18
+[Position Changed] 
+Object { position: (2) […], stack: "runComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\nrunTop@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:832:24\nrunUserEffects@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:942:42\ncompleteUpdates/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:44\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:848:17\ncompleteUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:27\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:849:20\nbatch@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:466:10\nhandleDirection@http://localhost:3000/_build/src/utils/boardUtils.ts:185:10\nhandleDirection@http://localhost:3000/_build/src/components/Game/Board.tsx?t=1759167303566:217:13\nhandleKeyDown@http://localhost:3000/_build/src/components/Game/Board.tsx?t=1759167303566:153:20\nEventListener.handleEvent*Board</</<@http://localhost:3000/_build/src/components/Game/Board.tsx?t=1759167303566:160:14\nBoard</<@http://localhost:3000/_build/src/components/Game/Board.tsx?t=1759167303566:159:20\nuntrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:474:12\nonMount/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:499:29\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\nrunTop@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:832:24\nrunUserEffects@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:942:42\ncompleteUpdates/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:44\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:848:17\ncompleteUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:27\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:849:20\ncompleteUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:899:27\nrunUpdates@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:849:20\nwriteSignal@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:698:17\nsetter@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:229:12\nlazy/wrap/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1468:12\npromise callback*wrap@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1465:25\ndevComponent/c</<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:585:12\nuntrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:474:12\ndevComponent/c<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:581:44\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\ndevComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:592:20\ncreateComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1301:29\noutlet@http://localhost:3000/_build/node_modules/@solidjs/router/dist/routing.js?v=a14e156f:568:31\nget children@http://localhost:3000/_build/node_modules/@solidjs/router/dist/routers/components.jsx?v=a14e156f:132:23\ncreateProvider/provider/</res</<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1056:29\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\ncreateMemo@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:272:27\nchildren@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:615:31\ncreateProvider/provider/</res<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1056:14\nuntrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:474:12\ncreateProvider/provider/<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1051:36\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\ncreateRenderEffect@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:239:92\nprovider@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1051:23\ndevComponent/c</<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:585:12\nuntrack@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:474:12\ndevComponent/c<@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:581:44\nrunComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:741:22\nupdateComputation@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:723:17\ndevComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:592:20\ncreateComponent@http://localhost:3000/_build/node_modules/.vinxi/client/deps/chunk-YTTI4VPK.js?v=a14e156f:1301:29\nchildren@http://localhost:3000/_build/node_modules/@solidjs/router/dist/routers/components.jsx?v=a14e156f:129:44\n" }
+Board.tsx:65:12
+[handleDirection] Starting movement in direction: left Board.tsx:282:12
+[handleDirection] Current position: 
+Array [ -1, 0 ]
+Board.tsx:291:12
+[handleDirection] Attempting to move to: 
+Array [ -2, 0 ]
+Board.tsx:295:12
+[handleDirection] Calling handleDirectionUtil with direction: left Board.tsx:310:14
+[handleDirection] Movement completed successfully Board.tsx:344:14
+[Board:fetchBasePoints] setIsFetching(true) boardUtils.ts:412:10
+[handleDirection] Setting restricted squares: 
+Array(223) [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, … ]
+Board.tsx:328:18
+[handleDirection] Movement completed successfully Board.tsx:344:14
+[handleDirection] Setting isMoving to: false Board.tsx:336:18
