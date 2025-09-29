@@ -300,6 +300,7 @@ export const handleDirection = async (
     const allIndices = [...currentIndices, ...result.data.squares];
     const [offsetX, offsetY] = currentPosition();
     
+    /*
     // Filter out indices that are base points
     const combinedIndices = allIndices.filter(index => {
       const x = index % BOARD_CONFIG.GRID_SIZE;
@@ -308,8 +309,10 @@ export const handleDirection = async (
       const worldY = y - offsetY;
       return !isBasePoint(worldX, worldY);
     });
+    */
     
-    setRestrictedSquares(combinedIndices);
+    //setRestrictedSquares(combinedIndices);
+    setRestrictedSquares(allIndices);
   } catch (error) {
     throw error instanceof Error 
       ? error 
