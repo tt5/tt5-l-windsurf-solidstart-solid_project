@@ -2,6 +2,7 @@ import {
   type Component, 
   createEffect, 
   createSignal, 
+  createMemo,
   onMount,
   on
 } from 'solid-js';
@@ -46,6 +47,9 @@ const Board: Component = () => {
       ));
     }
   });
+  
+  // Create a memoized version of the current position to avoid recreating it
+  const currentPos = createMemo(() => position() || createPoint(0, 0));
   const [lastFetchTime, setLastFetchTime] = createSignal<number>(0); // base points, rate limiting
   const [isFetching, setIsFetching] = createSignal<boolean>(false);
   const [isMoving, setIsMoving] = createSignal<boolean>(false);
@@ -234,13 +238,13 @@ const Board: Component = () => {
   });
   
   const handleSquareClick = async (index: number) => {
-    const currentPos = position();
-    if (!currentPos) return;
+    const pos = position();
+    if (!pos) return;
     
     // Calculate grid position from index
     const gridX = index % BOARD_CONFIG.GRID_SIZE;
     const gridY = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-    const [offsetX, offsetY] = currentPos;
+    const [offsetX, offsetY] = pos;
     const worldX = gridX - offsetX;
     const worldY = gridY - offsetY;
 
@@ -297,10 +301,10 @@ const Board: Component = () => {
     try {
       await handleDirectionUtil(dir, {
         isMoving,
-        currentPosition: () => position() || [0, 0],
+        currentPosition: () => currentPos(),
         setCurrentPosition: (value: Point | ((prev: Point) => Point)) => {
           const updatedValue = typeof value === 'function' 
-            ? value(position() || [0, 0])
+            ? value(currentPos())
             : value;
           setContextPosition(updatedValue);
           return updatedValue;
@@ -330,7 +334,7 @@ const Board: Component = () => {
         {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
           const x = index % BOARD_CONFIG.GRID_SIZE;
           const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-          const [offsetX, offsetY] = position() || [0, 0];
+          const [offsetX, offsetY] = currentPos();
           const worldX = x - offsetX;
           const worldY = y - offsetY;
           const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
