@@ -372,11 +372,6 @@ export const validateSquarePlacement = ({
   const [offsetX, offsetY] = currentPosition;
   const [worldX, worldY] = gridToWorld(gridX, gridY, offsetX, offsetY);
 
-  // Check if it's the player's position
-  if (worldX === 0 && worldY === 0) {
-    return { isValid: false, reason: 'Cannot place on player position' };
-  }
-
   // Check if already a base point
   if (isBasePoint(worldX, worldY, basePoints)) {
     return { isValid: false, reason: 'Base point already exists here' };
@@ -401,7 +396,6 @@ export const fetchBasePoints = async ({
 }: FetchBasePointsOptions): Promise<void> => {
   const currentUser = user();
   if (!currentUser) {
-    console.log("[Board:fetchBasePoints] setBasePoints([])")
     setBasePoints([]);
     return;
   }
@@ -409,9 +403,6 @@ export const fetchBasePoints = async ({
   const now = Date.now();
   const timeSinceLastFetch = now - lastFetchTime();
   
-  console.log("[Board:fetchBasePoints] setIsFetching(true)")
-
-  // Skip if we already have recent data or a request is in progress
   if (isFetching() || (timeSinceLastFetch < 1000)) {
     return;
   }

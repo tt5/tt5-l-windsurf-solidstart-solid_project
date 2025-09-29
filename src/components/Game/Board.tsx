@@ -127,9 +127,7 @@ const Board: Component = () => {
   // Track the current fetch promise to prevent duplicate requests
   let currentFetch: Promise<void> | null = null;
   
-  // Fetch base points with proper error handling and loading states
   const fetchBasePoints = async () => {
-    // Get the current position value at the time of the call
     const currentPos = position();
     if (!currentPos) return Promise.resolve();
     
@@ -205,15 +203,10 @@ const Board: Component = () => {
     handleDirection(direction);
   };
   
-  const handleKeyUp: KeyboardHandler = (e) => {
-    // Handle key up if needed
-  };
-  
   // Setup and cleanup event listeners
   onMount(() => {
     const eventListeners: [string, EventListener][] = [
       ['keydown', handleKeyDown as EventListener],
-      ['keyup', handleKeyUp as EventListener]
     ];
     
     // Add event listeners
@@ -269,73 +262,37 @@ const Board: Component = () => {
 
   // Handle direction movement
   const handleDirection = async (dir: Direction): Promise<void> => {
-    console.log('[handleDirection] Starting movement in direction:', dir);
     setReachedBoundary(false); // Reset boundary flag on new movement
     
     const current = currentPos(); // Call the accessor to get the current position
     if (!current) {
-      console.log('[handleDirection] No current position, aborting');
       return;
     }
     
-    console.log('[handleDirection] Current position:', current);
     const [dx, dy] = DIRECTION_MAP[dir].delta;
     const newX = current[0] + dx;
     const newY = current[1] + dy;
-    console.log('[handleDirection] Attempting to move to:', [newX, newY]);
     
-    // Check boundaries
     if (
       newX < BOARD_CONFIG.WORLD_BOUNDS.MIN_X || 
       newX > BOARD_CONFIG.WORLD_BOUNDS.MAX_X || 
       newY < BOARD_CONFIG.WORLD_BOUNDS.MIN_Y || 
       newY > BOARD_CONFIG.WORLD_BOUNDS.MAX_Y
     ) {
-      console.log('[handleDirection] Movement would go out of bounds, setting boundary flag');
       setReachedBoundary(true);
       return;
     }
     
     try {
-      console.log('[handleDirection] Calling handleDirectionUtil with direction:', dir);
       await handleDirectionUtil(dir, {
         isMoving,
-        currentPosition: () => {
-          // Always get fresh position from context
-          const currentPos = position() || [0, 0];
-          console.log('[handleDirection] Getting current position:', currentPos);
-          return currentPos;
-        },
-        setCurrentPosition: (value: Point) => {
-          console.log('[handleDirection] Setting new position:', value);
-          setContextPosition(value);
-          return value;
-        },
-        restrictedSquares: () => {
-          const squares = getRestrictedSquares();
-          console.log('[handleDirection] Getting restricted squares:', squares);
-          return squares;
-        },
-        setRestrictedSquares: (squares: number[] | ((prev: number[]) => number[])) => {
-          console.log('[handleDirection] Setting restricted squares:', squares);
-          if (Array.isArray(squares)) {
-            setRestrictedSquares(squares);
-          } else {
-            setRestrictedSquares(squares);
-          }
-        },
-        setIsMoving: (moving: boolean | ((prev: boolean) => boolean)) => {
-          console.log('[handleDirection] Setting isMoving to:', moving);
-          if (typeof moving === 'boolean') {
-            setIsMoving(moving);
-          } else {
-            setIsMoving(moving);
-          }
-        },
+        currentPosition: () => position() || [0, 0],
+        setCurrentPosition: (value: Point) => (setContextPosition(value), value),
+        restrictedSquares: getRestrictedSquares,
+        setRestrictedSquares,
+        setIsMoving,
       });
-      console.log('[handleDirection] Movement completed successfully');
     } catch (error) {
-      console.error('[handleDirection] Error during movement:', error);
       throw error;
     }
   };
@@ -347,9 +304,6 @@ const Board: Component = () => {
           You've reached the edge of the world!
         </div>
       )}
-      <div class={styles.positionIndicator}>
-        Position: ({position()?.[0] ?? 0}, {position()?.[1] ?? 0})
-      </div>
       <div class={styles.grid}>
         {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
 
