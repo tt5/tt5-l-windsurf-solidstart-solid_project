@@ -30,28 +30,20 @@ import { BOARD_CONFIG } from '~/constants/game';
 import { DIRECTION_MAP } from '~/utils/directionUtils';
 
 const Board: Component = () => {
-  
   // Hooks
   const { user } = useAuth();
   
   // State with explicit types
   const currentUser = user();
-  const [currentPosition, setCurrentPosition] = createSignal<Point>(createPoint(BOARD_CONFIG.DEFAULT_POSITION[0], BOARD_CONFIG.DEFAULT_POSITION[1]));
   const [basePoints, setBasePoints] = createSignal<BasePoint[]>([]);
   
-  // Track if position update is from context or local
-  const positionUpdateSource = { fromContext: false };
-  
-  // Sync position with context on mount and when context position changes
+  // Initialize position if not set
   createEffect(() => {
-    const contextPos = position();
-    if (contextPos && !positionUpdateSource.fromContext) {
-      const [cx, cy] = contextPos;
-      const [px, py] = currentPosition();
-      if (cx !== px || cy !== py) {
-        console.log(`[Board] Syncing position from context: [${cx}, ${cy}]`);
-        setCurrentPosition(createPoint(cx, cy));
-      }
+    if (!position()) {
+      setContextPosition(createPoint(
+        BOARD_CONFIG.DEFAULT_POSITION[0],
+        BOARD_CONFIG.DEFAULT_POSITION[1]
+      ));
     }
   });
   const [lastFetchTime, setLastFetchTime] = createSignal<number>(0); // base points, rate limiting
@@ -72,24 +64,23 @@ const Board: Component = () => {
     document.documentElement.style.setProperty('--grid-size', BOARD_CONFIG.GRID_SIZE.toString());
     
     try {
-      // Try to get position from URL or other source
-      const result = await jumpToPosition(
-        BOARD_CONFIG.DEFAULT_POSITION[0],
-        BOARD_CONFIG.DEFAULT_POSITION[1],
-        setContextPosition  // Pass the setPosition function
-      );
-      
-      if (!result) {
-        throw new Error('Failed to initialize game: Could not determine starting position');
+      if (!position()) {
+        // Try to get position from URL or other source
+        const result = await jumpToPosition(
+          BOARD_CONFIG.DEFAULT_POSITION[0],
+          BOARD_CONFIG.DEFAULT_POSITION[1],
+          setContextPosition  // Pass the setPosition function
+        );
+        
+        if (!result) {
+          throw new Error('Failed to initialize game: Could not determine starting position');
+        }
+        
+        const { restrictedSquares } = result;
+        setRestrictedSquares(restrictedSquares);
       }
       
-      const { position, restrictedSquares } = result;
-      
-      // Update state with position and restricted squares
-      setCurrentPosition(position);
-      setRestrictedSquares(restrictedSquares);
-      
-      // Now that we have a position, fetch base points
+      // Fetch base points with the current position
       await fetchBasePoints();
     } catch (error) {
       if (error instanceof Error) {
@@ -107,10 +98,13 @@ const Board: Component = () => {
   
   // Validate if a square can have a base point
   const validateSquarePlacementLocal = (index: number) => {
+    const currentPos = position();
+    if (!currentPos) return { isValid: false, reason: 'Position not initialized' };
+    
     return validateSquarePlacement({
       index,
       currentUser,
-      currentPosition: currentPosition(),
+      currentPosition: currentPos,
       basePoints: basePoints(),
       restrictedSquares: getRestrictedSquares()
     });
@@ -137,7 +131,8 @@ const Board: Component = () => {
   // Fetch base points with proper error handling and loading states
   const fetchBasePoints = async () => {
     // Get the current position value at the time of the call
-    const currentPos = currentPosition();
+    const currentPos = position();
+    if (!currentPos) return Promise.resolve();
     
     const promise = fetchBasePointsUtil({
       user: () => currentUser,
@@ -178,13 +173,14 @@ const Board: Component = () => {
 
   // Effect to handle position changes and fetch base points
   createEffect(() => {
-    const [x, y] = currentPosition();
+    const currentPos = position();
     const currentUser = user();
     
-    // Skip if we don't have a user or if this is the initial render
-    if (!currentUser) return;
+    // Skip if we don't have a position or user
+    if (!currentPos || !currentUser) return;
     
-    console.log(`[Board] Effect1 - Position changed to [${x}, ${y}], fetching base points`);
+    const [x, y] = currentPos;
+    console.log(`[Board] Effect - Position changed to [${x}, ${y}], fetching base points`);
     
     // Use requestIdleCallback to batch the fetch with the position update
     const id = requestIdleCallback(() => {
@@ -238,10 +234,13 @@ const Board: Component = () => {
   });
   
   const handleSquareClick = async (index: number) => {
+    const currentPos = position();
+    if (!currentPos) return;
+    
     // Calculate grid position from index
     const gridX = index % BOARD_CONFIG.GRID_SIZE;
     const gridY = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-    const [offsetX, offsetY] = currentPosition();
+    const [offsetX, offsetY] = currentPos;
     const worldX = gridX - offsetX;
     const worldY = gridY - offsetY;
 
@@ -257,12 +256,11 @@ const Board: Component = () => {
       });
       
       if (response.success && response.data) {
-        
         // Recalculate restricted squares with the new base point
         const newRestrictedSquares = calculateRestrictedSquares(
           createPoint(worldX, worldY),
           getRestrictedSquares(),
-          currentPosition()
+          currentPos
         );
         setRestrictedSquares(newRestrictedSquares);
       } else if (response.error) {
@@ -278,11 +276,12 @@ const Board: Component = () => {
   const handleDirection = async (dir: Direction): Promise<void> => {
     setReachedBoundary(false); // Reset boundary flag on new movement
     
-    const currentPos = currentPosition();
+    const currentPos = position();
+    if (!currentPos) return;
+    
     const [dx, dy] = DIRECTION_MAP[dir].delta;
     const newX = currentPos[0] + dx;
     const newY = currentPos[1] + dy;
-    const newPosition = createPoint(newX, newY);
     
     // Check boundaries
     if (
@@ -295,24 +294,16 @@ const Board: Component = () => {
       return;
     }
     
-    let positionUpdated = false;
-    
-    // Don't update position here - let handleDirectionUtil handle it
-    positionUpdated = false;
-    
     try {
       await handleDirectionUtil(dir, {
         isMoving,
-        currentPosition: () => currentPosition(),
+        currentPosition: () => position() || [0, 0],
         setCurrentPosition: (value: Point | ((prev: Point) => Point)) => {
-          if (positionUpdated) {
-            console.warn('Position already updated, ignoring duplicate update');
-            return newPosition;
-          }
-          const updatedValue = typeof value === 'function' ? value(currentPosition()) : value;
-          setCurrentPosition(updatedValue);
+          const updatedValue = typeof value === 'function' 
+            ? value(position() || [0, 0])
+            : value;
           setContextPosition(updatedValue);
-          positionUpdated = true;
+          return updatedValue;
         },
         restrictedSquares: getRestrictedSquares,
         setRestrictedSquares,
@@ -320,9 +311,7 @@ const Board: Component = () => {
         isBasePoint: (x: number, y: number) => isBasePoint(x, y, basePoints())
       });
     } catch (error) {
-      // Revert position if there was an error
-      setCurrentPosition(currentPosition());
-      setContextPosition(currentPosition());
+      console.error('Error in handleDirection:', error);
       throw error;
     }
   };
@@ -335,13 +324,13 @@ const Board: Component = () => {
         </div>
       )}
       <div class={styles.positionIndicator}>
-        Position: ({currentPosition()[0]}, {currentPosition()[1]})
+        Position: ({position()?.[0] ?? 0}, {position()?.[1] ?? 0})
       </div>
       <div class={styles.grid}>
         {Array.from({ length: BOARD_CONFIG.GRID_SIZE * BOARD_CONFIG.GRID_SIZE }).map((_, index) => {
           const x = index % BOARD_CONFIG.GRID_SIZE;
           const y = Math.floor(index / BOARD_CONFIG.GRID_SIZE);
-          const [offsetX, offsetY] = currentPosition();
+          const [offsetX, offsetY] = position() || [0, 0];
           const worldX = x - offsetX;
           const worldY = y - offsetY;
           const squareIndex = y * BOARD_CONFIG.GRID_SIZE + x;
