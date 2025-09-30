@@ -1,0 +1,17 @@
+.positionIndicator {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  font-family: monospace;
+  font-size: 12px;
+  z-index: 1000;
+  /* Make it not affect layout */
+  margin: 0;
+  border: none;
+  /* Ensure it's visible */
+  opacity: 1;
+  visibility: visible;
+}

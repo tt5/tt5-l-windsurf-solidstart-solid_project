@@ -62,8 +62,8 @@ const ViewportPosition: Component = () => {
 
     // Calculate position relative to (0,0) tile
     // The (0,0) tile's top-left corner is at (TILE_ZERO_WORLD_X, TILE_ZERO_WORLD_Y) in world coordinates
-    const screenX = tileZeroPos().x - TILE_ZERO_WORLD_X + pos[0];
-    const screenY = tileZeroPos().y - TILE_ZERO_WORLD_Y + pos[1];
+    const screenX = tileZeroPos().x -250 + pos[0];
+    const screenY = tileZeroPos().y + pos[1];
 
     // Log positions for debugging
     console.group('Map Position Debug');
@@ -119,21 +119,7 @@ const ViewportPosition: Component = () => {
     <div 
       class={styles.playerViewport}
       style={playerViewportStyle()}
-      title={
-        `Player Viewport (world coords): ` +
-        `(${position()?.[0] || 0}, ${position()?.[1] || 0}) to ` +
-        `(${(position()?.[0] || 0) + VIEWPORT_WIDTH - 1}, ${(position()?.[1] || 0) + VIEWPORT_HEIGHT - 1})`
-      }
     >
-      <div class={styles.viewportLabel}>
-        Player Viewport (15×15)
-      </div>
-      <div class={styles.coordinates}>
-        {position()?.[0] || 0},{position()?.[1] || 0}
-      </div>
-      <div class={styles.worldCoords}>
-        World: {position()?.[0] || 0},{position()?.[1] || 0}
-      </div>
     </div>
   );
 };

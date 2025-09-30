@@ -1015,16 +1015,14 @@ const MapView: Component = () => {
         </div>
       )}
       
+          <ViewportPosition />
       <div class={styles.controls}>
         <div class={styles.coordinates}>
-          <ViewportPosition />
           Tiles: {Object.keys(tiles()).length}
         </div>
       </div>
       
       {/* Add origin and tile position markers */}
-      <OriginMarker />
-      <TileZeroPosition />
     </div>
   );
 };
