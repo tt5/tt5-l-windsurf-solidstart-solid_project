@@ -6,7 +6,6 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding: var(--spacing-xxl);
   text-align: center;
   background-color: var(--color-background);
 }
@@ -28,7 +27,6 @@
 
 .link {
   display: inline-block;
-  padding: var(--spacing-md) var(--spacing-lg);
   color: var(--color-text-inverse);
   font-weight: 500;
   font-size: var(--font-size-md);

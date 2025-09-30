@@ -5,6 +5,7 @@ import { Suspense } from "solid-js";
 import { AuthProvider } from "./contexts/AuthContext";
 import { UserProvider } from "./contexts/UserContext";
 import { DevTools } from "./components/DevTools/DevTools";
+import "./global.css";
 
 export default () => (
   <Router root={props => (
