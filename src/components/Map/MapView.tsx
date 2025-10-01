@@ -50,14 +50,15 @@ width: number;
 }
 
 const MapView: Component = () => {
-  const [tiles, setTiles] = createSignal<Record<string, Tile>>({});
+  // In-memory cache for currently displayed tiles
+  const [inMemoryTileCache, setInMemoryTileCache] = createSignal<Record<string, Tile>>({});
   let containerRef: HTMLDivElement | undefined;
   const [viewport, setViewport] = createSignal<Viewport>(
     getInitialViewport(containerRef, VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
   );
   
   // Clear any existing tiles to force a reload
-  setTiles({});
+  setInMemoryTileCache({});
   const [isDragging, setIsDragging] = createSignal(false);
   const [lastMousePosition, setLastMousePosition] = createSignal<{ x: number; y: number } | null>(null);
   const [dragStart, setDragStart] = createSignal({ 
@@ -94,7 +95,7 @@ const MapView: Component = () => {
   
   // Function to load all visible tiles
   const loadVisibleTiles = () => {
-    loadVisibleTilesUtil(tiles(), isMounted, isTileStale, loadTile);
+    loadVisibleTilesUtil(inMemoryTileCache(), isMounted, isTileStale, loadTile);
   };
 
   // Set mount state when component mounts
@@ -206,7 +207,7 @@ const MapView: Component = () => {
 
     for (const {x, y, distance} of spiralCoords) {
       const key = `${x},${y}`;
-      const existingTile = tiles()[key];
+      const existingTile = inMemoryTileCache()[key];
       
       // Skip if already loaded or loading
       if (existingTile?.data || existingTile?.loading) continue;
@@ -281,7 +282,7 @@ const MapView: Component = () => {
     // Clear the queue and tiles in a single batch update
     batch(() => {
       setTileQueue([]);
-      setTiles({});
+      setInMemoryTileCache({});
     });
     
   });
@@ -387,7 +388,7 @@ const MapView: Component = () => {
   const loadTile = async (tileX: number, tileY: number, forceRefresh = false): Promise<void> => {
     
     // Enforce maximum number of tiles in memory
-    const currentTiles = tiles();
+    const currentTiles = inMemoryTileCache();
     if (Object.keys(currentTiles).length >= TILE_LOAD_CONFIG.MAX_TILES_IN_MEMORY) {
 
       const vp = viewport();
@@ -406,7 +407,7 @@ const MapView: Component = () => {
       if (tilesArray.length > 0) {
         // Remove the oldest tile
         const [oldestKey] = tilesArray[0];
-        setTiles(prev => {
+        setInMemoryTileCache((prev: Record<string, Tile>) => {
           const newTiles = { ...prev };
           delete newTiles[oldestKey];
           return newTiles;
@@ -445,7 +446,7 @@ const MapView: Component = () => {
         const cachedTile = await tileCache.getTile(tileX, tileY);
         if (cachedTile) {
           const tileAge = Date.now() - cachedTile.timestamp;
-          setTiles(prev => ({
+          setInMemoryTileCache((prev: Record<string, Tile>) => ({
             ...prev,
             [key]: {
               x: tileX,
@@ -475,7 +476,7 @@ const MapView: Component = () => {
     // Skip if already loading (duplicate check removed)
     
     // Mark as loading but keep existing data
-    setTiles(prev => {
+    setInMemoryTileCache((prev: Record<string, Tile>) => {
       const existingTile = prev[key];
       return {
         ...prev,
@@ -555,7 +556,7 @@ const MapView: Component = () => {
       
       // Only update state if we're still mounted
       if (isMounted()) {
-        setTiles(prev => ({
+        setInMemoryTileCache((prev: Record<string, Tile>) => ({
           ...prev,
           [key]: {
             x: tileX,
@@ -577,10 +578,10 @@ const MapView: Component = () => {
       
       // Only update error state if we're still mounted
       if (isMounted()) {
-        setTiles(prev => ({
+        setInMemoryTileCache((prev: Record<string, Tile>) => ({
           ...prev,
           [key]: {
-            ...(prev[key] || { x: tileX, y: tileY }),
+            ...(prev[key] || { x: tileX, y: tileY, data: null, loading: false, error: false, timestamp: 0, mountId: currentMountId }),
             loading: false,
             error: true,
             timestamp: Date.now(),
@@ -714,7 +715,7 @@ const MapView: Component = () => {
   // Generate a consistent color based on tile coordinates
   const getTileColor = (x: number, y: number): string => {
     const hue = (x * 13 + y * 7) % 360;
-    return `hsl(${hue}, 70%, ${tiles()[`${x},${y}`]?.data ? '80%' : '90%'})`;
+    return `hsl(${hue}, 70%, ${inMemoryTileCache()[`${x},${y}`]?.data ? '80%' : '90%'})`;
   };
 
   // Render a single tile
@@ -901,7 +902,7 @@ const MapView: Component = () => {
     for (let y = WORLD_MIN; y <= WORLD_MAX; y++) {
       for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
         const key = `${x},${y}`;
-        const existingTile = tiles()[key];
+        const existingTile = inMemoryTileCache()[key];
         
         // Create a placeholder tile if it doesn't exist yet
         const tile = existingTile || {
@@ -963,7 +964,7 @@ const MapView: Component = () => {
           <ViewportPosition />
       <div class={styles.controls}>
         <div class={styles.coordinates}>
-          Tiles: {Object.keys(tiles()).length}
+          Tiles: {Object.keys(inMemoryTileCache()).length}
         </div>
       </div>
       
