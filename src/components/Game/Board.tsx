@@ -128,8 +128,7 @@ const Board: Component = () => {
   let currentFetch: Promise<void> | null = null;
   
   const fetchBasePoints = async () => {
-    const currentPos = position();
-    if (!currentPos) return Promise.resolve();
+    const currentPos = position() || [0,0];
     
     const promise = fetchBasePointsUtil({
       user: () => currentUser,
@@ -224,10 +223,9 @@ const Board: Component = () => {
   
   const handleSquareClick = async (index: number) => {
     const pos = position();
-    if (!pos) return;
     
     const [gridX, gridY] = indicesToPoints([index])[0];
-    const [offsetX, offsetY] = pos;
+    const [offsetX, offsetY] = pos || [0, 0];
     const [worldX, worldY] = gridToWorld(gridX, gridY, offsetX, offsetY);
 
     try {
@@ -265,9 +263,6 @@ const Board: Component = () => {
     setReachedBoundary(false); // Reset boundary flag on new movement
     
     const current = currentPos(); // Call the accessor to get the current position
-    if (!current) {
-      return;
-    }
     
     const [dx, dy] = DIRECTION_MAP[dir].delta;
     const newX = current[0] + dx;

@@ -2,8 +2,6 @@
 import { Component, createEffect, createSignal, onCleanup, onMount, batch, JSX } from 'solid-js';
 import { TileCache } from '../../lib/client/services/tile-cache';
 import ViewportPosition from './ViewportPosition';
-import OriginMarker from './OriginMarker';
-import TileZeroPosition from './TileZeroPosition';
 import { 
   renderBitmap, 
   TILE_SIZE, 
