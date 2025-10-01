@@ -1,12 +1,10 @@
 
-import { Component, createEffect, createSignal, onCleanup, onMount, batch, JSX } from 'solid-js';
-import { TileCache } from '../../lib/client/services/tile-cache';
+import { Component, createEffect, createSignal, onCleanup, onMount, batch, JSX, Accessor } from 'solid-js';
 import ViewportPosition from './ViewportPosition';
 import { 
   renderBitmap, 
   TILE_SIZE, 
   isTileStale, 
-  getTileKey, 
   worldToTileCoords, 
   tileToWorldCoords,
   getInitialViewport,
@@ -15,6 +13,7 @@ import {
   updateViewport as updateViewportUtil,
   generateSpiralCoords
 } from '../../utils/mapUtils';
+import { Tile, TileLoader, createCancellableOperation } from './tileLoader';
 
 import styles from './MapView.module.css';
 
@@ -31,21 +30,10 @@ const TILE_LOAD_CONFIG = {
 const VIEWPORT_WIDTH = 800; // 800 pixels
 const VIEWPORT_HEIGHT = 600; // 600 pixels
 
-interface Tile {
-  x: number;
-  y: number;
-  data: Uint8Array | null;
-  loading: boolean;
-  error: boolean;
-  timestamp: number;
-  mountId: number;
-  fromCache?: boolean;
-}
-
 interface Viewport {
   x: number;
   y: number;
-width: number;
+  width: number;
   height: number;
 }
 
@@ -69,13 +57,8 @@ const MapView: Component = () => {
   });
   const [isLoading, setIsLoading] = createSignal(false);
   
-  const tileCache = new TileCache(); // Initialize tile cache at component level
-  let tileCacheReady = false;
-  tileCache.init().then(() => {
-    tileCacheReady = true;
-  }).catch(error => {
-    console.error('[MapView] Failed to initialize tile cache:', error);
-  });
+  // Initialize the tile loader
+  const tileLoader = new TileLoader(TILE_LOAD_CONFIG.MAX_TILES_IN_MEMORY);
 
   const [tileQueue, setTileQueue] = createSignal<Array<{x: number, y: number}>>([]);
   const [isProcessingQueue, setIsProcessingQueue] = createSignal(false);
@@ -386,214 +369,43 @@ const MapView: Component = () => {
 
   // Load a single tile
   const loadTile = async (tileX: number, tileY: number, forceRefresh = false): Promise<void> => {
-    
-    // Enforce maximum number of tiles in memory
-    const currentTiles = inMemoryTileCache();
-    if (Object.keys(currentTiles).length >= TILE_LOAD_CONFIG.MAX_TILES_IN_MEMORY) {
-
-      const vp = viewport();
-      const vpx = Math.floor((vp.x)/64);
-      const vpy = Math.floor((vp.y)/64);
-    
-      // Find the oldest accessed tile that's not currently loading
-      const tilesArray = Object.entries(currentTiles)
-        .filter(([_, tile]) => !tile.loading)
-        .sort((a, b) => {
-          const distA = Math.abs(a[1].x - vpx) + Math.abs(a[1].y - vpy);
-          const distB = Math.abs(b[1].x - vpx) + Math.abs(b[1].y - vpy);
-          return -(distA - distB);
-        });
-          
-      if (tilesArray.length > 0) {
-        // Remove the oldest tile
-        const [oldestKey] = tilesArray[0];
-        setInMemoryTileCache((prev: Record<string, Tile>) => {
-          const newTiles = { ...prev };
-          delete newTiles[oldestKey];
-          return newTiles;
-        });
-      }
-    }
-    
-    // Wait for tile cache to be ready
-    if (!tileCacheReady) {
-      try {
-        await tileCache.init();
-        tileCacheReady = true;
-      } catch (error) {
-        console.error(`[loadTile] Error initializing tile cache:`, error);
-      }
-    }
-    
-    const key = getTileKey(tileX, tileY);
-    const currentTile = currentTiles[key];
-    
-    // Skip if already loading the same tile, unless we're forcing a refresh
-    if (currentTile?.loading) {
-      if (!forceRefresh) {
-        return;
-      }
-    }
-    
-    // Skip if component is unmounting
     if (!isMounted()) {
       return;
     }
 
-    // Check cache first if not forcing a refresh
-    if (!forceRefresh) {
-      try {
-        const cachedTile = await tileCache.getTile(tileX, tileY);
-        if (cachedTile) {
-          const tileAge = Date.now() - cachedTile.timestamp;
-          setInMemoryTileCache((prev: Record<string, Tile>) => ({
+    await tileLoader.loadTile(tileX, tileY, {
+      forceRefresh,
+      isMounted,
+      currentMountId,
+      viewport: () => viewport(),
+      onTileLoaded: (tile) => {
+        if (isMounted()) {
+          setInMemoryTileCache(prev => ({
+            ...prev,
+            [`${tile.x},${tile.y}`]: tile
+          }));
+        }
+      },
+      onTileError: (errorTileX, errorTileY) => {
+        if (isMounted()) {
+          const key = `${errorTileX},${errorTileY}`;
+          setInMemoryTileCache(prev => ({
             ...prev,
             [key]: {
-              x: tileX,
-              y: tileY,
-              data: cachedTile.data,
+              ...(prev[key] || { x: errorTileX, y: errorTileY, data: null, loading: false, error: false, timestamp: 0 }),
               loading: false,
-              error: false,
-              timestamp: Date.now(), // Update timestamp on access
-              mountId: currentMountId,
-              fromCache: true
+              error: true,
+              timestamp: Date.now(),
+              mountId: currentMountId
             }
           }));
-          
-          // Schedule a background refresh if needed
-          const refreshThreshold = 20 * 1000; // 20 seconds
-          if (tileAge > refreshThreshold) {
-            loadTile(tileX, tileY, true).catch(console.error);
-          }
-          
-          return; // Skip fetch if we have a valid cached version
         }
-      } catch (error) {
-        console.error(`[loadTile] Error reading from cache for tile (${tileX}, ${tileY}):`, error);
       }
-    }
-    
-    // Skip if already loading (duplicate check removed)
-    
-    // Mark as loading but keep existing data
-    setInMemoryTileCache((prev: Record<string, Tile>) => {
-      const existingTile = prev[key];
-      return {
-        ...prev,
-        [key]: {
-          x: tileX,
-          y: tileY,
-          data: existingTile?.data || null, // Keep existing data
-          loading: true,
-          error: false,
-          timestamp: existingTile?.timestamp || 0, // Keep existing timestamp
-          mountId: currentMountId
-        }
-      };
     });
-
-    let cleanupFn: (() => void) | null = null;
     
-    try {
-      // Create a cancellable operation
-      const { signal, cleanup } = createCancellableOperation();
-      cleanupFn = cleanup;
-      
-      
-      // Get the auth token from session storage
-      const authToken = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
-      
-      const headers: HeadersInit = { 'Accept': 'application/json' };
-      if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
-      }
-      
-      const response = await fetch(`/api/map/tile/${tileX}/${tileY}`, { 
-        signal,
-        headers,
-        credentials: 'include' // Include cookies for session-based auth
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const responseData = await response.json();
-      
-      if (!isMounted()) {
-        console.log(`[loadTile] Component unmounted during fetch for tile (${tileX}, ${tileY})`);
-        return;
-      }
-      
-      if (!responseData.success || !responseData.data) {
-        console.error(`[loadTile] Invalid response format for tile (${tileX}, ${tileY}):`, responseData);
-        throw new Error('Invalid response format');
-      }
-      
-      // Process tile data
-      const tileData = responseData.data;
-      let bytes: Uint8Array;
-
-      // Convert data to Uint8Array based on its type
-      if (typeof tileData.data === 'string') {
-        const numbers = tileData.data.split(',').map(Number);
-        if (numbers.some(isNaN)) {
-          throw new Error('Invalid number in tile data');
-        }
-        bytes = new Uint8Array(numbers);
-      } else if (Array.isArray(tileData.data)) {
-        bytes = new Uint8Array(tileData.data);
-      } else {
-        throw new Error('Unexpected tile data format');
-      }
-
-      // Cache the processed tile data
-      try {
-        await tileCache.setTile(tileX, tileY, bytes);
-      } catch (cacheError) {
-        console.error(`[loadTile] Error caching tile (${tileX}, ${tileY}):`, cacheError);
-      }
-      
-      // Only update state if we're still mounted
-      if (isMounted()) {
-        setInMemoryTileCache((prev: Record<string, Tile>) => ({
-          ...prev,
-          [key]: {
-            x: tileX,
-            y: tileY,
-            data: bytes,
-            loading: false,
-            error: false,
-            timestamp: Date.now(),
-            mountId: currentMountId,
-            fromCache: false
-          }
-        }));
-      }
-    } catch (err) {
-      // Don't log aborted requests as errors
-      if (err instanceof Error && err.name === 'AbortError') {
-        return;
-      }
-      
-      // Only update error state if we're still mounted
-      if (isMounted()) {
-        setInMemoryTileCache((prev: Record<string, Tile>) => ({
-          ...prev,
-          [key]: {
-            ...(prev[key] || { x: tileX, y: tileY, data: null, loading: false, error: false, timestamp: 0, mountId: currentMountId }),
-            loading: false,
-            error: true,
-            timestamp: Date.now(),
-            mountId: currentMountId
-          }
-        }));
-      }
-    } finally {
-      // Clean up the abort controller
-      if (cleanupFn) {
-        cleanupFn();
-      }
+    // Update the in-memory cache with the latest state from the loader
+    if (isMounted()) {
+      setInMemoryTileCache({ ...tileLoader.getInMemoryCache() });
     }
   };
 
