@@ -2,6 +2,53 @@ import { inflate } from 'pako';
 
 export const TILE_SIZE = 64; // pixels
 
+/**
+ * Generates coordinates in a spiral pattern around a center point
+ * @param centerX - X coordinate of the center point
+ * @param centerY - Y coordinate of the center point
+ * @param radius - Radius of the spiral
+ * @returns Array of {x, y, distance} objects representing the spiral coordinates
+ */
+export const generateSpiralCoords = (centerX: number, centerY: number, radius: number) => {
+  const result: Array<{x: number, y: number, distance: number}> = [];
+  
+  result.push({ x: centerX, y: centerY, distance: 0 });
+  
+  for (let r = 1; r <= radius; r++) {
+    // Start at the top-right corner of the square
+    let x = r;
+    let y = -r;
+    
+    // Top edge (right to left)
+    for (; x >= -r; x--) {
+      result.push({ x: centerX + x, y: centerY + y, distance: r });
+    }
+    x++;
+    y++;
+    
+    // Left edge (top to bottom)
+    for (; y <= r; y++) {
+      result.push({ x: centerX + x, y: centerY + y, distance: r });
+    }
+    y--;
+    x++;
+    
+    // Bottom edge (left to right)
+    for (; x <= r; x++) {
+      result.push({ x: centerX + x, y: centerY + y, distance: r });
+    }
+    x--;
+    y--;
+    
+    // Right edge (bottom to top)
+    for (; y > -r; y--) {
+      result.push({ x: centerX + x, y: centerY + y, distance: r });
+    }
+  }
+  
+  return result;
+};
+
 interface Point {
   x: number;
   y: number;

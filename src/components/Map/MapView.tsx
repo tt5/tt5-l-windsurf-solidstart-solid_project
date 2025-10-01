@@ -12,7 +12,8 @@ import {
   getInitialViewport,
   handleResize as handleViewportResize,
   loadVisibleTiles as loadVisibleTilesUtil,
-  updateViewport as updateViewportUtil
+  updateViewport as updateViewportUtil,
+  generateSpiralCoords
 } from '../../utils/mapUtils';
 
 import styles from './MapView.module.css';
@@ -154,47 +155,6 @@ const MapView: Component = () => {
   // Update viewport and schedule tiles for loading
   const updateViewport = (updates: Partial<Viewport>) => {
     updateViewportUtil(updates, setViewport, scheduleTilesForLoading);
-  };
-  
-  // Generate coordinates in a spiral pattern
-  const generateSpiralCoords = (centerX: number, centerY: number, radius: number) => {
-    const result: Array<{x: number, y: number, distance: number}> = [];
-    
-    result.push({ x: centerX, y: centerY, distance: 0 });
-    
-    for (let r = 1; r <= radius; r++) {
-      // Start at the top-right corner of the square
-      let x = r;
-      let y = -r;
-      
-      // Top edge (right to left)
-      for (; x >= -r; x--) {
-        result.push({ x: centerX + x, y: centerY + y, distance: r });
-      }
-      x++;
-      y++;
-      
-      // Left edge (top to bottom)
-      for (; y <= r; y++) {
-        result.push({ x: centerX + x, y: centerY + y, distance: r });
-      }
-      y--;
-      x++;
-      
-      // Bottom edge (left to right)
-      for (; x <= r; x++) {
-        result.push({ x: centerX + x, y: centerY + y, distance: r });
-      }
-      x--;
-      y--;
-      
-      // Right edge (bottom to top)
-      for (; y > -r; y--) {
-        result.push({ x: centerX + x, y: centerY + y, distance: r });
-      }
-    }
-    
-    return result;
   };
   
   // Schedule tiles for loading based on current viewport
@@ -370,22 +330,9 @@ const MapView: Component = () => {
         return;
       }
       
-      
-      // Sort tiles by distance from viewport center (closest first)
-      const vp = viewport();
-      const centerX = vp.width / 2;
-      const centerY = vp.height / 2;
-      
-      const sortedQueue = [...currentQueue].sort((a, b) => {
-        const distA = Math.sqrt(Math.pow(a.x - centerX, 2) + Math.pow(a.y - centerY, 2));
-        const distB = Math.sqrt(Math.pow(b.x - centerX, 2) + Math.pow(b.y - centerY, 2));
-        return distA - distB;
-      });
-      
       // Process tiles in batches
-      const batchSize = Math.min(TILE_LOAD_CONFIG.BATCH_SIZE, sortedQueue.length);
-      const batch = sortedQueue.slice(0, batchSize);
-      
+      const batchSize = Math.min(TILE_LOAD_CONFIG.BATCH_SIZE, currentQueue.length);
+      const batch = currentQueue.slice(0, batchSize);
       
       // Process each tile in the batch with mount checks
       const tilePromises = batch.map(({ x, y }) => 
