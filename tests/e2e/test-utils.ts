@@ -4,6 +4,7 @@ import { mkdirSync, existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { promisify } from 'util';
 import * as dns from 'dns';
+import { vi, expect } from 'vitest';
 
 const resolveDns = promisify(dns.lookup);
 

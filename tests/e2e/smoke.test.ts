@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { 
   navigateTo, 
   getPage, 
   setupBrowser,
   teardownBrowser,
   isBrowserConnected
-} from './test-utils.js';
+} from './test-utils';
 
 const TEST_TIMEOUT = 30000; // 30 seconds
 

@@ -1,5 +1,5 @@
-import { setupBrowser, teardownBrowser, isBrowserConnected, getPage } from './test-utils.js';
-import { beforeAll, afterAll, afterEach } from '@jest/globals';
+import { setupBrowser, teardownBrowser, isBrowserConnected, getPage } from './test-utils';
+import { beforeAll, afterAll, afterEach, vi } from 'vitest';
 
 // Use a longer timeout for CI environments
 const TEST_TIMEOUT = process.env.CI ? 300000 : 120000; // 5 min for CI, 2 min for local
@@ -46,7 +46,6 @@ afterAll(async () => {
 // Reset state between tests
 afterEach(async () => {
   if (IS_DEBUG) console.log('Cleaning up after test...');
-  
   try {
     if (!isBrowserConnected()) {
       if (IS_DEBUG) console.log('Browser not connected, skipping cleanup');
@@ -57,26 +56,16 @@ afterEach(async () => {
     const testState = expect.getState();
     if (testState.currentTestName && testState.currentTestName.includes('should')) {
       const testName = testState.currentTestName;
-      
-      // Check if test results are available and if any test failed
-      const testFailed = testState.currentTestResults && 
-        testState.currentTestResults.some(
-          (r: any) => r.fullName === testName && r.status === 'failed'
-        );
-      
-      if (testFailed) {
-        if (IS_DEBUG) console.log('Test failed, skipping cleanup to preserve state');
-        return;
-      }
+      if (IS_DEBUG) console.log(`Running cleanup for test: ${testName}`);
     }
     
     // Basic cleanup - just navigate to about:blank
     try {
-      const page = (await import('./test-utils.js')).getPage();
+      const page = (await import('./test-utils')).getPage();
       if (page && !page.isClosed()) {
         await page.goto('about:blank', { 
           timeout: 5000,
-          waitUntil: 'domcontentloaded'
+          waitUntil: 'domcontentloaded' as const
         }).catch(() => {});
       }
     } catch (e) {

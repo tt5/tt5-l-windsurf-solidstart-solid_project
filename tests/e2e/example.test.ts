@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import { setupBrowser, teardownBrowser, isBrowserConnected } from './test-utils.js';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { setupBrowser, teardownBrowser, isBrowserConnected } from './test-utils';
 
-// Set test timeout to 2 minutes (longer for CI)
-const TEST_TIMEOUT = process.env.CI ? 300000 : 120000;
+// Test timeout in milliseconds
+const TEST_TIMEOUT = 120000; // 2 minutes
 
 // Enable debug logging in test output
 const DEBUG = process.env.DEBUG === 'true';
