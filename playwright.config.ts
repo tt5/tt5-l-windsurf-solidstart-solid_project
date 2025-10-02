@@ -71,9 +71,25 @@ export default defineConfig({
   // Configure projects for major browsers
   projects: [
     {
-      name: 'chromium',
+      name: 'lightpanda',
       use: { 
         ...devices['Desktop Chrome'],
+        // Lightpanda specific settings
+        channel: 'chrome',
+        launchOptions: {
+          // Path to Lightpanda executable if not in default location
+          // executablePath: '/path/to/lightpanda',
+          args: [
+            '--disable-dev-shm-usage',
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-gpu',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-extensions'
+          ]
+        },
         viewport: { width: 1280, height: 720 },
       },
     },

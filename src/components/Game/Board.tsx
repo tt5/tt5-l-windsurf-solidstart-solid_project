@@ -178,21 +178,29 @@ const Board: Component = () => {
   // Event handler types
   type KeyboardHandler = (e: KeyboardEvent) => void;
   
-  // Handle keyboard events with proper type safety
-  const handleKeyDown: KeyboardHandler = (e) => {
-    // Check if the key is in our custom direction map
-    if (e.key in BOARD_CONFIG.DIRECTION_MAP) {
-      e.preventDefault();
-      const direction = BOARD_CONFIG.DIRECTION_MAP[e.key as keyof typeof BOARD_CONFIG.DIRECTION_MAP];
-      handleDirectionWithBoundary(direction);
+  // Handle keyboard events with boundary checking
+  const handleKeyDown: KeyboardHandler = async (e) => {
+    // Check if the key is in our direction map
+    if (!(e.key in BOARD_CONFIG.DIRECTION_MAP)) return;
+    
+    e.preventDefault();
+    const direction = BOARD_CONFIG.DIRECTION_MAP[e.key as keyof typeof BOARD_CONFIG.DIRECTION_MAP];
+    
+    // Get current position and movement delta
+    const current = currentPos();
+    const [dx, dy] = DIRECTION_MAP[direction].delta;
+    const newX = current[0] + dx;
+    const newY = current[1] + dy;
+    
+    // Check boundaries
+    const { MIN_X, MAX_X, MIN_Y, MAX_Y } = BOARD_CONFIG.WORLD_BOUNDS;
+    if (newX < MIN_X || newX > MAX_X || newY < MIN_Y || newY > MAX_Y) {
+      setReachedBoundary(true);
+      return;
     }
-    // Check if the key is in the standard direction map
-    else if (e.key in DIRECTION_MAP) {
-      e.preventDefault();
-      // Get the direction from the key
-      const direction = e.key as keyof typeof DIRECTION_MAP;
-      handleDirectionWithBoundary(direction);
-    }
+    
+    // Move if within bounds
+    await handleDirection(direction);
   };
   
   // Setup and cleanup event listeners
@@ -252,25 +260,7 @@ const Board: Component = () => {
     }
   };
   
-  // Handle direction movement with boundary checking
-  const handleDirectionWithBoundary = async (dir: Direction): Promise<void> => {
-    const current = currentPos();
-    const [dx, dy] = DIRECTION_MAP[dir].delta;
-    const newX = current[0] + dx;
-    const newY = current[1] + dy;
-    
-    if (
-      newX < BOARD_CONFIG.WORLD_BOUNDS.MIN_X || 
-      newX > BOARD_CONFIG.WORLD_BOUNDS.MAX_X || 
-      newY < BOARD_CONFIG.WORLD_BOUNDS.MIN_Y || 
-      newY > BOARD_CONFIG.WORLD_BOUNDS.MAX_Y
-    ) {
-      setReachedBoundary(true);
-      return;
-    }
-    
-    await handleDirection(dir);
-  };
+  // handleDirection is now called directly from handleKeyDown
 
   return (
     <div class={styles.board}>
