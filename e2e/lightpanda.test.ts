@@ -19,12 +19,11 @@ async function waitForCondition(condition: () => Promise<boolean>, timeout = 100
 }
 
 test.describe('Lightpanda Test', () => {
-  let browser: Browser | null = null;
-  let page: Page | null = null;
-  let context: BrowserContext | null = null;
+  let browser: Browser;
+  let page: Page;
+  let context: BrowserContext;
 
   test.beforeAll(async () => {
-    // No need to manually launch browser, Playwright will handle it based on the project config
     console.log('Setting up Lightpanda browser...');
   });
 
@@ -53,31 +52,17 @@ test.describe('Lightpanda Test', () => {
 
   test.afterEach(async () => {
     console.log('Cleaning up...');
-    if (page) {
-      try {
-        await page.close();
-      } catch (error) {
-        console.error('Error closing page:', error);
-      }
-    }
-    if (context) {
-      try {
-        await context.close();
-      } catch (error) {
-        console.error('Error closing context:', error);
-      }
+    try {
+      if (page) await page.close();
+      if (context) await context.close();
+    } catch (error) {
+      console.error('Error during cleanup:', error);
     }
   });
 
   test.afterAll(async () => {
-    if (browser) {
-      try {
-        await browser.close();
-        console.log('Browser connection closed');
-      } catch (error) {
-        console.error('Error closing browser:', error);
-      }
-    }
+    // The global teardown will handle the Lightpanda server
+    console.log('Test suite completed');
   });
 
   test('test with lightpanda', async ({}, testInfo) => {

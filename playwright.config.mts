@@ -4,7 +4,8 @@ import { join } from 'path';
 import { fileURLToPath } from 'url';
 
 // Get the directory name in ES module
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = join(__filename, '..');
 
 // Port to run the app on during tests
 const PORT = 3000;
@@ -20,36 +21,37 @@ const devServer = {
 };
 
 // Lightpanda CDP server configuration
-const LIGHTPANDA_PORT = 9222;
+const LIGHTPANDA_PORT = 9292; // Using a different port
 
-// Start Lightpanda CDP server
-const lightpandaProcess = spawn('./lightpanda', [
-  'serve',
-  '--host', '127.0.0.1',
-  '--port', LIGHTPANDA_PORT.toString(),
-  '--log_level', 'info'
-]);
-
-// Log Lightpanda output
-lightpandaProcess.stdout.on('data', (data) => {
-  console.log(`[Lightpanda] ${data}`);
-});
-
-lightpandaProcess.stderr.on('data', (data) => {
-  console.error(`[Lightpanda Error] ${data}`);
-});
-
-// Ensure Lightpanda is killed when the process exits
-process.on('exit', () => {
-  if (lightpandaProcess) {
-    lightpandaProcess.kill();
+// Configuration for the Lightpanda server process
+const lightpandaServer = {
+  command: './lightpanda',
+  args: [
+    'serve',
+    '--host', '127.0.0.1',
+    '--port', LIGHTPANDA_PORT.toString(),
+    '--log_level', 'info'
+  ],
+  port: LIGHTPANDA_PORT,
+  reuseExistingServer: !process.env.CI,
+  debug: true,
+  stderr: 'pipe',
+  stdout: 'pipe',
+  env: {
+    ...process.env,
+    NODE_ENV: 'test'
   }
-});
+};
+
+export { LIGHTPANDA_PORT, lightpandaServer };
 
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
+  // Global setup and teardown
+  globalSetup: './global-setup.mts',
+  
   // Look for test files in the e2e directory
   testDir: './e2e',
   
@@ -101,13 +103,20 @@ export default defineConfig({
       name: 'lightpanda',
       testDir: 'e2e',
       testMatch: 'lightpanda.test.ts',
+      timeout: 60000, // Increase timeout for Lightpanda tests
       use: {
-        // Connect to the Lightpanda CDP server
         browserName: 'chromium',
-        // Use the connectOverCDP option to connect to the running Lightpanda instance
-        connectOptions: {
-          wsEndpoint: `ws://127.0.0.1:${LIGHTPANDA_PORT}`,
-          timeout: 30000  // Timeout for the connection
+        // Connect to the running Lightpanda instance
+        launchOptions: {
+          args: [
+            `--remote-debugging-port=${LIGHTPANDA_PORT}`,
+            '--disable-dev-shm-usage',
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-web-security',
+            '--disable-gpu'
+          ],
+          headless: false,
         },
         // Viewport settings
         viewport: { width: 1280, height: 720 },
