@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePlayerPosition } from '../../contexts/PlayerPositionContext';
 import { jumpToPosition } from '../../lib/utils/navigation';
 import { useFetchBasePoints } from '../../hooks/useFetchBasePoints';
+import { useDirectionHandler } from '../../hooks/useDirectionHandler';
 import { 
   type Direction, 
   type Point, 
@@ -18,8 +19,6 @@ import {
   createPoint
 } from '../../types/board';
 import { 
-  calculateRestrictedSquares, 
-  handleDirection as handleDirectionUtil,
   handleAddBasePoint,
   isBasePoint,
   validateSquarePlacement,
@@ -52,8 +51,15 @@ const Board: Component = () => {
   const currentPos = createMemo<Point>(() => position() || createPoint(0, 0));
   
   // State variables
-  const [isMoving, setIsMoving] = createSignal<boolean>(false);
   const [isSaving, setIsSaving] = createSignal<boolean>(false);
+  
+  // Direction handling
+  const { isMoving, handleDirection } = useDirectionHandler({
+    position,
+    setPosition: setContextPosition,
+    getRestrictedSquares,
+    setRestrictedSquares,
+  });
   
   // Base points fetching
   const { 
@@ -171,24 +177,24 @@ const Board: Component = () => {
     
     return () => cancelIdleCallback(id);
   });
-  
   // Event handler types
   type KeyboardHandler = (e: KeyboardEvent) => void;
   
   // Handle keyboard events with proper type safety
   const handleKeyDown: KeyboardHandler = (e) => {
-    
-    // Type guard to ensure we only handle arrow keys
-    const isArrowKey = (key: string | number): key is keyof typeof BOARD_CONFIG.DIRECTION_MAP => 
-      typeof key === 'string' && key in BOARD_CONFIG.DIRECTION_MAP;
-    
-    if (!isArrowKey(e.key)) {
-      return;
+    // Check if the key is in our custom direction map
+    if (e.key in BOARD_CONFIG.DIRECTION_MAP) {
+      e.preventDefault();
+      const direction = BOARD_CONFIG.DIRECTION_MAP[e.key as keyof typeof BOARD_CONFIG.DIRECTION_MAP];
+      handleDirectionWithBoundary(direction);
     }
-    
-    e.preventDefault();
-    const direction = BOARD_CONFIG.DIRECTION_MAP[e.key];
-    handleDirection(direction);
+    // Check if the key is in the standard direction map
+    else if (e.key in DIRECTION_MAP) {
+      e.preventDefault();
+      // Get the direction from the key
+      const direction = e.key as keyof typeof DIRECTION_MAP;
+      handleDirectionWithBoundary(direction);
+    }
   };
   
   // Setup and cleanup event listeners
@@ -250,11 +256,9 @@ const Board: Component = () => {
     }
   };
   
-  // Handle direction movement
-  const handleDirection = async (dir: Direction): Promise<void> => {
-    
-    const current = currentPos(); // Call the accessor to get the current position
-    
+  // Handle direction movement with boundary checking
+  const handleDirectionWithBoundary = async (dir: Direction): Promise<void> => {
+    const current = currentPos();
     const [dx, dy] = DIRECTION_MAP[dir].delta;
     const newX = current[0] + dx;
     const newY = current[1] + dy;
@@ -269,18 +273,7 @@ const Board: Component = () => {
       return;
     }
     
-    try {
-      await handleDirectionUtil(dir, {
-        isMoving,
-        currentPosition: () => position() || [0, 0],
-        setCurrentPosition: (value: Point) => (setContextPosition(value), value),
-        restrictedSquares: getRestrictedSquares,
-        setRestrictedSquares,
-        setIsMoving,
-      });
-    } catch (error) {
-      throw error;
-    }
+    await handleDirection(dir);
   };
 
   return (

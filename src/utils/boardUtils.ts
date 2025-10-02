@@ -390,7 +390,7 @@ export const fetchBasePoints = async ({
   const currentUser = user();
   if (!currentUser) {
     setBasePoints([]);
-    return;
+    return
   }
 
   const now = Date.now();
