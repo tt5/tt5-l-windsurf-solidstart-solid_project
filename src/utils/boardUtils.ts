@@ -314,15 +314,39 @@ export const pointsToIndices = (points: Point[]): number[] =>
 
 /**
  * Converts grid coordinates to world coordinates using the current position offset
+ * @overload Converts a grid index to world coordinates
+ * @param index The grid index to convert
+ * @param offset The current position offset
+ * @returns [worldX, worldY] in world coordinates
+ * 
+ * @overload Converts grid coordinates to world coordinates
  * @param gridX X coordinate in grid space
  * @param gridY Y coordinate in grid space
  * @param offsetX X offset from current position
  * @param offsetY Y offset from current position
  * @returns [worldX, worldY] in world coordinates
  */
-export const gridToWorld = (gridX: number, gridY: number, offsetX: number, offsetY: number): Point => {
-  return createPoint(gridX - offsetX, gridY - offsetY);
-};
+export function gridToWorld(index: number, offset: Point): Point;
+export function gridToWorld(gridX: number, gridY: number, offsetX: number, offsetY: number): Point;
+export function gridToWorld(
+  first: number | Point,
+  second: number | Point,
+  offsetX?: number,
+  offsetY?: number
+): Point {
+  // Handle the index + offset point overload
+  if (typeof second !== 'number') {
+    const index = first as number;
+    const [offsetX, offsetY] = second;
+    const [gridX, gridY] = indicesToPoints([index])[0];
+    return createPoint(gridX - offsetX, gridY - offsetY);
+  }
+  
+  // Handle the gridX, gridY, offsetX, offsetY overload
+  const gridX = first as number;
+  const gridY = second as number;
+  return createPoint(gridX - offsetX!, gridY - offsetY!);
+}
 
 /**
  * Validates if a coordinate is within the world bounds

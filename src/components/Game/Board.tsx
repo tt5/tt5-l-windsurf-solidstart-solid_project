@@ -22,8 +22,6 @@ import {
   handleAddBasePoint,
   isBasePoint,
   validateSquarePlacement,
-  indicesToPoints,
-  pointsToIndices,
   gridToWorld
 } from '../../utils/boardUtils';
 import styles from './Board.module.css';
@@ -222,9 +220,7 @@ const Board: Component = () => {
     const pos = position();
     if (!pos) return;
     
-    const [gridX, gridY] = indicesToPoints([index])[0];
-    const [offsetX, offsetY] = pos;
-    const [worldX, worldY] = gridToWorld(gridX, gridY, offsetX, offsetY);
+    const [worldX, worldY] = gridToWorld(index, pos);
     
     setIsSaving(true);
     
@@ -288,9 +284,7 @@ const Board: Component = () => {
 
           const pos = currentPos();
           if (!pos) return null; // Skip rendering if position is not yet set
-          const [x, y] = indicesToPoints([index])[0];
-          const [offsetX, offsetY] = pos;
-          const [worldX, worldY] = gridToWorld(x, y, offsetX, offsetY);
+          const [worldX, worldY] = gridToWorld(index, pos);
           const isBP = isBasePoint(worldX, worldY, basePoints());
 
           const isSelected = getRestrictedSquares().includes(index);
@@ -308,7 +302,7 @@ const Board: Component = () => {
               state={cellState}
               onHover={(hovered: boolean) => {
                 if (hovered) {
-                  handleSquareHover(y * BOARD_CONFIG.GRID_SIZE + x);
+                  handleSquareHover(index);
                 } else {
                   handleSquareHover(null);
                 }
