@@ -10,7 +10,7 @@ type AddBasePointOptions = {
   currentUser: { id: string } | null;
   setIsSaving: (value: boolean | ((prev: boolean) => boolean)) => void;
   setBasePoints: (value: BasePoint[] | ((prev: BasePoint[]) => BasePoint[])) => void;
-  isBasePoint: (x: number, y: number, basePoints: BasePoint[]) => boolean;
+  isBasePoint: (x: number, y: number) => boolean;
 };
 
 export const handleAddBasePoint = async ({
@@ -32,16 +32,9 @@ export const handleAddBasePoint = async ({
     };
   }
   
-  // Get current base points to check for duplicates
-  const currentBasePoints = await new Promise<BasePoint[]>((resolve) => {
-    setBasePoints(prev => {
-      resolve(prev);
-      return prev;
-    });
-  });
-  
-  // Check for duplicate base point
-  if (isBasePoint(x, y, currentBasePoints)) {
+  // Check for duplicate base point using the current basePoints
+  // because the function could be called from other places
+  if (isBasePoint(x, y)) {
     return {
       success: false,
       error: 'Base point already exists at these coordinates',

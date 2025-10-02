@@ -66,7 +66,6 @@ const Board: Component = () => {
     try {
       // If we don't have a position yet, try to jump to the default position
       if (!position()) {
-        console.log('No position set, jumping to default position');
         const result = await jumpToPosition(
           BOARD_CONFIG.DEFAULT_POSITION[0],
           BOARD_CONFIG.DEFAULT_POSITION[1],
@@ -330,10 +329,11 @@ const Board: Component = () => {
                 }
               }}
               onClick={() => {
-                if (!isSelected && !isSaving() && !isBP) {
-                  handleSquareClick(index)
-                    .catch(err => console.error('Error processing click:', err));
-                }
+                handleSquareClick(index)
+                  .catch(err => {
+                    console.error('Error processing click:', err);
+                    setError('Failed to process your action. Please try again.');
+                  });
               }}
             />
           );
