@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -9,7 +9,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 // Port to run the app on during tests
 const PORT = 3000;
 
-// Start the dev server before the tests
+// Start the dev server and Lightpanda before the tests
 const devServer = {
   command: 'npm run dev',
   port: PORT,
@@ -18,6 +18,33 @@ const devServer = {
     NODE_ENV: 'test',
   },
 };
+
+// Lightpanda CDP server configuration
+const LIGHTPANDA_PORT = 9222;
+
+// Start Lightpanda CDP server
+const lightpandaProcess = spawn('./lightpanda', [
+  'serve',
+  '--host', '127.0.0.1',
+  '--port', LIGHTPANDA_PORT.toString(),
+  '--log_level', 'info'
+]);
+
+// Log Lightpanda output
+lightpandaProcess.stdout.on('data', (data) => {
+  console.log(`[Lightpanda] ${data}`);
+});
+
+lightpandaProcess.stderr.on('data', (data) => {
+  console.error(`[Lightpanda Error] ${data}`);
+});
+
+// Ensure Lightpanda is killed when the process exits
+process.on('exit', () => {
+  if (lightpandaProcess) {
+    lightpandaProcess.kill();
+  }
+});
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -72,25 +99,20 @@ export default defineConfig({
   projects: [
     {
       name: 'lightpanda',
-      use: { 
-        ...devices['Desktop Chrome'],
-        // Lightpanda specific settings
-        channel: 'chrome',
-        launchOptions: {
-          // Path to Lightpanda executable if not in default location
-          // executablePath: '/path/to/lightpanda',
-          args: [
-            '--disable-dev-shm-usage',
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-gpu',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-extensions'
-          ]
+      testDir: 'e2e',
+      testMatch: 'lightpanda.test.ts',
+      use: {
+        // Connect to the Lightpanda CDP server
+        browserName: 'chromium',
+        // Use the connectOverCDP option to connect to the running Lightpanda instance
+        connectOptions: {
+          wsEndpoint: `ws://127.0.0.1:${LIGHTPANDA_PORT}`,
+          timeout: 30000  // Timeout for the connection
         },
+        // Viewport settings
         viewport: { width: 1280, height: 720 },
+        // User agent
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Lightpanda/1.0 Chrome/91.0.4472.124 Safari/537.36'
       },
     },
 

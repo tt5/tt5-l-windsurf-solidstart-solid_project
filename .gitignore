@@ -37,3 +37,4 @@ node_modules/
 /playwright/.auth/
 
 coverage
+lightpanda

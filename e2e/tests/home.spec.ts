@@ -8,9 +8,6 @@ test.describe('Home Page', () => {
     // Verify the page title
     await expect(page).toHaveTitle(/Superstar/);
     
-    // Take a screenshot for reference
-    await utils.takeScreenshot('home-page');
-    
     // Add more assertions based on your app's home page
     // For example:
     // await expect(page.locator('h1')).toContainText('Welcome');
