@@ -61,8 +61,35 @@ export async function teardown() {
   const server = (global as any).__LIGHTPANDA_SERVER__;
   if (server) {
     console.log('Global teardown: Stopping Lightpanda server...');
+    
+    // Try graceful shutdown first
     server.kill('SIGTERM');
-    await new Promise(resolve => server.on('exit', resolve));
+    
+    // Force kill if not terminated after 3 seconds
+    const forceKill = setTimeout(() => {
+      if (!server.killed) {
+        console.log('Force killing Lightpanda server...');
+        server.kill('SIGKILL');
+      }
+    }, 3000);
+    
+    await new Promise<void>((resolve) => {
+      server.once('exit', () => {
+        clearTimeout(forceKill);
+        console.log('Lightpanda server stopped');
+        resolve();
+      });
+      
+      // In case the process is already dead
+      if (server.killed) {
+        clearTimeout(forceKill);
+        console.log('Lightpanda server already stopped');
+        resolve();
+      }
+    });
+    
+    // Clean up the reference
+    delete (global as any).__LIGHTPANDA_SERVER__;
   }
 }
 
