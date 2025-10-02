@@ -1,0 +1,1 @@
+import{i as l,v as r,l as i,b as o,t as s,T as _}from"./index-BtiM2clC.js";var m=s("<main><!$><!/><h1>Page Not Found");const d=()=>(()=>{var e=l(m),a=e.firstChild,[t,n]=r(a.nextSibling);return t.nextSibling,i(e,o(_,{children:"Not Found"}),t,n),e})();export{d as default};

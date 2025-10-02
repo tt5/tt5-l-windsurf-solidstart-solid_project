@@ -1,0 +1,1 @@
+import{serialize as t}from"cookie";async function n({request:s}){const e=t("auth_token","",{httpOnly:!0,secure:!0,sameSite:"strict",path:"/",expires:new Date(0)});return new Response(JSON.stringify({success:!0,message:"Successfully logged out"}),{status:200,headers:{"Content-Type":"application/json","Set-Cookie":e}})}export{n as POST};

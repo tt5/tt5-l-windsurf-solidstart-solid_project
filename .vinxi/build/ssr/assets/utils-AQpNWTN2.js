@@ -1,0 +1,1 @@
+function o(){return typeof window>"u"}function s(){if(!o())throw new Error("This function can only be used on the server")}function t(e,n=200,r={}){return new Response(JSON.stringify(e),{status:n,headers:{"Content-Type":"application/json",...r}})}export{s as a,t as j};

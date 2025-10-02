@@ -1,0 +1,1 @@
+import{w as o}from"./assets/auth-BVUYsDc6.js";import"./assets/utils-AQpNWTN2.js";import"./assets/jwt-CO0ye28h.js";import"jsonwebtoken";function r(t,{status:n=200,headers:e={}}={}){return new Response(JSON.stringify(t),{status:n,headers:{"Content-Type":"application/json",...e}})}const m=o(async()=>r({message:"Authenticated"}));export{m as POST};

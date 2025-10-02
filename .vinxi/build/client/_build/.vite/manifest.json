@@ -1,0 +1,133 @@
+{
+  "_AuthContext-CwAE7fDx.js": {
+    "file": "assets/AuthContext-CwAE7fDx.js",
+    "name": "AuthContext",
+    "imports": [
+      "_index-BtiM2clC.js"
+    ]
+  },
+  "_Login-BUJWZuiV.css": {
+    "file": "assets/Login-BUJWZuiV.css",
+    "src": "_Login-BUJWZuiV.css"
+  },
+  "_Login.module-Ci4nll34.js": {
+    "file": "assets/Login.module-Ci4nll34.js",
+    "name": "Login.module",
+    "css": [
+      "assets/Login-BUJWZuiV.css"
+    ]
+  },
+  "_UserContext-C63u1NZh.js": {
+    "file": "assets/UserContext-C63u1NZh.js",
+    "name": "UserContext",
+    "imports": [
+      "_index-BtiM2clC.js"
+    ]
+  },
+  "_components-DShUfCzN.js": {
+    "file": "assets/components-DShUfCzN.js",
+    "name": "components",
+    "imports": [
+      "_index-BtiM2clC.js",
+      "_routing-DQha3BAi.js"
+    ]
+  },
+  "_index-BtiM2clC.js": {
+    "file": "assets/index-BtiM2clC.js",
+    "name": "index"
+  },
+  "_routing-DQha3BAi.js": {
+    "file": "assets/routing-DQha3BAi.js",
+    "name": "routing",
+    "imports": [
+      "_index-BtiM2clC.js"
+    ]
+  },
+  "src/routes/[...404].tsx?pick=default&pick=$css": {
+    "file": "assets/_...404_-CBu9U2Z7.js",
+    "name": "_...404_",
+    "src": "src/routes/[...404].tsx?pick=default&pick=$css",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-BtiM2clC.js"
+    ]
+  },
+  "src/routes/game/index.tsx?pick=default&pick=$css": {
+    "file": "assets/index-D83bvv4o.js",
+    "name": "index",
+    "src": "src/routes/game/index.tsx?pick=default&pick=$css",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-BtiM2clC.js",
+      "_AuthContext-CwAE7fDx.js",
+      "_UserContext-C63u1NZh.js",
+      "_routing-DQha3BAi.js"
+    ],
+    "css": [
+      "assets/index-D5DiZI5g.css"
+    ]
+  },
+  "src/routes/index.tsx?pick=default&pick=$css": {
+    "file": "assets/index-CrzCVw3d.js",
+    "name": "index",
+    "src": "src/routes/index.tsx?pick=default&pick=$css",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-BtiM2clC.js",
+      "_components-DShUfCzN.js",
+      "_routing-DQha3BAi.js"
+    ],
+    "css": [
+      "assets/index-BV-KZHQ3.css"
+    ]
+  },
+  "src/routes/login.tsx?pick=default&pick=$css": {
+    "file": "assets/login-Br8uk7LU.js",
+    "name": "login",
+    "src": "src/routes/login.tsx?pick=default&pick=$css",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-BtiM2clC.js",
+      "_AuthContext-CwAE7fDx.js",
+      "_Login.module-Ci4nll34.js",
+      "_routing-DQha3BAi.js",
+      "_components-DShUfCzN.js"
+    ]
+  },
+  "src/routes/register.tsx?pick=default&pick=$css": {
+    "file": "assets/register-Dt9tAu_a.js",
+    "name": "register",
+    "src": "src/routes/register.tsx?pick=default&pick=$css",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-BtiM2clC.js",
+      "_Login.module-Ci4nll34.js",
+      "_routing-DQha3BAi.js",
+      "_components-DShUfCzN.js"
+    ]
+  },
+  "virtual:$vinxi/handler/client": {
+    "file": "assets/client-BpVt01AN.js",
+    "name": "client",
+    "src": "virtual:$vinxi/handler/client",
+    "isEntry": true,
+    "imports": [
+      "_index-BtiM2clC.js",
+      "_AuthContext-CwAE7fDx.js",
+      "_UserContext-C63u1NZh.js",
+      "_routing-DQha3BAi.js"
+    ],
+    "dynamicImports": [
+      "src/routes/[...404].tsx?pick=default&pick=$css",
+      "src/routes/game/index.tsx?pick=default&pick=$css",
+      "src/routes/index.tsx?pick=default&pick=$css",
+      "src/routes/login.tsx?pick=default&pick=$css",
+      "src/routes/register.tsx?pick=default&pick=$css"
+    ]
+  }
+}

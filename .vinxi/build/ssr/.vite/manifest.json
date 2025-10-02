@@ -1,0 +1,493 @@
+{
+  "_AuthContext-D3kPq5an.js": {
+    "file": "assets/AuthContext-D3kPq5an.js",
+    "name": "AuthContext"
+  },
+  "_Login-BUJWZuiV.css": {
+    "file": "assets/Login-BUJWZuiV.css",
+    "src": "_Login-BUJWZuiV.css"
+  },
+  "_Login.module-Ci4nll34.js": {
+    "file": "assets/Login.module-Ci4nll34.js",
+    "name": "Login.module",
+    "css": [
+      "assets/Login-BUJWZuiV.css"
+    ]
+  },
+  "_UserContext-DYj2Vavi.js": {
+    "file": "assets/UserContext-DYj2Vavi.js",
+    "name": "UserContext"
+  },
+  "_api-D3monypt.js": {
+    "file": "assets/api-D3monypt.js",
+    "name": "api"
+  },
+  "_auth-BVUYsDc6.js": {
+    "file": "assets/auth-BVUYsDc6.js",
+    "name": "auth",
+    "imports": [
+      "_utils-AQpNWTN2.js",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "_components-D3RSgNPK.js": {
+    "file": "assets/components-D3RSgNPK.js",
+    "name": "components",
+    "imports": [
+      "_routing-CWq3BRWv.js"
+    ]
+  },
+  "_db-PRkUVS-C.js": {
+    "file": "assets/db-PRkUVS-C.js",
+    "name": "db",
+    "isDynamicEntry": true,
+    "imports": [
+      "_utils-AQpNWTN2.js"
+    ],
+    "dynamicImports": [
+      "src/lib/server/events/base-point-events.ts",
+      "src/lib/server/events/base-point-events.ts"
+    ]
+  },
+  "_game-eWeYT9Is.js": {
+    "file": "assets/game-eWeYT9Is.js",
+    "name": "game"
+  },
+  "_game.service-rW1J-678.js": {
+    "file": "assets/game.service-rW1J-678.js",
+    "name": "game.service",
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "src/utils/randomSlopes.ts"
+    ]
+  },
+  "_index-BdnVf8ln.js": {
+    "file": "assets/index-BdnVf8ln.js",
+    "name": "index"
+  },
+  "_jwt-CO0ye28h.js": {
+    "file": "assets/jwt-CO0ye28h.js",
+    "name": "jwt"
+  },
+  "_performance-CpMIxBac.js": {
+    "file": "assets/performance-CpMIxBac.js",
+    "name": "performance"
+  },
+  "_routing-CWq3BRWv.js": {
+    "file": "assets/routing-CWq3BRWv.js",
+    "name": "routing"
+  },
+  "_tile-cache.service-CfnteglI.js": {
+    "file": "assets/tile-cache.service-CfnteglI.js",
+    "name": "tile-cache.service",
+    "imports": [
+      "_db-PRkUVS-C.js"
+    ]
+  },
+  "_utils-AQpNWTN2.js": {
+    "file": "assets/utils-AQpNWTN2.js",
+    "name": "utils"
+  },
+  "src/lib/server/events/base-point-events.ts": {
+    "file": "assets/base-point-events-C2UNy6C4.js",
+    "name": "base-point-events",
+    "src": "src/lib/server/events/base-point-events.ts",
+    "isDynamicEntry": true
+  },
+  "src/routes/[...404].tsx?pick=default&pick=$css": {
+    "file": "_...404_.js",
+    "name": "_...404_",
+    "src": "src/routes/[...404].tsx?pick=default&pick=$css",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-BdnVf8ln.js"
+    ]
+  },
+  "src/routes/api/admin/performance.ts?pick=GET": {
+    "file": "performance.js",
+    "name": "performance",
+    "src": "src/routes/api/admin/performance.ts?pick=GET",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_performance-CpMIxBac.js",
+      "_auth-BVUYsDc6.js",
+      "_utils-AQpNWTN2.js",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/api/auth/index.ts?pick=POST": {
+    "file": "index.js",
+    "name": "index",
+    "src": "src/routes/api/auth/index.ts?pick=POST",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_auth-BVUYsDc6.js",
+      "_utils-AQpNWTN2.js",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/api/auth/login.ts?pick=POST": {
+    "file": "login.js",
+    "name": "login",
+    "src": "src/routes/api/auth/login.ts?pick=POST",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "_jwt-CO0ye28h.js",
+      "_utils-AQpNWTN2.js"
+    ]
+  },
+  "src/routes/api/auth/logout.ts?pick=POST": {
+    "file": "logout.js",
+    "name": "logout",
+    "src": "src/routes/api/auth/logout.ts?pick=POST",
+    "isEntry": true,
+    "isDynamicEntry": true
+  },
+  "src/routes/api/auth/register.ts?pick=POST": {
+    "file": "register.js",
+    "name": "register",
+    "src": "src/routes/api/auth/register.ts?pick=POST",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "_utils-AQpNWTN2.js"
+    ]
+  },
+  "src/routes/api/auth/verify.ts?pick=GET": {
+    "file": "verify.js",
+    "name": "verify",
+    "src": "src/routes/api/auth/verify.ts?pick=GET",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_jwt-CO0ye28h.js",
+      "_utils-AQpNWTN2.js"
+    ]
+  },
+  "src/routes/api/base-points.ts?pick=DELETE": {
+    "file": "base-points.js",
+    "name": "base-points",
+    "src": "src/routes/api/base-points.ts?pick=DELETE",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "_auth-BVUYsDc6.js",
+      "_api-D3monypt.js",
+      "src/lib/server/events/base-point-events.ts",
+      "_utils-AQpNWTN2.js",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/api/base-points.ts?pick=GET": {
+    "file": "base-points2.js",
+    "name": "base-points",
+    "src": "src/routes/api/base-points.ts?pick=GET",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "_auth-BVUYsDc6.js",
+      "_api-D3monypt.js",
+      "_utils-AQpNWTN2.js",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/api/base-points.ts?pick=POST": {
+    "file": "base-points3.js",
+    "name": "base-points",
+    "src": "src/routes/api/base-points.ts?pick=POST",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "_auth-BVUYsDc6.js",
+      "_api-D3monypt.js",
+      "src/lib/server/events/base-point-events.ts",
+      "_utils-AQpNWTN2.js",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/api/base-points/count.ts?pick=GET": {
+    "file": "count.js",
+    "name": "count",
+    "src": "src/routes/api/base-points/count.ts?pick=GET",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "_auth-BVUYsDc6.js",
+      "_api-D3monypt.js",
+      "src/lib/server/events/base-point-events.ts",
+      "_utils-AQpNWTN2.js",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/api/calculate-squares.ts?pick=POST": {
+    "file": "calculate-squares.js",
+    "name": "calculate-squares",
+    "src": "src/routes/api/calculate-squares.ts?pick=POST",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "_auth-BVUYsDc6.js",
+      "_api-D3monypt.js",
+      "_game-eWeYT9Is.js",
+      "_performance-CpMIxBac.js",
+      "_utils-AQpNWTN2.js",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/api/events.ts?pick=GET": {
+    "file": "events.js",
+    "name": "events",
+    "src": "src/routes/api/events.ts?pick=GET",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_auth-BVUYsDc6.js",
+      "src/lib/server/events/base-point-events.ts",
+      "_utils-AQpNWTN2.js",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/api/game/join.ts?pick=POST": {
+    "file": "join.js",
+    "name": "join",
+    "src": "src/routes/api/game/join.ts?pick=POST",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "_game.service-rW1J-678.js",
+      "_auth-BVUYsDc6.js",
+      "_utils-AQpNWTN2.js",
+      "src/utils/randomSlopes.ts",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/api/game/leave.ts?pick=POST": {
+    "file": "leave.js",
+    "name": "leave",
+    "src": "src/routes/api/game/leave.ts?pick=POST",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "_game.service-rW1J-678.js",
+      "_auth-BVUYsDc6.js",
+      "_utils-AQpNWTN2.js",
+      "src/utils/randomSlopes.ts",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/api/game/status.ts?pick=GET": {
+    "file": "status.js",
+    "name": "status",
+    "src": "src/routes/api/game/status.ts?pick=GET",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "_game.service-rW1J-678.js",
+      "_auth-BVUYsDc6.js",
+      "_utils-AQpNWTN2.js",
+      "src/utils/randomSlopes.ts",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/api/map/tile/[tileX]/[tileY].ts?pick=GET": {
+    "file": "_tileY_.js",
+    "name": "_tileY_",
+    "src": "src/routes/api/map/tile/[tileX]/[tileY].ts?pick=GET",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "_auth-BVUYsDc6.js",
+      "_api-D3monypt.js",
+      "_tile-cache.service-CfnteglI.js",
+      "_utils-AQpNWTN2.js",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/api/map/tile/[tileX]/[tileY].ts?pick=OPTIONS": {
+    "file": "_tileY_2.js",
+    "name": "_tileY_",
+    "src": "src/routes/api/map/tile/[tileX]/[tileY].ts?pick=OPTIONS",
+    "isEntry": true,
+    "isDynamicEntry": true
+  },
+  "src/routes/api/reset-game-progress.ts?pick=POST": {
+    "file": "reset-game-progress.js",
+    "name": "reset-game-progress",
+    "src": "src/routes/api/reset-game-progress.ts?pick=POST",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_db-PRkUVS-C.js",
+      "_auth-BVUYsDc6.js",
+      "_api-D3monypt.js",
+      "_utils-AQpNWTN2.js",
+      "_jwt-CO0ye28h.js"
+    ]
+  },
+  "src/routes/game/index.tsx?pick=default&pick=$css": {
+    "file": "index2.js",
+    "name": "index",
+    "src": "src/routes/game/index.tsx?pick=default&pick=$css",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-BdnVf8ln.js",
+      "_AuthContext-D3kPq5an.js",
+      "_game-eWeYT9Is.js",
+      "_UserContext-DYj2Vavi.js",
+      "_routing-CWq3BRWv.js"
+    ],
+    "css": [
+      "assets/index-D5DiZI5g.css"
+    ]
+  },
+  "src/routes/index.tsx?pick=default&pick=$css": {
+    "file": "index3.js",
+    "name": "index",
+    "src": "src/routes/index.tsx?pick=default&pick=$css",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-BdnVf8ln.js",
+      "_components-D3RSgNPK.js",
+      "_routing-CWq3BRWv.js"
+    ],
+    "css": [
+      "assets/index-BV-KZHQ3.css"
+    ]
+  },
+  "src/routes/login.tsx?pick=default&pick=$css": {
+    "file": "login2.js",
+    "name": "login",
+    "src": "src/routes/login.tsx?pick=default&pick=$css",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-BdnVf8ln.js",
+      "_AuthContext-D3kPq5an.js",
+      "_Login.module-Ci4nll34.js",
+      "_routing-CWq3BRWv.js",
+      "_components-D3RSgNPK.js"
+    ]
+  },
+  "src/routes/register.tsx?pick=default&pick=$css": {
+    "file": "register2.js",
+    "name": "register",
+    "src": "src/routes/register.tsx?pick=default&pick=$css",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-BdnVf8ln.js",
+      "_Login.module-Ci4nll34.js",
+      "_routing-CWq3BRWv.js",
+      "_components-D3RSgNPK.js"
+    ]
+  },
+  "src/utils/randomSlopes.ts": {
+    "file": "assets/randomSlopes-izTC2X1N.js",
+    "name": "randomSlopes",
+    "src": "src/utils/randomSlopes.ts",
+    "isDynamicEntry": true
+  },
+  "virtual:$vinxi/handler/ssr": {
+    "file": "ssr.js",
+    "name": "ssr",
+    "src": "virtual:$vinxi/handler/ssr",
+    "isEntry": true,
+    "imports": [
+      "_index-BdnVf8ln.js",
+      "_AuthContext-D3kPq5an.js",
+      "_UserContext-DYj2Vavi.js",
+      "_routing-CWq3BRWv.js",
+      "_db-PRkUVS-C.js",
+      "src/utils/randomSlopes.ts",
+      "_tile-cache.service-CfnteglI.js",
+      "src/lib/server/events/base-point-events.ts",
+      "_game-eWeYT9Is.js",
+      "_utils-AQpNWTN2.js"
+    ],
+    "dynamicImports": [
+      "src/routes/[...404].tsx?pick=default&pick=$css",
+      "src/routes/[...404].tsx?pick=default&pick=$css",
+      "src/routes/api/admin/performance.ts?pick=GET",
+      "src/routes/api/admin/performance.ts?pick=GET",
+      "src/routes/api/admin/performance.ts?pick=GET",
+      "src/routes/api/admin/performance.ts?pick=GET",
+      "src/routes/api/auth/index.ts?pick=POST",
+      "src/routes/api/auth/index.ts?pick=POST",
+      "src/routes/api/auth/login.ts?pick=POST",
+      "src/routes/api/auth/login.ts?pick=POST",
+      "src/routes/api/auth/logout.ts?pick=POST",
+      "src/routes/api/auth/logout.ts?pick=POST",
+      "src/routes/api/auth/register.ts?pick=POST",
+      "src/routes/api/auth/register.ts?pick=POST",
+      "src/routes/api/auth/verify.ts?pick=GET",
+      "src/routes/api/auth/verify.ts?pick=GET",
+      "src/routes/api/auth/verify.ts?pick=GET",
+      "src/routes/api/auth/verify.ts?pick=GET",
+      "src/routes/api/base-points/count.ts?pick=GET",
+      "src/routes/api/base-points/count.ts?pick=GET",
+      "src/routes/api/base-points/count.ts?pick=GET",
+      "src/routes/api/base-points/count.ts?pick=GET",
+      "src/routes/api/base-points.ts?pick=DELETE",
+      "src/routes/api/base-points.ts?pick=DELETE",
+      "src/routes/api/base-points.ts?pick=GET",
+      "src/routes/api/base-points.ts?pick=GET",
+      "src/routes/api/base-points.ts?pick=GET",
+      "src/routes/api/base-points.ts?pick=GET",
+      "src/routes/api/base-points.ts?pick=POST",
+      "src/routes/api/base-points.ts?pick=POST",
+      "src/routes/api/calculate-squares.ts?pick=POST",
+      "src/routes/api/calculate-squares.ts?pick=POST",
+      "src/routes/api/events.ts?pick=GET",
+      "src/routes/api/events.ts?pick=GET",
+      "src/routes/api/events.ts?pick=GET",
+      "src/routes/api/events.ts?pick=GET",
+      "src/routes/api/game/join.ts?pick=POST",
+      "src/routes/api/game/join.ts?pick=POST",
+      "src/routes/api/game/leave.ts?pick=POST",
+      "src/routes/api/game/leave.ts?pick=POST",
+      "src/routes/api/game/status.ts?pick=GET",
+      "src/routes/api/game/status.ts?pick=GET",
+      "src/routes/api/game/status.ts?pick=GET",
+      "src/routes/api/game/status.ts?pick=GET",
+      "src/routes/api/map/tile/[tileX]/[tileY].ts?pick=GET",
+      "src/routes/api/map/tile/[tileX]/[tileY].ts?pick=GET",
+      "src/routes/api/map/tile/[tileX]/[tileY].ts?pick=GET",
+      "src/routes/api/map/tile/[tileX]/[tileY].ts?pick=GET",
+      "src/routes/api/map/tile/[tileX]/[tileY].ts?pick=OPTIONS",
+      "src/routes/api/map/tile/[tileX]/[tileY].ts?pick=OPTIONS",
+      "src/routes/api/reset-game-progress.ts?pick=POST",
+      "src/routes/api/reset-game-progress.ts?pick=POST",
+      "src/routes/game/index.tsx?pick=default&pick=$css",
+      "src/routes/game/index.tsx?pick=default&pick=$css",
+      "src/routes/index.tsx?pick=default&pick=$css",
+      "src/routes/index.tsx?pick=default&pick=$css",
+      "src/routes/login.tsx?pick=default&pick=$css",
+      "src/routes/login.tsx?pick=default&pick=$css",
+      "src/routes/register.tsx?pick=default&pick=$css",
+      "src/routes/register.tsx?pick=default&pick=$css",
+      "_db-PRkUVS-C.js",
+      "_db-PRkUVS-C.js",
+      "src/utils/randomSlopes.ts",
+      "src/lib/server/events/base-point-events.ts",
+      "src/utils/randomSlopes.ts",
+      "src/lib/server/events/base-point-events.ts"
+    ]
+  }
+}

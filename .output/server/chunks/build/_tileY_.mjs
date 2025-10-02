@@ -1,0 +1,135 @@
+import { x, b as b$1, O, D } from './db-97-DOlOW.mjs';
+import { l } from './auth-BVUYsDc6.mjs';
+import { p, i } from './api-D3monypt.mjs';
+import { deflate, inflate } from 'pako';
+import 'sqlite3';
+import 'sqlite';
+import 'fs';
+import 'path';
+import './utils-AQpNWTN2.mjs';
+import './jwt-CO0ye28h.mjs';
+import 'jsonwebtoken';
+
+var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+const h = 64, w = 8, S = 6;
+class X {
+  async generateTile(e, t) {
+    const n = await D(), s = await x(), { minX: r, minY: o, maxX: i, maxY: l } = this.getTileBounds(e, t), c = await n.getPointsInBounds(r, o, i, l), d = await s.getTile(e, t);
+    if (d) {
+      const v = d.data, x = this.createBitmap(c, r, o);
+      if (v.length === x.length && v.every((M, L) => M === x[L])) return d;
+    }
+    const u = this.createBitmap(c, r, o), m = Date.now(), p = Buffer.concat([Buffer.from([1]), Buffer.from(deflate(u, { level: S }))]);
+    return { tileX: e, tileY: t, data: u, compressedData: p, version: 1, lastUpdatedMs: m };
+  }
+  getTileBounds(e, t) {
+    return { minX: e * h, minY: t * h, maxX: (e + 1) * h - 1, maxY: (t + 1) * h - 1 };
+  }
+  createBitmap(e, t, n) {
+    const s = Math.ceil(h * h / w), r = new Uint8Array(s);
+    for (const l of e) {
+      const c = l.x - t, d = l.y - n;
+      if (c < 0 || c >= h || d < 0 || d >= h) continue;
+      const u = d * h + c, m = Math.floor(u / w), p = u % w;
+      r[m] |= 1 << p;
+    }
+    const o = deflate(r, { level: S }), i = Buffer.alloc(1);
+    return i[0] = 1, Buffer.concat([i, Buffer.from(o)]);
+  }
+  decompressBitmap(e) {
+    if (e.length === 0) return new Uint8Array(0);
+    const t = e[0], n = e.subarray(1);
+    return t === 1 ? inflate(n) : new Uint8Array(n);
+  }
+  static worldToTileCoords(e, t) {
+    return { tileX: Math.floor(e / h), tileY: Math.floor(t / h) };
+  }
+  static getTilesInBounds(e, t, n, s) {
+    const r = this.worldToTileCoords(e, t), o = this.worldToTileCoords(n, s), i = [];
+    for (let l = r.tileY; l <= o.tileY; l++) for (let c = r.tileX; c <= o.tileX; c++) i.push({ x: c, y: l });
+    return i;
+  }
+}
+const Y = new X();
+class z {
+  constructor(e, t = 1e3, n = 1e4) {
+    __publicField(this, "cache");
+    __publicField(this, "maxSize");
+    __publicField(this, "defaultTTL");
+    __publicField(this, "tileRepository");
+    this.cache = /* @__PURE__ */ new Map(), this.maxSize = t, this.defaultTTL = n, this.tileRepository = e;
+  }
+  async getOrGenerate(e, t, n) {
+    const s = this.get(e, t);
+    if (s) return s;
+    const r = await this.tileRepository.getTile(e, t);
+    if (r) return this.set(r), r;
+    const o = await n(e, t);
+    return await this.tileRepository.saveTile(o), this.set(o), o;
+  }
+  getCacheKey(e, t) {
+    return `${e},${t}`;
+  }
+  get(e, t) {
+    const n = this.getCacheKey(e, t), s = this.cache.get(n);
+    return s ? Date.now() > s.timestamp + s.ttl ? (this.cache.delete(n), null) : s.data : null;
+  }
+  set(e, t = this.defaultTTL) {
+    if (!e || e.tileX == null || e.tileY == null || !e.data) throw new Error("Invalid tile data");
+    if (this.cache.size >= this.maxSize) {
+      const s = this.cache.keys().next().value;
+      s && this.cache.delete(s);
+    }
+    const n = this.getCacheKey(e.tileX, e.tileY);
+    this.cache.set(n, { data: { ...e }, timestamp: Date.now(), ttl: t || this.defaultTTL });
+  }
+  invalidate(e, t) {
+    const n = this.getCacheKey(e, t);
+    this.cache.delete(n);
+  }
+  clear() {
+    this.cache.clear();
+  }
+  getStats() {
+    return { size: this.cache.size, maxSize: this.maxSize, defaultTTL: this.defaultTTL };
+  }
+}
+let g = null;
+async function f() {
+  if (!g) {
+    const a = await b$1(), e = new O(a);
+    g = new z(e);
+  }
+  return g;
+}
+const B = { getOrGenerate: (...a) => f().then((e) => e.getOrGenerate(...a)), get: (...a) => f().then((e) => e.get(...a)), set: (...a) => f().then((e) => e.set(...a)), invalidate: (...a) => f().then((e) => e.invalidate(...a)), clear: () => f().then((a) => a.clear()), getStats: () => f().then((a) => a.getStats()) }, I = { min: -1e3, max: 1e3 }, R = 64, y = Math.ceil(I.max / R), b = Math.floor(I.min / R), A = (a, e) => {
+  if (typeof a != "number" || typeof e != "number" || isNaN(a) || isNaN(e)) throw new Error("Tile coordinates must be valid numbers");
+  if (!Number.isInteger(a) || !Number.isInteger(e)) throw new Error("Tile coordinates must be whole numbers");
+  if (a < b || a > y || e < b || e > y) throw new Error(`Tile coordinates must be between ${b} and ${y}`);
+}, P = (a, e, t) => (console.error(`[${e}] Error in ${t}:`, a), a instanceof Error ? a.message.includes("coordinates must be") ? i(a.message, 400, void 0, { requestId: e }) : i(`Internal server error: ${a.message}`, 500, void 0, { requestId: e }) : i("An unknown error occurred", 500, void 0, { requestId: e })), q = l(async (a) => {
+  const { params: e } = a, t = p(), { tileX: n, tileY: s } = e;
+  try {
+    const r = parseInt(n, 10), o = parseInt(s, 10);
+    A(r, o);
+    let i = null, l = true;
+    try {
+      if (i = await B.get(r, o), !i) {
+        const m = await x();
+        if (i = await Y.generateTile(r, o), i) await m.saveTile(i), await B.set(i), l = false;
+        else throw new Error("Failed to generate tile");
+      }
+    } catch (m) {
+      throw console.error(`[Tile API] Error processing tile (${r}, ${o}):`, m), m;
+    }
+    if (!i) throw new Error("Tile not found and could not be generated");
+    const c = { success: true, data: { tileX: i.tileX, tileY: i.tileY, data: i.data ? Array.from(i.data).join(",") : "", version: i.version || 1, lastUpdatedMs: i.lastUpdatedMs || Date.now(), fromCache: l, bounds: { minX: i.tileX * 64, minY: i.tileY * 64, maxX: (i.tileX + 1) * 64 - 1, maxY: (i.tileY + 1) * 64 - 1 } }, requestId: t }, d = i.lastUpdatedMs || Date.now(), u = new Headers({ "Content-Type": "application/json", "Cache-Control": "public, max-age=10, s-maxage=10", ETag: `"${d}"`, "Last-Modified": new Date(d).toUTCString() });
+    return new Response(JSON.stringify(c), { status: 200, headers: u });
+  } catch (r) {
+    return P(r, t, `GET /api/map/tile/${n}/${s}`);
+  }
+});
+
+export { q as GET };
+//# sourceMappingURL=_tileY_.mjs.map

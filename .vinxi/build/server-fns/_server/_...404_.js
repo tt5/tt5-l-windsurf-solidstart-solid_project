@@ -1,0 +1,1 @@
+import{ssr as o,ssrHydrationKey as t,escape as r,createComponent as e}from"solid-js/web";import{T as a}from"./assets/index-BdnVf8ln.js";import"solid-js";var m=["<main","><!--$-->","<!--/--><h1>Page Not Found</h1></main>"];const p=()=>o(m,t(),r(e(a,{children:"Not Found"})));export{p as default};
