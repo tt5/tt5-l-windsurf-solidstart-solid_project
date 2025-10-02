@@ -10,6 +10,7 @@ import { GridCell } from './GridCell';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlayerPosition } from '../../contexts/PlayerPositionContext';
 import { jumpToPosition } from '../../lib/utils/navigation';
+import { useFetchBasePoints } from '../../hooks/useFetchBasePoints';
 import { 
   type Direction, 
   type Point, 
@@ -18,7 +19,6 @@ import {
 } from '../../types/board';
 import { 
   calculateRestrictedSquares, 
-  fetchBasePoints as fetchBasePointsUtil, 
   handleDirection as handleDirectionUtil,
   handleAddBasePoint,
   isBasePoint,
@@ -39,7 +39,6 @@ const Board: Component = () => {
   
   // State with explicit types
   const currentUser = user();
-  const [basePoints, setBasePoints] = createSignal<BasePoint[]>([]);
   
   // Get position and restricted squares from context
   const { 
@@ -52,11 +51,18 @@ const Board: Component = () => {
   // Create a memoized version of the current position to avoid recreating it
   const currentPos = createMemo<Point>(() => position() || createPoint(0, 0));
   
-  // Other state variables
-  const [lastFetchTime, setLastFetchTime] = createSignal<number>(0); // base points, rate limiting
-  const [isFetching, setIsFetching] = createSignal<boolean>(false);
+  // State variables
   const [isMoving, setIsMoving] = createSignal<boolean>(false);
   const [isSaving, setIsSaving] = createSignal<boolean>(false);
+  
+  // Base points fetching
+  const { 
+    basePoints, 
+    fetchBasePoints, 
+  } = useFetchBasePoints({
+    user,
+    currentPosition: () => position() || [0, 0]
+  });
   
   // Initialize board on mount
   onMount(async () => {
@@ -123,29 +129,13 @@ const Board: Component = () => {
     }
   };
   
-  // Track the current fetch promise to prevent duplicate requests
-  let currentFetch: Promise<void> | null = null;
-  
-  const fetchBasePoints = async () => {
-    const currentPos = position() || [0,0];
-    
-    const promise = fetchBasePointsUtil({
-      user: () => currentUser,
-      currentPosition: () => currentPos, // Use the captured position
-      lastFetchTime,
-      isFetching,
-      setBasePoints,
-      setLastFetchTime,
-      setIsFetching
-    });
-    
-    if (promise) {
-      currentFetch = promise.finally(() => {
-        currentFetch = null;
-      });
-      return currentFetch;
+  // Wrapper to handle the fetch with error handling
+  const handleFetchBasePoints = async () => {
+    try {
+      await fetchBasePoints();
+    } catch (error) {
+      console.error('Error in fetchBasePoints:', error);
     }
-    return Promise.resolve();
   };
 
   // Effect to handle user changes and fetch base points
@@ -161,7 +151,7 @@ const Board: Component = () => {
       }
       
       // Only fetch base points on login
-      fetchBasePoints().catch(console.error);
+      handleFetchBasePoints();
     },
     { defer: true }
   ));
@@ -176,7 +166,7 @@ const Board: Component = () => {
     
     // Use requestIdleCallback to batch the fetch with the position update
     const id = requestIdleCallback(() => {
-      fetchBasePoints().catch(console.error);
+      handleFetchBasePoints();
     });
     
     return () => cancelIdleCallback(id);
@@ -221,45 +211,47 @@ const Board: Component = () => {
   });
   
   const handleSquareClick = async (index: number) => {
+    if (isSaving()) return;
+    
     const pos = position();
+    if (!pos) return;
     
     const [gridX, gridY] = indicesToPoints([index])[0];
-    const [offsetX, offsetY] = pos || [0, 0];
+    const [offsetX, offsetY] = pos;
     const [worldX, worldY] = gridToWorld(gridX, gridY, offsetX, offsetY);
-
+    
+    setIsSaving(true);
+    
     try {
-      const response = await handleAddBasePoint({
+      const result = await handleAddBasePoint({
         x: worldX,
         y: worldY,
         currentUser,
         setIsSaving,
-        setBasePoints,
+        setBasePoints: (value: BasePoint[] | ((prev: BasePoint[]) => BasePoint[])) => {
+          // This will trigger a re-fetch of base points through the effect
+          handleFetchBasePoints();
+          return value;
+        },
         isBasePoint: (x: number, y: number) => isBasePoint(x, y, basePoints())
       });
       
-      if (response.success && response.data) {
-        // Recalculate restricted squares with the new base point
-        const pos = position();
-        if (pos) {
-          const newRestrictedSquares = calculateRestrictedSquares(
-            createPoint(worldX, worldY),
-            getRestrictedSquares(),
-            pos
-          );
-          setRestrictedSquares(newRestrictedSquares);
-        }
-      } else if (response.error) {
-        setError(response.error);
+      if (result.success) {
+        // Refresh base points after successful addition
+        await handleFetchBasePoints();
+      } else if (result.error) {
+        setError(result.error);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      setError(errorMessage);
+      console.error('Error adding base point:', error);
+      setError('Failed to add base point');
+    } finally {
+      setIsSaving(false);
     }
   };
-
+  
   // Handle direction movement
   const handleDirection = async (dir: Direction): Promise<void> => {
-    setReachedBoundary(false); // Reset boundary flag on new movement
     
     const current = currentPos(); // Call the accessor to get the current position
     
