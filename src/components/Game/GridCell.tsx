@@ -12,7 +12,6 @@ interface CellState {
   isBasePoint: boolean;
   isSelected: boolean;
   isHovered: boolean;
-  isValid: boolean;
   isSaving: boolean;
 }
 
@@ -24,7 +23,7 @@ interface GridCellProps {
 
 export const GridCell: Component<GridCellProps> = (props) => {
   const { state, onHover, onClick } = props;
-  const { isBasePoint, isSelected, isHovered, isValid, isSaving } = state;
+  const { isBasePoint, isSelected, isHovered, isSaving } = state;
   
   // Track if we should process the click
   let shouldProcessClick = true;
@@ -81,7 +80,7 @@ export const GridCell: Component<GridCellProps> = (props) => {
     if (isSelected) classes.push(styles.selected);
     if (isSaving && isHovered) classes.push(styles.loading);
     else if (isHovered) {
-      classes.push(isValid ? styles['valid-hover'] : styles['invalid-hover']);
+      classes.push((!isSelected && !isBasePoint) ? styles['valid-hover'] : styles['invalid-hover']);
     }
     return classes.join(' ');
   };
@@ -103,7 +102,6 @@ export const GridCell: Component<GridCellProps> = (props) => {
         [styles.basePoint]: isBasePoint,
         [styles.selected]: isSelected,
         [styles.hovered]: isHovered,
-        [styles.valid]: isValid && !isSaving,
       }}
     >
       {isBasePoint ? (

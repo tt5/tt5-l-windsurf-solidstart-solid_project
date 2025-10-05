@@ -1,4 +1,4 @@
-import { setupBrowser, teardownBrowser, isBrowserConnected, getPage } from './test-utils';
+import { setupBrowser, teardownBrowser, isBrowserConnected, getPage } from './test-utils.js';
 import { beforeAll, afterAll, afterEach, vi } from 'vitest';
 
 // Use a longer timeout for CI environments
@@ -61,7 +61,7 @@ afterEach(async () => {
     
     // Basic cleanup - just navigate to about:blank
     try {
-      const page = (await import('./test-utils')).getPage();
+      const page = (await import('./test-utils.js')).getPage();
       if (page && !page.isClosed()) {
         await page.goto('about:blank', { 
           timeout: 5000,

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import { setupBrowser, teardownBrowser, isBrowserConnected } from './test-utils';
+import { setupBrowser, teardownBrowser, isBrowserConnected } from './test-utils.js';
 
 // Test timeout in milliseconds
 const TEST_TIMEOUT = 120000; // 2 minutes

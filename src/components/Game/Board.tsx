@@ -22,7 +22,8 @@ import {
   handleAddBasePoint,
   isBasePoint,
   validateSquarePlacement,
-  gridToWorld
+  gridToWorld,
+  calculateRestrictedSquares
 } from '../../utils/boardUtils';
 import styles from './Board.module.css';
 
@@ -247,8 +248,8 @@ const Board: Component = () => {
       });
       
       if (result.success) {
-        // Refresh base points after successful addition
         await handleFetchBasePoints();
+        setRestrictedSquares(calculateRestrictedSquares(gridToWorld(index, pos), getRestrictedSquares(), pos));
       } else if (result.error) {
         setError(result.error);
       }
@@ -283,7 +284,6 @@ const Board: Component = () => {
             isBasePoint: isBP,
             isSelected,
             isHovered: hoveredSquare() === index,
-            isValid: validateSquarePlacementLocal(index).isValid && !isSaving(),
             isSaving: isSaving()
           };
 
